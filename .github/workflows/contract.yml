@@ -21,4 +21,5 @@ jobs:
       - name: Verify installed runtime and backend
         env:
           RUMIAI_CC_NODE: node
-        run: "$RUNNER_TEMP/rumiai-computer-control/bin/rumiai-computer-control" doctor
+        run: |
+          "$RUNNER_TEMP/rumiai-computer-control/bin/rumiai-computer-control" doctor
