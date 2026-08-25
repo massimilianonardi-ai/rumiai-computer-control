@@ -321,8 +321,8 @@ function focusWindow({app, window} = {}) {
     };
   }
 
-  // v64 proved the backend id is an observation-scoped action handle, not a
-  // durable identity. Preserve the full observed descriptor so the Desktop
+  // The backend id is an observation-scoped action handle, not a durable
+  // identity. Preserve the full observed descriptor so the Desktop
   // Plugin can re-resolve the intended physical window immediately before use.
   const result = desktop.focusWindow(
     desktopResolved.application,
@@ -709,7 +709,7 @@ async function ensureReady(providerOrApp, opts = {}) {
   if (provider.kind !== "application") {
     return resultError(
       "UNSUPPORTED_PROVIDER_KIND",
-      `ensureReady only supports application Providers in this micro-PoC`,
+      `ensureReady only supports application Providers`,
       {provider:provider.id, kind:provider.kind}
     );
   }
@@ -1022,8 +1022,8 @@ async function waitUntilSnapshotCondition(providerOrApp, predicate, opts = {}) {
 
 /*
  * Public synchronization alias.
- * Kept separate from the legacy/internal name so Skills/Executors depend on
- * the RumiAI contract rather than implementation naming.
+ * Kept separate from the internal helper so consumers depend on the public
+ * contract rather than implementation naming.
  */
 async function waitUntil(providerOrApp, predicate, opts = {}) {
   return waitUntilSnapshotCondition(providerOrApp, predicate, opts);

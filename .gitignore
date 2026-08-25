@@ -11,8 +11,8 @@ __pycache__/
 *.sock
 artifacts/
 local/
-backends/macos/embedded/bin/agent-ctrl
-backends/macos/embedded/bin/rumiai-macos-window-bounds
-backends/macos/embedded/bin/rumiai-macos-window-minimized
-backends/macos/embedded/bin/rumiai-macos-focused-window
-backends/macos/embedded/bin/rumiai-enable-ax-manual
+backends/macos/runtime/bin/agent-ctrl
+backends/macos/runtime/bin/rumiai-macos-window-bounds
+backends/macos/runtime/bin/rumiai-macos-window-minimized
+backends/macos/runtime/bin/rumiai-macos-focused-window
+backends/macos/runtime/bin/rumiai-enable-ax-manual

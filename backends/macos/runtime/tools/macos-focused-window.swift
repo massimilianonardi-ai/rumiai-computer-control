@@ -41,9 +41,9 @@ func emit(_ object: [String: Any], exitCode: Int32) -> Never {
 }
 
 // Do not ask the system-wide AX object for AXFocusedApplication here.
-// v65 physical diagnostic on macOS returned kAXErrorCannotComplete (-25204)
-// for that messaging path even though the same session could access TextEdit
-// through agent-ctrl. AppKit already exposes the OS frontmost application as
+// That messaging path can return kAXErrorCannotComplete (-25204) even though
+// the same session can access the target application through agent-ctrl.
+// AppKit already exposes the OS frontmost application as
 // the app receiving key events, so resolve that process first and then perform
 // the window observation through the application's own AX object.
 guard let running = NSWorkspace.shared.frontmostApplication else {

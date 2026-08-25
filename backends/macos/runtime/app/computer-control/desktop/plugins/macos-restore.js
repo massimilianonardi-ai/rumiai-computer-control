@@ -1,6 +1,6 @@
 "use strict";
 
-const base = require("./macos");
+const base = require("./macos-minimize");
 const agentCtrl = require("../../backends/agent-ctrl");
 const macosWindowMinimized = require("../../backends/macos-window-minimized");
 const {unsupported} = require("../contract");
@@ -10,7 +10,7 @@ const platform = "darwin";
 function capabilities() {
   return {
     ...base.capabilities(),
-    "window.minimize":"IMPLEMENTED",
+    "window.restore":"IMPLEMENTED",
   };
 }
 
@@ -43,7 +43,7 @@ function sameDescriptor(expected, current) {
   );
 }
 
-function minimizeWindow(application = {}, window = {}) {
+function restoreWindow(application = {}, window = {}) {
   let actionSeconds = 0;
   let observeSeconds = 0;
 
@@ -54,7 +54,7 @@ function minimizeWindow(application = {}, window = {}) {
   if (!provider || !identity) {
     return unsupported(
       platform,
-      "minimizeWindow",
+      "restoreWindow",
       "resolved application provider and identity are required"
     );
   }
@@ -64,9 +64,9 @@ function minimizeWindow(application = {}, window = {}) {
       ok:false,
       state:"FAILED",
       error:"WINDOW_HANDLE_REQUIRED",
-      detail:"minimizeWindow requires an observed window handle",
+      detail:"restoreWindow requires an observed window handle",
       platform,
-      operation:"minimizeWindow",
+      operation:"restoreWindow",
       method:"window handle validation",
       actionSeconds,
       observeSeconds,
@@ -79,9 +79,9 @@ function minimizeWindow(application = {}, window = {}) {
       ok:false,
       state:"FAILED",
       error:"WINDOW_DESCRIPTOR_INSUFFICIENT",
-      detail:"macOS safe minimize requires observed id, title, process and pid",
+      detail:"macOS safe restore requires observed id, title, process and pid",
       platform,
-      operation:"minimizeWindow",
+      operation:"restoreWindow",
       window:observedTarget,
       method:"window descriptor validation",
       actionSeconds,
@@ -90,9 +90,6 @@ function minimizeWindow(application = {}, window = {}) {
     };
   }
 
-  // Reuse the already validated base plugin observation to establish the
-  // resolved application/process context. The returned pid/index id is only an
-  // observation-scoped action handle, never durable identity.
   const established = base.listWindows(application);
   observeSeconds += established.observeSeconds || established.seconds || 0;
 
@@ -103,7 +100,7 @@ function minimizeWindow(application = {}, window = {}) {
       error:established.error || "WINDOW_LIST_FAILED",
       detail:established.detail || "could not establish application window context",
       platform,
-      operation:"minimizeWindow",
+      operation:"restoreWindow",
       window:observedTarget,
       method:established.method,
       actionSeconds,
@@ -112,8 +109,8 @@ function minimizeWindow(application = {}, window = {}) {
     };
   }
 
-  // v64/v66 rule: resolve the physical descriptor again immediately before
-  // action. Do not trust the originally observed pid/index handle.
+  // The observed pid/index id is an ephemeral handle. Resolve
+  // the physical descriptor again immediately before the restore mutation.
   const fresh = agentCtrl.listWindows();
   observeSeconds += fresh.seconds || 0;
 
@@ -122,9 +119,9 @@ function minimizeWindow(application = {}, window = {}) {
       ok:false,
       state:"FAILED",
       error:"WINDOW_LIST_FAILED",
-      detail:(fresh.stderr || fresh.stdout || "window-list failed before minimize").trim(),
+      detail:(fresh.stderr || fresh.stdout || "window-list failed before restore").trim(),
       platform,
-      operation:"minimizeWindow",
+      operation:"restoreWindow",
       window:observedTarget,
       method:fresh.method,
       actionSeconds,
@@ -143,7 +140,7 @@ function minimizeWindow(application = {}, window = {}) {
       error:"WINDOW_TARGET_STALE",
       detail:"the observed window descriptor is no longer present",
       platform,
-      operation:"minimizeWindow",
+      operation:"restoreWindow",
       window:observedTarget,
       method:fresh.method,
       actionSeconds,
@@ -159,7 +156,7 @@ function minimizeWindow(application = {}, window = {}) {
       error:"WINDOW_TARGET_AMBIGUOUS",
       detail:`the observed window descriptor matches ${matches.length} current windows`,
       platform,
-      operation:"minimizeWindow",
+      operation:"restoreWindow",
       window:observedTarget,
       method:fresh.method,
       actionSeconds,
@@ -170,12 +167,64 @@ function minimizeWindow(application = {}, window = {}) {
 
   const currentTarget = matches[0];
   const handleRebound = currentTarget.id !== observedTarget.id;
+  const before = macosWindowMinimized.observeWindowMinimized(currentTarget);
+  observeSeconds += before.seconds || 0;
 
-  // v69 validated AXMinimized mutation physically. The native helper targets
-  // by known PID + exact title and itself fails closed on duplicate AX titles.
+  if (!before.ok) {
+    return {
+      ok:false,
+      state:"FAILED",
+      error:before.error || "WINDOW_RESTORE_PRECONDITION_FAILED",
+      detail:before.detail || "native AXMinimized precondition unavailable",
+      platform,
+      operation:"restoreWindow",
+      window:{
+        title:observedTarget.title,
+        process:observedTarget.process,
+        pid:observedTarget.pid,
+      },
+      observedHandle:observedTarget.id,
+      actionHandle:currentTarget.id,
+      handleRebound,
+      minimized:before.minimizedAfter,
+      method:before.method,
+      verified:false,
+      verification:"native-ax-minimized-false",
+      actionSeconds,
+      observeSeconds,
+      seconds:actionSeconds + observeSeconds,
+    };
+  }
+
+  if (before.minimizedAfter !== true) {
+    return {
+      ok:false,
+      state:"FAILED",
+      error:"WINDOW_NOT_MINIMIZED",
+      detail:"restoreWindow requires native AXMinimized=true before action",
+      platform,
+      operation:"restoreWindow",
+      window:{
+        title:observedTarget.title,
+        process:observedTarget.process,
+        pid:observedTarget.pid,
+      },
+      observedHandle:observedTarget.id,
+      actionHandle:currentTarget.id,
+      handleRebound,
+      minimized:false,
+      method:before.method,
+      verified:false,
+      verification:"native-ax-minimized-false",
+      actionSeconds,
+      observeSeconds,
+      seconds:actionSeconds + observeSeconds,
+    };
+  }
+
   const action = macosWindowMinimized.setWindowMinimized(
     currentTarget,
-    true
+    false
   );
   actionSeconds += action.seconds || 0;
 
@@ -183,10 +232,10 @@ function minimizeWindow(application = {}, window = {}) {
     return {
       ok:false,
       state:"FAILED",
-      error:action.error || "WINDOW_MINIMIZE_ACTION_FAILED",
+      error:action.error || "WINDOW_RESTORE_ACTION_FAILED",
       detail:action.detail || "native AXMinimized mutation failed",
       platform,
-      operation:"minimizeWindow",
+      operation:"restoreWindow",
       window:{
         title:observedTarget.title,
         process:observedTarget.process,
@@ -197,18 +246,18 @@ function minimizeWindow(application = {}, window = {}) {
       handleRebound,
       method:action.method,
       verified:false,
-      verification:"native-ax-minimized-true",
+      verification:"native-ax-minimized-false",
       actionSeconds,
       observeSeconds,
       seconds:actionSeconds + observeSeconds,
     };
   }
 
-  // Immediate AX readback after a successful mutation was physically observed
-  // to be stale in v69. Verification is therefore state-driven re-observation.
+  // Immediate AX readback can be stale. Require state-driven
+  // re-observation of AXMinimized=false after the mutation succeeds.
   const verified = macosWindowMinimized.waitForWindowMinimized(
     currentTarget,
-    true
+    false
   );
   observeSeconds += verified.observeSeconds || verified.seconds || 0;
 
@@ -216,10 +265,10 @@ function minimizeWindow(application = {}, window = {}) {
     return {
       ok:false,
       state:"UNVERIFIED",
-      error:"WINDOW_MINIMIZE_UNVERIFIED",
-      detail:verified.detail || "AXMinimized did not become true",
+      error:"WINDOW_RESTORE_UNVERIFIED",
+      detail:verified.detail || "AXMinimized did not become false",
       platform,
-      operation:"minimizeWindow",
+      operation:"restoreWindow",
       window:{
         title:observedTarget.title,
         process:observedTarget.process,
@@ -229,9 +278,10 @@ function minimizeWindow(application = {}, window = {}) {
       actionHandle:currentTarget.id,
       handleRebound,
       minimized:verified.observed,
+      restored:false,
       method:action.method,
       verified:false,
-      verification:"native-ax-minimized-true",
+      verification:"native-ax-minimized-false",
       actionSeconds,
       observeSeconds,
       seconds:actionSeconds + observeSeconds,
@@ -240,9 +290,9 @@ function minimizeWindow(application = {}, window = {}) {
 
   return {
     ok:true,
-    state:"MINIMIZED",
+    state:"RESTORED",
     platform,
-    operation:"minimizeWindow",
+    operation:"restoreWindow",
     window:{
       title:observedTarget.title,
       process:observedTarget.process,
@@ -251,10 +301,11 @@ function minimizeWindow(application = {}, window = {}) {
     observedHandle:observedTarget.id,
     actionHandle:currentTarget.id,
     handleRebound,
-    minimized:true,
+    minimized:false,
+    restored:true,
     method:action.method,
     verified:true,
-    verification:"native-ax-minimized-true",
+    verification:"native-ax-minimized-false",
     actionSeconds,
     observeSeconds,
     seconds:actionSeconds + observeSeconds,
@@ -266,5 +317,5 @@ module.exports = {
   id:"macos",
   platform,
   capabilities,
-  minimizeWindow,
+  restoreWindow,
 };

@@ -3,8 +3,8 @@
 The contract is independent from OS APIs, implementation languages, transports,
 and MCP tool dialects.
 
-Version `0.3.0` adds verified application readiness and foreground observation,
-plus `ui.get` and `ui.getBounds`, to the existing observation and text slice.
+The current contract version is recorded in `VERSION`. Runtime, backend and SDK
+implementations report their own versions independently.
 
 Rules:
 

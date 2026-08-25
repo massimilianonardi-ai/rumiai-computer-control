@@ -225,8 +225,8 @@ function focusWindow(application = {}, window = {}) {
     };
   }
 
-  // v64 proved macOS agent-ctrl ids are pid/index action handles that can
-  // rebind when AXWindows ordering changes. The old id alone is therefore not
+  // macOS agent-ctrl ids are pid/index action handles that can rebind when
+  // AXWindows ordering changes. The old id alone is therefore not
   // sufficient to identify the intended physical window.
   if (!focusDescriptorComplete(observedTarget)) {
     return {
@@ -354,8 +354,7 @@ function focusWindow(application = {}, window = {}) {
     };
   }
 
-  // v65 validated this native observer against an independent physical
-  // TextEdit front-document observation. It is independent of agent-ctrl's
+  // The native observer is independent of agent-ctrl's
   // positional pin and therefore remains valid even when pid/index ids rebind.
   const verified = macosNative.waitForFocusedWindow({
     pid:observedTarget.pid,
@@ -469,8 +468,8 @@ function closeWindow(application = {}) {
   }
 
   // Establish the target process in agent-ctrl without treating its pid/index
-  // handle as durable identity. v67 proved that a surviving window may reuse
-  // the exact same positional handle after close.
+  // handle as durable identity. A surviving window may reuse the exact same
+  // positional handle after close.
   const established = listWindows(application);
   observeSeconds += established.observeSeconds || established.seconds || 0;
 

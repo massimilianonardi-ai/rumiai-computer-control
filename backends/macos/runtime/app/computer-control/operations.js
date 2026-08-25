@@ -453,9 +453,8 @@ function waitStable({
  *   POST: returns the backend's current-window metadata without interpreting
  *         application semantics.
  *
- * This first Window API slice intentionally exposes only a capability already
- * exercised by the PoC. listWindows()/focusWindow() are deferred until backend
- * support is explicitly demonstrated instead of being guessed.
+ * This operation exposes current-window metadata without interpreting
+ * application semantics.
  */
 function getCurrentWindow({app}) {
   const started = performance.now();
@@ -662,7 +661,7 @@ function getBounds({app, element}) {
  *   POST: returns backend-resolved actionable element reference(s) without
  *         exposing backend command syntax to the resolver/Skill.
  *
- * v36 uses agent-ctrl's semantic find implementation. The public contract is
+ * The macOS backend uses agent-ctrl's semantic find implementation. The public contract is
  * backend-independent; another backend may implement the same operation
  * differently.
  */
@@ -869,9 +868,8 @@ function find({
  *   POST: returns the requested low-level property without adding application
  *         semantics.
  *
- * v33 exposes the common text/value properties used by the current PoC.
- * Additional properties can be added to this stable operation as backend
- * coverage grows.
+ * The operation exposes common text/value properties. Additional properties
+ * can be added as backend coverage grows.
  */
 function get({app, element, property}) {
   const started = performance.now();
@@ -1523,8 +1521,8 @@ function replaceText({app, element, text, verify = true, operation = "setText", 
       };
     }
 
-    // Core v31 rule: backend success without verified postcondition is not
-    // operation success. Continue with the next deterministic strategy.
+    // Backend success without a verified postcondition is not operation
+    // success. Continue with the next deterministic strategy.
     lastError =
       `postcondition not verified after ${strategy.method}`;
   }

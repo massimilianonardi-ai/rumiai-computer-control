@@ -1,6 +1,6 @@
 "use strict";
 
-const base = require("./macos-v80");
+const base = require("./macos-resize");
 const macosNative = require("../../backends/macos-native");
 const {unsupported} = require("../contract");
 
@@ -58,7 +58,7 @@ function getCurrentWindow(application = {}) {
     };
   }
 
-  // Use the v65 native observer as the source of truth. It reports the actual
+  // Use the native observer as the source of truth. It reports the actual
   // focused AX window and is independent of agent-ctrl's pid/index pin.
   const native = macosNative.focusedWindowObservation();
   observeSeconds += native.seconds || 0;

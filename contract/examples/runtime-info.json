@@ -1,9 +1,9 @@
 {
-  "contractVersion": "0.2.0",
-  "runtimeVersion": "0.2.0-dev",
+  "contractVersion": "0.8.0",
+  "runtimeVersion": "0.8.0",
   "backend": {
-    "name": "macos-placeholder",
-    "version": "0.0.0"
+    "name": "macos-ax",
+    "version": "0.8.0"
   },
   "platform": {
     "os": "macos",
@@ -14,7 +14,7 @@
     {
       "name": "runtime.info",
       "available": true,
-      "validationState": "PROPOSED",
+      "validationState": "PHYSICALLY_VALIDATED",
       "strategies": ["local-json-rpc"]
     }
   ]

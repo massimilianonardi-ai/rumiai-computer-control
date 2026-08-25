@@ -25,20 +25,14 @@ postcondition-oriented and must return verification evidence.
 - `backends/`: macOS, Windows, and Linux implementations.
 - `sdk/`: thin language clients; business semantics do not live here.
 - `adapters/`: integrations such as MCP and RumiAI.
-- `conformance/`: shared contract and physical validation suites.
-- `docs/`: architecture, workflow, versioning, and security decisions.
+- `docs/`: architecture, versioning, installation and security decisions.
 
 ## Status
 
-The standalone macOS implementation owns the promoted v82 backend source and
-native helpers. It exposes application, observation, interaction, clipboard,
-synchronization, and window operations through a local JSON-RPC runtime and
-TypeScript SDK. RumiAI consumes it through `adapters/rumiai/compat.js`; its
-high-level production modules no longer import the old in-project facade.
-
-Release `0.8.0` has passed the standalone physical suites and a complete RumiAI
-task that created a TextEdit document, inserted exact text, verified both
-intents, and shut the external runtime down cleanly.
+The standalone macOS Accessibility implementation exposes application,
+observation, interaction, clipboard, synchronization and window operations
+through a local JSON-RPC runtime and TypeScript SDK. RumiAI consumes it through
+`adapters/rumiai/compat.js`.
 
 ## Initial technical direction
 
@@ -49,7 +43,7 @@ intents, and shut the external runtime down cleanly.
   progressively lower-priority fallbacks.
 - MCP is an adapter, not the internal Computer Control contract.
 
-See `docs/architecture.md` and `docs/development-workflow.md`.
+See `docs/architecture.md`.
 
 ## Installation
 
@@ -58,9 +52,3 @@ project root, creates a versioned project-local installation, verifies the
 downloaded backend dependency, compiles native helpers, and exposes a stable
 `current` path. It never defaults to a system or user-profile location. See
 `docs/installation.md`.
-
-## Checks
-
-```text
-npm run check
-```

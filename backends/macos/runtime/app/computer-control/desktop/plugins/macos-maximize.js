@@ -1,6 +1,6 @@
 "use strict";
 
-const base = require("./macos-v72");
+const base = require("./macos-restore");
 const agentCtrl = require("../../backends/agent-ctrl");
 const macosWindowBounds = require("../../backends/macos-window-bounds");
 const {unsupported} = require("../contract");

@@ -87,11 +87,11 @@ mkdir -p "$STAGED"
   --exclude='.git' \
   --exclude='.DS_Store' \
   --exclude='local' \
-  --exclude='backends/macos/embedded/bin/agent-ctrl' \
-  --exclude='backends/macos/embedded/bin/rumiai-*' \
+  --exclude='backends/macos/runtime/bin/agent-ctrl' \
+  --exclude='backends/macos/runtime/bin/rumiai-*' \
   -cf - .) | (cd "$STAGED" && tar -xf -)
 
-AGENT_CTRL_BIN="$STAGED/backends/macos/embedded/bin/agent-ctrl"
+AGENT_CTRL_BIN="$STAGED/backends/macos/runtime/bin/agent-ctrl"
 mkdir -p "$(dirname "$AGENT_CTRL_BIN")"
 if [ -n "$AGENT_CTRL_SOURCE" ]; then
   cp "$AGENT_CTRL_SOURCE" "$AGENT_CTRL_BIN"
@@ -109,14 +109,14 @@ ACTUAL_SHA256="$(shasum -a 256 "$AGENT_CTRL_BIN" | awk '{print $1}')"
 chmod 755 "$AGENT_CTRL_BIN"
 
 xcrun --find swiftc >/dev/null
-xcrun swiftc "$STAGED/backends/macos/embedded/tools/macos-focused-window.swift" \
-  -o "$STAGED/backends/macos/embedded/bin/rumiai-macos-focused-window"
-xcrun swiftc "$STAGED/backends/macos/embedded/tools/enable-ax-manual.swift" \
-  -o "$STAGED/backends/macos/embedded/bin/rumiai-enable-ax-manual"
-xcrun swiftc "$STAGED/backends/macos/embedded/tools/macos-window-bounds.swift" \
-  -o "$STAGED/backends/macos/embedded/bin/rumiai-macos-window-bounds"
-xcrun swiftc "$STAGED/backends/macos/embedded/tools/macos-window-minimized.swift" \
-  -o "$STAGED/backends/macos/embedded/bin/rumiai-macos-window-minimized"
+xcrun swiftc "$STAGED/backends/macos/runtime/tools/macos-focused-window.swift" \
+  -o "$STAGED/backends/macos/runtime/bin/rumiai-macos-focused-window"
+xcrun swiftc "$STAGED/backends/macos/runtime/tools/enable-ax-manual.swift" \
+  -o "$STAGED/backends/macos/runtime/bin/rumiai-enable-ax-manual"
+xcrun swiftc "$STAGED/backends/macos/runtime/tools/macos-window-bounds.swift" \
+  -o "$STAGED/backends/macos/runtime/bin/rumiai-macos-window-bounds"
+xcrun swiftc "$STAGED/backends/macos/runtime/tools/macos-window-minimized.swift" \
+  -o "$STAGED/backends/macos/runtime/bin/rumiai-macos-window-minimized"
 
 mv "$STAGED" "$DESTINATION"
 ln -sfn "$VERSION" "$CURRENT"

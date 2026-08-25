@@ -4,16 +4,16 @@ const fs = require("node:fs");
 const path = require("node:path");
 const {ComputerControlError} = require("../../runtime/src/errors");
 
-const DEFAULT_EMBEDDED_MODULE = path.join(
+const DEFAULT_MACOS_MODULE = path.join(
   __dirname,
-  "embedded",
+  "runtime",
   "app",
   "computer-control",
   "index.js"
 );
 
-function createEmbeddedMacOSBackend({modulePath = DEFAULT_EMBEDDED_MODULE, embeddedModule} = {}) {
-  let loaded = embeddedModule || null;
+function createMacOSBackend({modulePath = DEFAULT_MACOS_MODULE, backendModule} = {}) {
+  let loaded = backendModule || null;
   let primitives = null;
 
   function control() {
@@ -22,7 +22,7 @@ function createEmbeddedMacOSBackend({modulePath = DEFAULT_EMBEDDED_MODULE, embed
     if (!fs.existsSync(resolved)) {
       throw new ComputerControlError(
         "BACKEND_UNAVAILABLE",
-        `Embedded macOS backend not found: ${resolved}`,
+        `macOS backend not found: ${resolved}`,
         "NONE"
       );
     }
@@ -32,8 +32,8 @@ function createEmbeddedMacOSBackend({modulePath = DEFAULT_EMBEDDED_MODULE, embed
 
   function backendPrimitives() {
     if (primitives) return primitives;
-    if (embeddedModule && typeof embeddedModule.clipboardRead === "function") {
-      primitives = embeddedModule;
+    if (backendModule && typeof backendModule.clipboardRead === "function") {
+      primitives = backendModule;
       return primitives;
     }
     const backendPath = path.join(path.dirname(path.resolve(modulePath)), "backends", "agent-ctrl.js");
@@ -46,9 +46,9 @@ function createEmbeddedMacOSBackend({modulePath = DEFAULT_EMBEDDED_MODULE, embed
 
   return {
     async info() {
-      const available = Boolean(embeddedModule) || fs.existsSync(path.resolve(modulePath));
+      const available = Boolean(backendModule) || fs.existsSync(path.resolve(modulePath));
       return {
-        name:"macos-embedded-v82",
+        name:"macos-ax",
   version:"0.8.0",
         platform:"macos",
         capabilities:[
@@ -93,7 +93,7 @@ function createEmbeddedMacOSBackend({modulePath = DEFAULT_EMBEDDED_MODULE, embed
           ...[
             "window.list", "window.getCurrent", "window.focus", "window.close",
             "window.minimize", "window.restore", "window.maximize", "window.move", "window.resize",
-          ].map(name => ({name, available, validationState:"PHYSICALLY_VALIDATED", strategies:["macos-v82-descriptor-safe"]})),
+          ].map(name => ({name, available, validationState:"PHYSICALLY_VALIDATED", strategies:["macos-ax-descriptor-safe"]})),
         ],
       };
     },
@@ -106,7 +106,7 @@ function createEmbeddedMacOSBackend({modulePath = DEFAULT_EMBEDDED_MODULE, embed
         state:"READY",
         verified:true,
         verification:{method:"backend-runtime-ready", evidence:{started:Boolean(result.started)}},
-        backend:{name:"macos-embedded-v82", strategy:result.method || "agent-ctrl"},
+        backend:{name:"macos-ax", strategy:result.method || "agent-ctrl"},
       };
     },
 
@@ -120,7 +120,7 @@ function createEmbeddedMacOSBackend({modulePath = DEFAULT_EMBEDDED_MODULE, embed
         application:{name:result.currentApp || application},
         snapshot:String(result.snapshot || ""),
         verification:{method:"application-snapshot-ready", evidence:{snapshotObserved:Boolean(result.snapshot)}},
-        backend:{name:"macos-embedded-v82", strategy:result.method || "provider-desktop-readiness"},
+        backend:{name:"macos-ax", strategy:result.method || "provider-desktop-readiness"},
         diagnostics:result.diagnostics || {},
       };
     },
@@ -136,7 +136,7 @@ function createEmbeddedMacOSBackend({modulePath = DEFAULT_EMBEDDED_MODULE, embed
           pid:result.pid || result.application?.pid || null,
         },
         observation:{method:result.method || "native-foreground-observation"},
-        backend:{name:"macos-embedded-v82", strategy:result.method || "native-foreground-observation"},
+        backend:{name:"macos-ax", strategy:result.method || "native-foreground-observation"},
         diagnostics:{observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
       };
     },
@@ -148,7 +148,7 @@ function createEmbeddedMacOSBackend({modulePath = DEFAULT_EMBEDDED_MODULE, embed
           state:"STOPPED",
           verified:true,
           verification:{method:"runtime-not-loaded", evidence:{}},
-          backend:{name:"macos-embedded-v82", strategy:"idempotent-noop"},
+          backend:{name:"macos-ax", strategy:"idempotent-noop"},
         };
       }
       const result = loaded.shutdownRuntime();
@@ -158,7 +158,7 @@ function createEmbeddedMacOSBackend({modulePath = DEFAULT_EMBEDDED_MODULE, embed
         state:"STOPPED",
         verified:true,
         verification:{method:"backend-runtime-stopped", evidence:{}},
-        backend:{name:"macos-embedded-v82", strategy:result.method || "agent-ctrl"},
+        backend:{name:"macos-ax", strategy:result.method || "agent-ctrl"},
       };
     },
 
@@ -183,7 +183,7 @@ function createEmbeddedMacOSBackend({modulePath = DEFAULT_EMBEDDED_MODULE, embed
           evidence:{observed:result.observed, attempts:result.attempts || []},
         },
         backend:{
-          name:"macos-embedded-v82",
+          name:"macos-ax",
           strategy:result.method || "unknown",
           fallback:Boolean(result.attempts?.length > 1),
         },
@@ -210,7 +210,7 @@ function createEmbeddedMacOSBackend({modulePath = DEFAULT_EMBEDDED_MODULE, embed
         nodes:parseActionableSnapshot(value),
         changed:result.changed == null ? null : Boolean(result.changed),
         observation:{method:result.method || "accessibility-tree"},
-        backend:{name:"macos-embedded-v82", strategy:result.method || "accessibility-tree"},
+        backend:{name:"macos-ax", strategy:result.method || "accessibility-tree"},
         diagnostics:{
           observeSeconds:result.observeSeconds || 0,
           totalSeconds:result.totalSeconds || 0,
@@ -263,7 +263,7 @@ function createEmbeddedMacOSBackend({modulePath = DEFAULT_EMBEDDED_MODULE, embed
         property:String(property),
         value:decodeObservedScalar(result.raw, result.value),
         observation:{method:result.method || "accessibility-property"},
-        backend:{name:"macos-embedded-v82", strategy:result.method || "accessibility-property"},
+        backend:{name:"macos-ax", strategy:result.method || "accessibility-property"},
         diagnostics:{observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
       };
     },
@@ -276,7 +276,7 @@ function createEmbeddedMacOSBackend({modulePath = DEFAULT_EMBEDDED_MODULE, embed
         target:{...target, ref:result.ref || target.ref},
         bounds:normalizeBounds(result.bounds),
         observation:{method:result.method || "accessibility-bounds"},
-        backend:{name:"macos-embedded-v82", strategy:result.method || "accessibility-bounds"},
+        backend:{name:"macos-ax", strategy:result.method || "accessibility-bounds"},
         diagnostics:{observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
       };
     },
@@ -318,7 +318,7 @@ function createEmbeddedMacOSBackend({modulePath = DEFAULT_EMBEDDED_MODULE, embed
         state:"CLEARED",
         verified:true,
         verification:{method:result.verificationMethod || "ax-text-exact", evidence:{observed:"", attempts:result.attempts || []}},
-        backend:{name:"macos-embedded-v82", strategy:result.method || "unknown", fallback:Boolean(result.attempts?.length > 1)},
+        backend:{name:"macos-ax", strategy:result.method || "unknown", fallback:Boolean(result.attempts?.length > 1)},
         diagnostics:{actionSeconds:result.actionSeconds || 0, observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
       };
     },
@@ -330,7 +330,7 @@ function createEmbeddedMacOSBackend({modulePath = DEFAULT_EMBEDDED_MODULE, embed
         state:"OBSERVED",
         text:decodeObservedScalar(result.stdout, ""),
         observation:{method:result.method || "system-clipboard"},
-        backend:{name:"macos-embedded-v82", strategy:result.method || "system-clipboard"},
+        backend:{name:"macos-ax", strategy:result.method || "system-clipboard"},
       };
     },
 
@@ -364,7 +364,7 @@ function createEmbeddedMacOSBackend({modulePath = DEFAULT_EMBEDDED_MODULE, embed
         state:"STABLE",
         snapshot:String(result.snapshot || ""),
         observation:{method:result.method || "observed-state-stability"},
-        backend:{name:"macos-embedded-v82", strategy:result.method || "observed-state-stability"},
+        backend:{name:"macos-ax", strategy:result.method || "observed-state-stability"},
         diagnostics:{waitSeconds:result.waitSeconds || 0, observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
       };
     },
@@ -377,7 +377,7 @@ function createEmbeddedMacOSBackend({modulePath = DEFAULT_EMBEDDED_MODULE, embed
         changed:true,
         snapshot:String(result.snapshot || ""),
         observation:{method:result.method || "equivalent-snapshot-delta"},
-        backend:{name:"macos-embedded-v82", strategy:result.method || "equivalent-snapshot-delta"},
+        backend:{name:"macos-ax", strategy:result.method || "equivalent-snapshot-delta"},
         diagnostics:{attempts:result.attempts || 0, waitSeconds:result.waitSeconds || 0, compact:Boolean(compact)},
       };
     },
@@ -388,8 +388,8 @@ function createEmbeddedMacOSBackend({modulePath = DEFAULT_EMBEDDED_MODULE, embed
       return {
         state:"OBSERVED",
         windows:(result.windows || []).map(normalizeWindow),
-        observation:{method:result.method || "macos-v82-window-list"},
-        backend:{name:"macos-embedded-v82", strategy:result.method || "macos-v82-window-list"},
+        observation:{method:result.method || "macos-ax-window-list"},
+        backend:{name:"macos-ax", strategy:result.method || "macos-ax-window-list"},
         diagnostics:{observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
       };
     },
@@ -401,7 +401,7 @@ function createEmbeddedMacOSBackend({modulePath = DEFAULT_EMBEDDED_MODULE, embed
         state:"OBSERVED",
         window:normalizeWindow(result.window),
         observation:{method:result.method || "native-focused-window-descriptor"},
-        backend:{name:"macos-embedded-v82", strategy:result.method || "native-focused-window-descriptor"},
+        backend:{name:"macos-ax", strategy:result.method || "native-focused-window-descriptor"},
         diagnostics:{observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
       };
     },
@@ -446,7 +446,7 @@ function deliveredResult(state, result, extra = {}) {
       evidence:{backendMethod:result.method || "unknown"},
     },
     backend:{
-      name:"macos-embedded-v82",
+      name:"macos-ax",
       strategy:result.method || "unknown",
       fallback:Boolean(result.fallbackUsed),
     },
@@ -494,7 +494,7 @@ function verifiedWindowMutation(result, state, fallbackCode) {
     bounds:normalizeBounds(result.bounds),
     previousBounds:normalizeBounds(result.previousBounds),
     verification:{method:result.verificationMethod || "native-window-postcondition", evidence:{}},
-    backend:{name:"macos-embedded-v82", strategy:result.method || "macos-v82-descriptor-safe"},
+    backend:{name:"macos-ax", strategy:result.method || "macos-ax-descriptor-safe"},
     diagnostics:{actionSeconds:result.actionSeconds || 0, observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
   };
 }
@@ -556,7 +556,7 @@ function foundResult(targets, query, role, method, source) {
     targets,
     source,
     observation:{method},
-    backend:{name:"macos-embedded-v82", strategy:method},
+    backend:{name:"macos-ax", strategy:method},
   };
 }
 
@@ -570,8 +570,8 @@ function backendFailure(result, fallbackCode) {
 }
 
 module.exports = {
-  createEmbeddedMacOSBackend,
-  DEFAULT_EMBEDDED_MODULE,
+  createMacOSBackend,
+  DEFAULT_MACOS_MODULE,
   parseActionableSnapshot,
   findSnapshotNodes,
 };

@@ -14,4 +14,4 @@ version, platform, and capability matrix. Clients must negotiate capabilities
 instead of inferring them from OS or package versions.
 
 During initial design the contract is `0.x`: breaking refinements are allowed,
-but must still be documented and tested.
+but must still be documented and verified.
