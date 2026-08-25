@@ -1,0 +1,14 @@
+{
+  "jsonrpc": "2.0",
+  "id": "example-invoke-1",
+  "method": "ui.invoke",
+  "params": {
+    "application": "TextEdit",
+    "target": {
+      "ref": "@e12",
+      "role": "button",
+      "name": "Done"
+    },
+    "settle": true
+  }
+}

@@ -22,6 +22,12 @@
       "available": true,
       "validationState": "PHYSICALLY_VALIDATED",
       "strategies": ["accessibility-cached-properties"]
+    },
+    {
+      "name": "ui.invoke",
+      "available": true,
+      "validationState": "PHYSICALLY_VALIDATED",
+      "strategies": ["ax-press", "accessibility-element-action", "accessibility-bounds-pointer"]
     }
   ]
 }

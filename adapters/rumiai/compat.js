@@ -134,6 +134,7 @@ function action(method, {app, element, keys, settle, text}) {
 
 const focus = params => action("ui.focus", params);
 const click = params => action("ui.click", params);
+const invoke = params => action("ui.invoke", params);
 const press = params => action("ui.press", params);
 const setText = params => action("ui.setText", {...params, element:params.element, text:params.text});
 const clear = params => action("ui.clear", params);
@@ -181,7 +182,7 @@ const resizeWindow = params => windowCall("window.resize", params);
 
 module.exports = {
   runtimeInfo, ensureRuntime, shutdownRuntime, ensureReady, getForeground,
-  snapshot, describe, find, get, getBounds, focus, click, press, setText, clear,
+  snapshot, describe, find, get, getBounds, focus, click, invoke, press, setText, clear,
   waitStable, waitUntilChanged, waitUntilSnapshotCondition, waitUntil,
   listWindows, getCurrentWindow, focusWindow, closeWindow, minimizeWindow,
   restoreWindow, maximizeWindow, moveWindow, resizeWindow,

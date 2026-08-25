@@ -34,9 +34,10 @@ observation, interaction, clipboard, synchronization and window operations
 through a local JSON-RPC runtime and TypeScript SDK. RumiAI consumes it through
 `adapters/rumiai/compat.js`.
 
-`main` is developing contract `0.9.0`. The first native-control capability,
-`ui.describe`, is physically validated; the latest tagged release remains
-`v0.8.0` until the planned invoke/toggle/select slice is complete.
+`main` is developing contract `0.9.0`. Native-control description and primary
+action invocation (`ui.describe` and `ui.invoke`) are physically validated; the
+latest tagged release remains `v0.8.0` until the planned toggle/select slice is
+complete.
 
 ## Initial technical direction
 

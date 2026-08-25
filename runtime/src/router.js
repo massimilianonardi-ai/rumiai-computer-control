@@ -46,6 +46,10 @@ function createRouter(backend) {
         validateElementParams(params, "ui.describe");
         return backend.describe(params);
 
+      case "ui.invoke":
+        validateElementParams(params, "ui.invoke");
+        return backend.invoke(params);
+
       case "ui.find":
         validateFindParams(params);
         return backend.find(params);

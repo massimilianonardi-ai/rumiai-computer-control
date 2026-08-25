@@ -1,6 +1,6 @@
 # Computer Control API reference
 
-This document describes the 30 public Computer Control operations implemented
+This document describes the 31 public Computer Control operations implemented
 by the `0.9.0` development contract. The latest tagged release remains `v0.8.0`.
 
 ## Implementation status
@@ -82,6 +82,14 @@ cannot yet observe native action names, complete range metadata, parent role or
 child count through its cached element reference, so `actions`, `range`,
 `parentRole` and `childCount` are also `null`.
 
+`ui.invoke` re-observes the target role and enabled state, then delivers its
+native primary action. It currently accepts buttons, links, menu items and
+toolbar items. `INVOKED` verifies action delivery only;
+`semanticConsequenceVerified:false` requires the caller to observe the intended
+application-level result separately. Unsupported roles, disabled controls and
+stale references fail closed. Invocation also fails when visibility or enabled
+state cannot be positively observed.
+
 ### Window descriptor
 
 Window observation returns:
@@ -122,9 +130,10 @@ Mutating operations normally return a result envelope containing:
 ```
 
 `verified: true` always describes the verification named in `verification`.
-For `ui.click`, `ui.press`, `clipboard.copy` and `clipboard.paste`, this proves
-delivery to the backend, not the application-level consequence. Observe the
-resulting state with `ui.snapshot`, `ui.get` or a synchronization operation.
+For `ui.click`, `ui.invoke`, `ui.press`, `clipboard.copy` and
+`clipboard.paste`, this proves delivery to the backend, not the
+application-level consequence. Observe the resulting state with `ui.snapshot`,
+`ui.get` or a synchronization operation.
 
 ## Runtime lifecycle APIs
 
@@ -147,6 +156,7 @@ resulting state with `ui.snapshot`, `ui.get` or a synchronization operation.
 | --- | --- | --- | --- |
 | `ui.snapshot` | `snapshot(...)` | `application` | Observes the accessibility tree. `compact` defaults to `true`; `settle` can wait for a stable surface; `previousSnapshot` enables change reporting. Returns text plus parsed actionable nodes. |
 | `ui.describe` | `describe(...)` | `application`, `target` | Returns normalized role, name, typed value, observable state and bounds. Unobservable fields remain `null`, and stale references fail closed. |
+| `ui.invoke` | `invoke(...)` | `application`, `target` | Re-observes an invokable role and enabled state, then delivers its native primary action. Returns `INVOKED` with delivery evidence; the caller observes the semantic consequence. |
 | `ui.find` | `find(...)` | `application` and at least one of `query` or `role` | Finds enabled semantic elements. It first uses a supplied snapshot when present, then the backend. `first:false` returns all matches. Matching is normalized, exact-first and then substring-based. |
 | `ui.get` | `get(...)` | `application`, `target`, `property` | Reads an element property. The macOS backend currently exposes `text` and `value`. |
 | `ui.getBounds` | `getBounds(...)` | `application`, `target` | Observes element geometry as `{x, y, width, height}`. |

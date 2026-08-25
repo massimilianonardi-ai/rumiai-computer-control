@@ -75,7 +75,7 @@ Current progress on `main`:
 ```text
 Phase 0 contract foundation  IMPLEMENTED
 Phase 1 ui.describe          PHYSICALLY_VALIDATED
-Phase 2 ui.invoke            PENDING
+Phase 2 ui.invoke            PHYSICALLY_VALIDATED
 Phase 3 ui.toggle/select     PENDING
 ```
 

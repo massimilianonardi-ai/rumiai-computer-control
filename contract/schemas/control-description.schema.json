@@ -106,7 +106,7 @@
     "controlRole": {
       "enum": [
         "application", "window", "dialog", "alert", "group", "generic", "region",
-        "toolbar", "menu-bar", "menu", "menu-item", "button", "link",
+        "toolbar", "toolbar-item", "menu-bar", "menu", "menu-item", "button", "link",
         "checkbox", "switch", "radio-button", "combo-box", "list",
         "list-item", "option", "slider", "spin-button", "text-field",
         "text-area", "search-box", "static-text", "date", "time", "date-time",

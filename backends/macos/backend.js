@@ -77,6 +77,12 @@ function createMacOSBackend({modulePath = DEFAULT_MACOS_MODULE, backendModule} =
             strategies:["accessibility-cached-properties"],
           },
           {
+            name:"ui.invoke",
+            available,
+            validationState:"PHYSICALLY_VALIDATED",
+            strategies:["ax-press", "accessibility-element-action", "accessibility-bounds-pointer"],
+          },
+          {
             name:"ui.find",
             available,
             validationState:"PHYSICALLY_VALIDATED",
@@ -337,6 +343,36 @@ function createMacOSBackend({modulePath = DEFAULT_MACOS_MODULE, backendModule} =
         fallback:Boolean(result.fallbackUsed),
         boundsObserved:result.boundsObserved,
       });
+    },
+
+    async invoke({application, target, settle = true}) {
+      const result = control().invoke({app:application, element:target, settle:Boolean(settle)});
+      if (!result?.ok) throw backendFailure(result, "INVOKE_ACTION_FAILED");
+      return {
+        ok:true,
+        state:"INVOKED",
+        verified:true,
+        target:{
+          ref:result.ref || target.ref,
+          role:result.role,
+          name:result.name || "",
+        },
+        semanticConsequenceVerified:false,
+        verification:{
+          method:"native-primary-action-delivered",
+          evidence:{backendMethod:result.method || "unknown", role:result.role},
+        },
+        backend:{
+          name:"macos-ax",
+          strategy:result.method || "unknown",
+          fallback:Boolean(result.fallbackUsed),
+        },
+        diagnostics:{
+          actionSeconds:result.actionSeconds || 0,
+          observeSeconds:result.observeSeconds || 0,
+          totalSeconds:result.totalSeconds || 0,
+        },
+      };
     },
 
     async press({application, keys, settle = true}) {

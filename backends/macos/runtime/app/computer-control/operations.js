@@ -652,7 +652,7 @@ function getBounds({app, element}) {
 }
 
 const CONTROL_ROLES = new Set([
-  "application", "window", "dialog", "alert", "group", "generic", "region", "toolbar",
+  "application", "window", "dialog", "alert", "group", "generic", "region", "toolbar", "toolbar-item",
   "menu-bar", "menu", "menu-item", "button", "link", "checkbox", "switch",
   "radio-button", "combo-box", "list", "list-item", "option", "slider",
   "spin-button", "text-field", "text-area", "search-box", "static-text", "date", "time",
@@ -679,10 +679,15 @@ const ROLE_ALIASES = new Map([
   ["label", "static-text"],
   ["progress-indicator", "progress-bar"],
   ["scroll-view", "scroll-area"],
+  ["toolbar-button", "toolbar-item"],
 ]);
 
 const NUMERIC_CONTROL_ROLES = new Set([
   "slider", "spin-button", "progress-bar",
+]);
+
+const INVOKABLE_CONTROL_ROLES = new Set([
+  "button", "link", "menu-item", "toolbar-item",
 ]);
 
 function normalizeControlRole(value) {
@@ -1535,6 +1540,111 @@ function click({
 }
 
 /*
+ * Public semantic primary-action operation:
+ *
+ *   invoke({ app, element, settle=true })
+ *
+ * The role and enabled state are re-observed from Accessibility immediately
+ * before delivery. Caller-supplied role metadata is never trusted. Successful
+ * completion proves delivery of the native primary action, not its
+ * application-specific consequence.
+ */
+function invoke({
+  app,
+  element,
+  settle = true,
+  stableTimeoutMs = 5000,
+  stablePollMs = 200,
+}) {
+  const started = performance.now();
+  const description = describe({app, element});
+
+  if (!description.ok) return description;
+
+  if (!INVOKABLE_CONTROL_ROLES.has(description.role)) {
+    return {
+      ok:false,
+      error:"UNSUPPORTED_CONTROL_ROLE",
+      detail:`ui.invoke does not support role "${description.role}"`,
+      state:"FAILED",
+      ref:description.ref,
+      role:description.role,
+      method:"accessibility-role-gate",
+      actionSeconds:0,
+      observeSeconds:description.observeSeconds || 0,
+      totalSeconds:(performance.now() - started) / 1000,
+    };
+  }
+
+  if (description.enabled !== true) {
+    return {
+      ok:false,
+      error:description.enabled === false ? "CONTROL_DISABLED" : "CONTROL_STATE_UNAVAILABLE",
+      detail:description.enabled === false
+        ? `Cannot invoke disabled ${description.role} ${description.ref}`
+        : `Cannot prove that ${description.role} ${description.ref} is enabled`,
+      state:"FAILED",
+      ref:description.ref,
+      role:description.role,
+      method:"accessibility-enabled-gate",
+      actionSeconds:0,
+      observeSeconds:description.observeSeconds || 0,
+      totalSeconds:(performance.now() - started) / 1000,
+    };
+  }
+
+  if (description.visible !== true) {
+    return {
+      ok:false,
+      error:description.visible === false ? "CONTROL_NOT_VISIBLE" : "CONTROL_STATE_UNAVAILABLE",
+      detail:description.visible === false
+        ? `Cannot invoke non-visible ${description.role} ${description.ref}`
+        : `Cannot prove that ${description.role} ${description.ref} is visible`,
+      state:"FAILED",
+      ref:description.ref,
+      role:description.role,
+      method:"accessibility-visibility-gate",
+      actionSeconds:0,
+      observeSeconds:description.observeSeconds || 0,
+      totalSeconds:(performance.now() - started) / 1000,
+    };
+  }
+
+  const delivered = click({
+    app,
+    element:{ref:description.ref},
+    settle,
+    stableTimeoutMs,
+    stablePollMs,
+  });
+
+  if (!delivered.ok) {
+    return {
+      ...delivered,
+      error:"INVOKE_ACTION_FAILED",
+      detail:`Could not invoke ${description.role} ${description.ref}: ${delivered.detail || delivered.error}`,
+      role:description.role,
+      name:description.name,
+      observeSeconds:
+        (description.observeSeconds || 0) + (delivered.observeSeconds || 0),
+      totalSeconds:(performance.now() - started) / 1000,
+    };
+  }
+
+  return {
+    ...delivered,
+    state:"INVOKED",
+    ref:description.ref,
+    role:description.role,
+    name:description.name,
+    method:delivered.method === "ax-click" ? "ax-press" : delivered.method,
+    observeSeconds:
+      (description.observeSeconds || 0) + (delivered.observeSeconds || 0),
+    totalSeconds:(performance.now() - started) / 1000,
+  };
+}
+
+/*
  * Internal exact replacement engine shared by public setText() and clear().
  * The public operations keep distinct semantics while backend strategy and
  * postcondition mechanics remain centralized here.
@@ -1783,6 +1893,7 @@ module.exports = {
   focus,
   press,
   click,
+  invoke,
   setText,
   clear,
 };

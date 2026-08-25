@@ -44,13 +44,15 @@ export interface ObservedTarget {
 
 export type ControlRole =
   | "application" | "window" | "dialog" | "alert" | "group" | "generic" | "region"
-  | "toolbar" | "menu-bar" | "menu" | "menu-item" | "button" | "link"
+  | "toolbar" | "toolbar-item" | "menu-bar" | "menu" | "menu-item" | "button" | "link"
   | "checkbox" | "switch" | "radio-button" | "combo-box" | "list"
   | "list-item" | "option" | "slider" | "spin-button" | "text-field"
   | "text-area" | "search-box" | "static-text" | "date" | "time" | "date-time"
   | "tab-list" | "tab" | "tree" | "tree-item" | "table" | "row"
   | "column" | "cell" | "header" | "scroll-area" | "progress-bar"
   | "image" | "separator" | "unknown";
+
+export type InvokableControlRole = "button" | "link" | "menu-item" | "toolbar-item";
 
 export type ControlValueType = "null" | "string" | "number" | "boolean" | "date" | "time" | "date-time";
 
@@ -89,6 +91,12 @@ export interface ControlDescription {
   observation: {method: string};
   backend: {name: string; strategy: string};
   diagnostics?: Record<string, unknown>;
+}
+
+export interface InvokeResult extends VerifiedOperationResult {
+  state: "INVOKED";
+  target: {ref: `@e${number}`; role: InvokableControlRole; name: string};
+  semanticConsequenceVerified: false;
 }
 
 export interface SnapshotResult {
@@ -151,6 +159,11 @@ export class ComputerControlClient {
     application: string;
     target: {ref: `@e${number}`; role?: string; name?: string};
   }): Promise<ControlDescription>;
+  invoke(params: {
+    application: string;
+    target: {ref: `@e${number}`; role?: string; name?: string};
+    settle?: boolean;
+  }): Promise<InvokeResult>;
   find(params: FindParams): Promise<FindResult>;
   get(params: {application: string; target: ObservedTarget; property: string}): Promise<{state: "OBSERVED"; target: ObservedTarget; property: string; value: unknown}>;
   getBounds(params: {application: string; target: ObservedTarget}): Promise<{state: "OBSERVED"; target: ObservedTarget; bounds: {x: number; y: number; width: number; height: number}}>;

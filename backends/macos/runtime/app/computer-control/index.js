@@ -1086,6 +1086,7 @@ module.exports = {
   closeWindow,
   snapshot:operations.snapshot,
   describe:operations.describe,
+  invoke:operations.invoke,
   getBounds:operations.getBounds,
   find:operations.find,
   get:operations.get,

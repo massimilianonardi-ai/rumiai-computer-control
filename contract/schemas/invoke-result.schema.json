@@ -1,0 +1,69 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/v0.9/invoke-result.schema.json",
+  "title": "Native primary-action invocation result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok", "state", "verified", "target", "semanticConsequenceVerified",
+    "verification", "backend", "diagnostics"
+  ],
+  "properties": {
+    "ok": {"const": true},
+    "state": {"const": "INVOKED"},
+    "verified": {"const": true},
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref", "role", "name"],
+      "properties": {
+        "ref": {"type": "string", "pattern": "^@e[0-9]+$"},
+        "role": {"$ref": "#/$defs/invokableRole"},
+        "name": {"type": "string"}
+      }
+    },
+    "semanticConsequenceVerified": {"const": false},
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "evidence"],
+      "properties": {
+        "method": {"const": "native-primary-action-delivered"},
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["backendMethod", "role"],
+          "properties": {
+            "backendMethod": {"type": "string", "minLength": 1},
+            "role": {"$ref": "#/$defs/invokableRole"}
+          }
+        }
+      }
+    },
+    "backend": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "strategy", "fallback"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "strategy": {"type": "string", "minLength": 1},
+        "fallback": {"type": "boolean"}
+      }
+    },
+    "diagnostics": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["actionSeconds", "observeSeconds", "totalSeconds"],
+      "properties": {
+        "actionSeconds": {"type": "number", "minimum": 0},
+        "observeSeconds": {"type": "number", "minimum": 0},
+        "totalSeconds": {"type": "number", "minimum": 0}
+      }
+    }
+  },
+  "$defs": {
+    "invokableRole": {
+      "enum": ["button", "link", "menu-item", "toolbar-item"]
+    }
+  }
+}

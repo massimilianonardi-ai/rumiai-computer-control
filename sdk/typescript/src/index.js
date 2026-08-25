@@ -41,6 +41,10 @@ class ComputerControlClient {
     return this.call("ui.describe", {application, target});
   }
 
+  invoke({application, target, settle = true}) {
+    return this.call("ui.invoke", {application, target, settle});
+  }
+
   find({application, query = "", role = null, first = true, snapshot = null}) {
     return this.call("ui.find", {application, query, role, first, snapshot});
   }

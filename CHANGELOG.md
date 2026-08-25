@@ -4,8 +4,9 @@
 
 - Add the normalized native-control role, value, state, range and action vocabulary.
 - Add `ui.describe` across the JSON-RPC runtime, macOS backend, TypeScript SDK and RumiAI adapter.
+- Add role-gated `ui.invoke` for native primary actions with explicit delivery evidence.
 - Observe cached Accessibility role, name, value, base state and bounds without inferring unavailable fields.
-- Fail closed when an element reference is malformed or stale.
+- Fail closed when an element reference is malformed or stale, a role is unsupported, or a control is disabled.
 
 ## 0.8.0 — 2026-08-25
 
