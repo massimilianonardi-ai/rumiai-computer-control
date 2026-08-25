@@ -16,4 +16,18 @@ Initial lifecycle methods:
 - `runtime.ensureReady`
 - `runtime.shutdown`
 
+Initial verified interaction:
+
+- `ui.setText`
+
 The runtime selects exactly one OS backend and reports its capability matrix.
+
+Start the current macOS transition runtime with:
+
+```text
+npm run runtime
+```
+
+The default socket is `/tmp/rumiai-computer-control.sock`. Override it with
+`RUMIAI_CC_SOCKET`. Override the validated legacy module location with
+`RUMIAI_CC_LEGACY_MODULE`.

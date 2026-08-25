@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/v0.1/set-text.params.schema.json",
+  "title": "ui.setText parameters",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["application", "target", "text"],
+  "properties": {
+    "application": {
+      "type": "string",
+      "minLength": 1
+    },
+    "target": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["ref"],
+      "properties": {
+        "ref": {
+          "type": "string",
+          "pattern": "^@e[0-9]+$",
+          "description": "Ephemeral reference scoped to the current observed application state"
+        },
+        "role": { "type": "string" },
+        "name": { "type": "string" }
+      }
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1
+    }
+  }
+}

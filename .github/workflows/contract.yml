@@ -10,4 +10,4 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Check repository contract structure
-        run: sh conformance/contract-tests/check-structure.sh
+        run: npm run check

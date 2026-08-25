@@ -8,15 +8,22 @@ contract/VERSION
 contract/schemas/common.schema.json
 contract/schemas/runtime-info.schema.json
 contract/schemas/operation-result.schema.json
+contract/schemas/set-text.params.schema.json
 runtime/README.md
+runtime/src/server.js
+runtime/src/router.js
 backends/macos/README.md
+backends/macos/legacy-validated-backend.js
 backends/windows/README.md
 backends/linux/README.md
 adapters/mcp/README.md
+sdk/typescript/src/index.js
 docs/architecture.md
 docs/development-workflow.md
 docs/versioning.md
 docs/security.md
+docs/promotions/v46-strict-set-text.md
+conformance/results/2026-08-25-runtime-set-text-boundary-PASS.md
 "
 
 for relative_path in $required_paths; do

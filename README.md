@@ -34,6 +34,11 @@ This repository is initially a product scaffold. Code from
 `rumiai-computer-use-PoCs` is promoted here only after its boundary and physical
 tests pass. Existing PoC code is not automatically considered production code.
 
+The first vertical slice now provides `runtime.info`, runtime lifecycle, and
+strict verified `ui.setText` through a local JSON-RPC runtime and TypeScript SDK.
+The macOS implementation is an explicitly temporary bridge to the v46 validated
+backend while native code is extracted behind the same contract.
+
 ## Initial technical direction
 
 - Local JSON-RPC 2.0 boundary.
@@ -44,3 +49,9 @@ tests pass. Existing PoC code is not automatically considered production code.
 - MCP is an adapter, not the internal Computer Control contract.
 
 See `docs/architecture.md` and `docs/development-workflow.md`.
+
+## Checks
+
+```text
+npm run check
+```

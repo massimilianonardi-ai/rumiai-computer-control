@@ -1,0 +1,14 @@
+{
+  "name": "@rumiai/computer-control-workspace",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Standalone Computer Control runtime, contracts, backends, and SDKs",
+  "scripts": {
+    "check": "sh conformance/contract-tests/check-structure.sh && node --test conformance/contract-tests/*.test.js",
+    "runtime": "node runtime/src/cli.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "license": "Apache-2.0"
+}
