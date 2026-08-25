@@ -85,7 +85,13 @@ async function main() {
     const focused = await client.focus({application:"TextEdit", target:editable.target});
     const clicked = await client.click({application:"TextEdit", target:editable.target, settle:true});
     const pressed = await client.press({application:"TextEdit", keys:"Right", settle:true});
+    const beforeClearSnapshot = await client.snapshot({application:"TextEdit", settle:true, compact:true});
     const cleared = await client.clear({application:"TextEdit", target:editable.target});
+    const changed = await client.waitUntilChanged({
+      application:"TextEdit",
+      previousSnapshot:beforeClearSnapshot.snapshot,
+      compact:true,
+    });
     const afterClear = await client.get({application:"TextEdit", target:editable.target, property:"text"});
 
     const result = await client.setText({
@@ -104,12 +110,12 @@ async function main() {
     const copiedObserved = await client.readClipboard();
     await client.clear({application:"TextEdit", target:editable.target});
     const pasted = await client.paste();
-    await client.snapshot({application:"TextEdit", settle:true, compact:true});
+    const stable = await client.waitStable({application:"TextEdit"});
     const afterPaste = await client.get({application:"TextEdit", target:editable.target, property:"text"});
     await client.writeClipboard(originalClipboard);
     originalClipboard = null;
 
-    console.log(`runtime-info=${info.contractVersion === "0.4.0" ? "PASS" : "FAIL"}`);
+    console.log(`runtime-info=${info.contractVersion === "0.5.0" ? "PASS" : "FAIL"}`);
     console.log(`runtime-ready=${ready.verified === true ? "PASS" : "FAIL"}`);
     console.log(`application-ready=${applicationReady.verified === true ? "PASS" : "FAIL"}`);
     console.log(`foreground-textedit=${/textedit/i.test(foreground.application.name) ? "PASS" : "FAIL"}`);
@@ -123,6 +129,7 @@ async function main() {
     console.log(`press-delivered=${pressed.verified === true ? "PASS" : "FAIL"}`);
     console.log(`clear-verified=${cleared.verified === true ? "PASS" : "FAIL"}`);
     console.log(`clear-empty-exact=${afterClear.value === "" ? "PASS" : "FAIL"}`);
+    console.log(`state-changed=${changed.changed === true ? "PASS" : "FAIL"}`);
     console.log(`set-text-state=${result.state}`);
     console.log(`set-text-verified=${result.verified === true}`);
     console.log(`set-text-verification=${result.verification?.method || "none"}`);
@@ -130,6 +137,7 @@ async function main() {
     console.log(`clipboard-write-exact=${clipboardWritten.verified === true && clipboardObserved.text === clipboardFixture ? "PASS" : "FAIL"}`);
     console.log(`clipboard-copy-exact=${copied.verified === true && copiedObserved.text === requested ? "PASS" : "FAIL"}`);
     console.log(`clipboard-paste-exact=${pasted.verified === true && afterPaste.value === requested ? "PASS" : "FAIL"}`);
+    console.log(`state-stable=${stable.state === "STABLE" ? "PASS" : "FAIL"}`);
     const pass =
       applicationReady.verified === true &&
       /textedit/i.test(foreground.application.name) &&
@@ -139,6 +147,7 @@ async function main() {
       pressed.verified === true &&
       cleared.verified === true &&
       afterClear.value === "" &&
+      changed.changed === true &&
       result.verified === true &&
       result.verification?.method === "ax-text-exact" &&
       after.value === requested &&
@@ -147,7 +156,8 @@ async function main() {
       copied.verified === true &&
       copiedObserved.text === requested &&
       pasted.verified === true &&
-      afterPaste.value === requested;
+      afterPaste.value === requested &&
+      stable.state === "STABLE";
     console.log(`physical-runtime-snapshot-find-set-text=${pass ? "PASS" : "FAIL"}`);
     failed = !pass;
   } finally {

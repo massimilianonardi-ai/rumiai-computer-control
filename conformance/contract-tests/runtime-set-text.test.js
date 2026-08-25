@@ -26,6 +26,8 @@ function mockLegacy() {
     clipboardWrite:text => { clipboard = text; return {ok:true, method:"mock-clipboard-write"}; },
     clipboardCopy:() => ({ok:true, method:"mock-copy"}),
     clipboardPaste:() => ({ok:true, method:"mock-paste"}),
+    waitStable:() => ({ok:true, snapshot:'@e0 text-field "stable"', method:"mock-stable"}),
+    waitUntilChanged:async () => ({ok:true, changed:true, snapshot:'@e0 text-field "changed"', method:"mock-changed", attempts:1}),
     shutdownRuntime:() => ({ok:true, method:"mock-stopped"}),
     snapshot:() => ({
       ok:true,
@@ -68,7 +70,7 @@ test("runtime.info and ui.setText cross the local RPC boundary", async t => {
 
   const client = new ComputerControlClient({socketPath, timeoutMs:2000});
   const info = await client.runtimeInfo();
-  assert.equal(info.contractVersion, "0.4.0");
+  assert.equal(info.contractVersion, "0.5.0");
   assert.equal(info.backend.name, "macos-agent-ctrl-v46-transition");
   assert.equal(info.capabilities.find(item => item.name === "ui.setText").available, true);
 
@@ -105,6 +107,8 @@ test("runtime.info and ui.setText cross the local RPC boundary", async t => {
   assert.equal((await client.readClipboard()).text, "fixture");
   assert.equal((await client.copy()).state, "COPY_DELIVERED");
   assert.equal((await client.paste()).state, "PASTE_DELIVERED");
+  assert.equal((await client.waitStable({application:"TextEdit"})).state, "STABLE");
+  assert.equal((await client.waitUntilChanged({application:"TextEdit", previousSnapshot:"before"})).changed, true);
 
   const result = await client.setText({
     application:"TextEdit",

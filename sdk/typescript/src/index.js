@@ -70,6 +70,14 @@ class ComputerControlClient {
   copy() { return this.call("clipboard.copy"); }
   paste() { return this.call("clipboard.paste"); }
 
+  waitStable({application, timeoutMs = 5000, pollMs = 200}) {
+    return this.call("sync.waitStable", {application, timeoutMs, pollMs});
+  }
+
+  waitUntilChanged({application, previousSnapshot, timeoutMs = 12000, pollMs = 300, compact = true}) {
+    return this.call("sync.waitUntilChanged", {application, previousSnapshot, timeoutMs, pollMs, compact});
+  }
+
   call(method, params = {}) {
     const id = this.nextId++;
     return new Promise((resolve, reject) => {

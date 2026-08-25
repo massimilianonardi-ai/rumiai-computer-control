@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/v0.4/synchronization.params.schema.json",
+  "title": "Synchronization parameters",
+  "type": "object",
+  "required": ["application"],
+  "properties": {
+    "application": {"type": "string", "minLength": 1},
+    "previousSnapshot": {"type": "string"},
+    "timeoutMs": {"type": "integer", "minimum": 1},
+    "pollMs": {"type": "integer", "minimum": 1},
+    "compact": {"type": "boolean"}
+  },
+  "additionalProperties": false
+}

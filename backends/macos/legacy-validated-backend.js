@@ -44,7 +44,7 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
       const available = Boolean(legacyModule) || fs.existsSync(path.resolve(modulePath));
       return {
         name:"macos-agent-ctrl-v46-transition",
-        version:"0.4.0",
+        version:"0.5.0",
         platform:"macos",
         capabilities:[
           {
@@ -83,6 +83,8 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
           {name:"clipboard.write", available, validationState:"PHYSICALLY_VALIDATED", strategies:["system-clipboard-readback"]},
           {name:"clipboard.copy", available, validationState:"PHYSICALLY_VALIDATED", strategies:["keyboard-copy-delivery"]},
           {name:"clipboard.paste", available, validationState:"PHYSICALLY_VALIDATED", strategies:["keyboard-paste-delivery"]},
+          {name:"sync.waitStable", available, validationState:"PHYSICALLY_VALIDATED", strategies:["observed-state-stability"]},
+          {name:"sync.waitUntilChanged", available, validationState:"PHYSICALLY_VALIDATED", strategies:["equivalent-snapshot-delta"]},
         ],
       };
     },
@@ -344,6 +346,31 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
       const result = backendPrimitives().clipboardPaste();
       if (!result?.ok) throw legacyFailure(result, "CLIPBOARD_PASTE_FAILED");
       return deliveredResult("PASTE_DELIVERED", result);
+    },
+
+    async waitStable({application, timeoutMs = 5000, pollMs = 200}) {
+      const result = control().waitStable({app:application, timeoutMs, pollMs});
+      if (!result?.ok) throw legacyFailure(result, "STABILITY_WAIT_FAILED");
+      return {
+        state:"STABLE",
+        snapshot:String(result.snapshot || ""),
+        observation:{method:result.method || "observed-state-stability"},
+        backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "observed-state-stability"},
+        diagnostics:{waitSeconds:result.waitSeconds || 0, observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
+      };
+    },
+
+    async waitUntilChanged({application, previousSnapshot, timeoutMs = 12000, pollMs = 300, compact = true}) {
+      const result = await control().waitUntilChanged(application, previousSnapshot, {timeoutMs, pollMs, compact:Boolean(compact)});
+      if (!result?.ok || result.changed !== true) throw legacyFailure(result, "STATE_CHANGE_TIMEOUT");
+      return {
+        state:"CHANGED",
+        changed:true,
+        snapshot:String(result.snapshot || ""),
+        observation:{method:result.method || "equivalent-snapshot-delta"},
+        backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "equivalent-snapshot-delta"},
+        diagnostics:{attempts:result.attempts || 0, waitSeconds:result.waitSeconds || 0, compact:Boolean(compact)},
+      };
     },
   };
 }

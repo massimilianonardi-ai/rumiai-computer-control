@@ -3,8 +3,8 @@
 const os = require("node:os");
 const {ComputerControlError} = require("./errors");
 
-const CONTRACT_VERSION = "0.4.0";
-const RUNTIME_VERSION = "0.4.0";
+const CONTRACT_VERSION = "0.5.0";
+const RUNTIME_VERSION = "0.5.0";
 
 function createRouter(backend) {
   if (!backend || typeof backend.info !== "function") {
@@ -97,6 +97,17 @@ function createRouter(backend) {
 
       case "clipboard.paste":
         return backend.paste();
+
+      case "sync.waitStable":
+        validateApplicationParams(params, "sync.waitStable");
+        return backend.waitStable(params);
+
+      case "sync.waitUntilChanged":
+        validateApplicationParams(params, "sync.waitUntilChanged");
+        if (typeof params.previousSnapshot !== "string") {
+          throw new ComputerControlError("PREVIOUS_SNAPSHOT_REQUIRED", "sync.waitUntilChanged requires previousSnapshot", "NONE");
+        }
+        return backend.waitUntilChanged(params);
 
       default:
         throw new ComputerControlError(

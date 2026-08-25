@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0 — 2026-08-25
+
+- Add `sync.waitStable` and `sync.waitUntilChanged`.
+- Preserve equivalent compact/full representations during delta comparison.
+- Physically validate change and stability synchronization around clear/paste.
+
 ## 0.4.0 — 2026-08-25
 
 - Add `ui.focus`, `ui.click`, `ui.press`, and strict `ui.clear`.

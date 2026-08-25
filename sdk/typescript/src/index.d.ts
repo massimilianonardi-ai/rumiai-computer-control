@@ -101,5 +101,7 @@ export class ComputerControlClient {
   writeClipboard(text: string): Promise<VerifiedOperationResult>;
   copy(): Promise<VerifiedOperationResult>;
   paste(): Promise<VerifiedOperationResult>;
+  waitStable(params: {application: string; timeoutMs?: number; pollMs?: number}): Promise<{state: "STABLE"; snapshot: string; observation: {method: string}}>;
+  waitUntilChanged(params: {application: string; previousSnapshot: string; timeoutMs?: number; pollMs?: number; compact?: boolean}): Promise<{state: "CHANGED"; changed: true; snapshot: string; observation: {method: string}}>;
   call(method: string, params?: Record<string, unknown>): Promise<unknown>;
 }
