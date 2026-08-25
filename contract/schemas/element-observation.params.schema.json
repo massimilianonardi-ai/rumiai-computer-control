@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/v0.2/element-observation.params.schema.json",
+  "title": "Element observation parameters",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["application", "target"],
+  "properties": {
+    "application": {"type": "string", "minLength": 1},
+    "target": {
+      "type": "object",
+      "required": ["ref"],
+      "properties": {"ref": {"type": "string", "pattern": "^@e[0-9]+$"}},
+      "additionalProperties": true
+    },
+    "property": {"type": "string", "minLength": 1}
+  }
+}

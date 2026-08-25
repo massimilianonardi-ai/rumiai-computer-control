@@ -80,6 +80,8 @@ export class ComputerControlClient {
   constructor(options?: ComputerControlClientOptions);
   runtimeInfo(): Promise<RuntimeInfo>;
   ensureReady(): Promise<VerifiedOperationResult>;
+  ensureApplicationReady(params: {application: string; timeoutMs?: number}): Promise<VerifiedOperationResult & {application: {name: string}; snapshot: string}>;
+  getForeground(): Promise<{state: "OBSERVED"; application: {name: string; bundle: string | null; pid: number | null}; observation: {method: string}}>;
   shutdownRuntime(): Promise<VerifiedOperationResult>;
   setText(params: SetTextParams): Promise<VerifiedOperationResult>;
   snapshot(params: {
@@ -89,5 +91,7 @@ export class ComputerControlClient {
     previousSnapshot?: string | null;
   }): Promise<SnapshotResult>;
   find(params: FindParams): Promise<FindResult>;
+  get(params: {application: string; target: ObservedTarget; property: string}): Promise<{state: "OBSERVED"; target: ObservedTarget; property: string; value: unknown}>;
+  getBounds(params: {application: string; target: ObservedTarget}): Promise<{state: "OBSERVED"; target: ObservedTarget; bounds: {x: number; y: number; w: number; h: number}}>;
   call(method: string, params?: Record<string, unknown>): Promise<unknown>;
 }

@@ -3,8 +3,8 @@
 const os = require("node:os");
 const {ComputerControlError} = require("./errors");
 
-const CONTRACT_VERSION = "0.2.0";
-const RUNTIME_VERSION = "0.2.0";
+const CONTRACT_VERSION = "0.3.0";
+const RUNTIME_VERSION = "0.3.0";
 
 function createRouter(backend) {
   if (!backend || typeof backend.info !== "function") {
@@ -29,7 +29,7 @@ function createRouter(backend) {
       }
 
       case "runtime.ensureReady":
-        return backend.ensureReady();
+        return backend.ensureRuntime();
 
       case "runtime.shutdown":
         return backend.shutdown();
@@ -46,6 +46,24 @@ function createRouter(backend) {
         validateFindParams(params);
         return backend.find(params);
 
+      case "application.ensureReady":
+        validateApplicationParams(params, "application.ensureReady");
+        return backend.ensureApplicationReady(params);
+
+      case "application.getForeground":
+        return backend.getForeground();
+
+      case "ui.get":
+        validateElementParams(params, "ui.get");
+        if (!String(params.property || "").trim()) {
+          throw new ComputerControlError("PROPERTY_REQUIRED", "ui.get requires property", "NONE");
+        }
+        return backend.get(params);
+
+      case "ui.getBounds":
+        validateElementParams(params, "ui.getBounds");
+        return backend.getBounds(params);
+
       default:
         throw new ComputerControlError(
           "METHOD_NOT_FOUND",
@@ -54,6 +72,22 @@ function createRouter(backend) {
         );
     }
   };
+}
+
+function validateApplicationParams(params, method) {
+  if (!params || typeof params !== "object" || Array.isArray(params)) {
+    throw new ComputerControlError("INVALID_PARAMS", `${method} requires an object`, "NONE");
+  }
+  if (!String(params.application || "").trim()) {
+    throw new ComputerControlError("APP_REQUIRED", `${method} requires application`, "NONE");
+  }
+}
+
+function validateElementParams(params, method) {
+  validateApplicationParams(params, method);
+  if (!/^@e\d+$/.test(String(params.target?.ref || ""))) {
+    throw new ComputerControlError("ACTIONABLE_ELEMENT_REQUIRED", `${method} requires an @e target`, "NONE");
+  }
 }
 
 function validateSnapshotParams(params) {
@@ -107,6 +141,8 @@ module.exports = {
   validateSetTextParams,
   validateSnapshotParams,
   validateFindParams,
+  validateApplicationParams,
+  validateElementParams,
   CONTRACT_VERSION,
   RUNTIME_VERSION,
 };

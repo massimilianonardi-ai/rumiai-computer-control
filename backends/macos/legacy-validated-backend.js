@@ -29,7 +29,7 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
       const available = Boolean(legacyModule) || fs.existsSync(path.resolve(modulePath));
       return {
         name:"macos-agent-ctrl-v46-transition",
-        version:"0.2.0",
+        version:"0.3.0",
         platform:"macos",
         capabilities:[
           {
@@ -56,11 +56,15 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
             validationState:"PHYSICALLY_VALIDATED",
             strategies:["snapshot-semantic", "backend-semantic"],
           },
+          {name:"application.ensureReady", available, validationState:"PHYSICALLY_VALIDATED", strategies:["provider-desktop-readiness"]},
+          {name:"application.getForeground", available, validationState:"PHYSICALLY_VALIDATED", strategies:["native-foreground-observation"]},
+          {name:"ui.get", available, validationState:"PHYSICALLY_VALIDATED", strategies:["accessibility-property"]},
+          {name:"ui.getBounds", available, validationState:"PHYSICALLY_VALIDATED", strategies:["accessibility-bounds"]},
         ],
       };
     },
 
-    async ensureReady() {
+    async ensureRuntime() {
       const result = control().ensureRuntime();
       if (!result?.ok) throw legacyFailure(result, "BACKEND_START_FAILED");
       return {
@@ -69,6 +73,37 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
         verified:true,
         verification:{method:"backend-runtime-ready", evidence:{started:Boolean(result.started)}},
         backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "agent-ctrl"},
+      };
+    },
+
+    async ensureApplicationReady({application, timeoutMs}) {
+      const result = await control().ensureReady(application, timeoutMs ? {timeoutMs} : {});
+      if (!result?.ok) throw legacyFailure(result, "APPLICATION_NOT_READY");
+      return {
+        ok:true,
+        state:"READY",
+        verified:true,
+        application:{name:result.currentApp || application},
+        snapshot:String(result.snapshot || ""),
+        verification:{method:"application-snapshot-ready", evidence:{snapshotObserved:Boolean(result.snapshot)}},
+        backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "provider-desktop-readiness"},
+        diagnostics:result.diagnostics || {},
+      };
+    },
+
+    async getForeground() {
+      const result = control().getForeground();
+      if (!result?.ok) throw legacyFailure(result, "FOREGROUND_OBSERVATION_FAILED");
+      return {
+        state:"OBSERVED",
+        application:{
+          name:result.name || result.application?.name || "",
+          bundle:result.bundle || result.application?.bundle || null,
+          pid:result.pid || result.application?.pid || null,
+        },
+        observation:{method:result.method || "native-foreground-observation"},
+        backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "native-foreground-observation"},
+        diagnostics:{observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
       };
     },
 
@@ -184,6 +219,33 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
       });
       return foundResult(targets, wanted, wantedRole, result.method || "backend-semantic", result.source || "backend");
     },
+
+    async get({application, target, property}) {
+      const result = control().get({app:application, element:target, property});
+      if (!result?.ok) throw legacyFailure(result, "PROPERTY_OBSERVATION_FAILED");
+      return {
+        state:"OBSERVED",
+        target:{...target, ref:result.ref || target.ref},
+        property:String(property),
+        value:decodeObservedScalar(result.raw, result.value),
+        observation:{method:result.method || "accessibility-property"},
+        backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "accessibility-property"},
+        diagnostics:{observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
+      };
+    },
+
+    async getBounds({application, target}) {
+      const result = control().getBounds({app:application, element:target});
+      if (!result?.ok || !result.bounds) throw legacyFailure(result, "BOUNDS_OBSERVATION_FAILED");
+      return {
+        state:"OBSERVED",
+        target:{...target, ref:result.ref || target.ref},
+        bounds:result.bounds,
+        observation:{method:result.method || "accessibility-bounds"},
+        backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "accessibility-bounds"},
+        diagnostics:{observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
+      };
+    },
   };
 }
 
@@ -210,6 +272,17 @@ function normalize(value) {
     .replace(/[\u2010-\u2015\u2212]/g, "-")
     .replace(/\s+/g, " ")
     .trim();
+}
+
+function decodeObservedScalar(raw, fallback) {
+  let value = String(raw == null ? fallback ?? "" : raw).replace(/\r?\n$/, "");
+  if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
+    try {
+      const decoded = JSON.parse(value);
+      if (typeof decoded === "string") return decoded;
+    } catch (_) {}
+  }
+  return value;
 }
 
 function findSnapshotNodes(snapshot, query, role, first) {

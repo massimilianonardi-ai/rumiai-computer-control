@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.3.0 — 2026-08-25
+
+- Separate runtime readiness from application readiness.
+- Add `application.ensureReady` and `application.getForeground`.
+- Add `ui.get` and `ui.getBounds`.
+- Correct transport decoding for quoted AX scalar values.
+- Physically validate the complete application and observation boundary.
+
 ## 0.2.0 — 2026-08-25
 
 - Add `ui.snapshot` observation.

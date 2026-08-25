@@ -65,6 +65,8 @@ async function main() {
     const client = new ComputerControlClient({socketPath:SOCKET});
     const info = await client.runtimeInfo();
     const ready = await client.ensureReady();
+    const applicationReady = await client.ensureApplicationReady({application:"TextEdit"});
+    const foreground = await client.getForeground();
     const snapshot = await client.snapshot({application:"TextEdit", settle:true, compact:true});
 
     let editable = null;
@@ -76,21 +78,36 @@ async function main() {
     }
     if (!editable?.target?.ref) throw new Error("fresh snapshot exposed no editable semantic surface");
 
+    const bounds = await client.getBounds({application:"TextEdit", target:editable.target});
+    const before = await client.get({application:"TextEdit", target:editable.target, property:"text"});
+
     const result = await client.setText({
       application:"TextEdit",
       target:editable.target,
       text:requested,
     });
+    const after = await client.get({application:"TextEdit", target:editable.target, property:"text"});
 
-    console.log(`runtime-info=${info.contractVersion === "0.2.0" ? "PASS" : "FAIL"}`);
+    console.log(`runtime-info=${info.contractVersion === "0.3.0" ? "PASS" : "FAIL"}`);
     console.log(`runtime-ready=${ready.verified === true ? "PASS" : "FAIL"}`);
+    console.log(`application-ready=${applicationReady.verified === true ? "PASS" : "FAIL"}`);
+    console.log(`foreground-textedit=${/textedit/i.test(foreground.application.name) ? "PASS" : "FAIL"}`);
     console.log(`snapshot-observed=${snapshot.state === "OBSERVED" ? "PASS" : "FAIL"}`);
     console.log(`editable-ref-fresh=${/^@e\d+$/.test(editable.target.ref) ? "PASS" : "FAIL"}`);
     console.log(`editable-role=${editable.target.role}`);
+    console.log(`bounds-observed=${bounds.bounds && Number.isFinite(bounds.bounds.x) ? "PASS" : "FAIL"}`);
+    console.log(`text-before-observed=${typeof before.value === "string" ? "PASS" : "FAIL"}`);
     console.log(`set-text-state=${result.state}`);
     console.log(`set-text-verified=${result.verified === true}`);
     console.log(`set-text-verification=${result.verification?.method || "none"}`);
-    const pass = result.verified === true && result.verification?.method === "ax-text-exact";
+    console.log(`text-after-exact=${after.value === requested ? "PASS" : "FAIL"}`);
+    const pass =
+      applicationReady.verified === true &&
+      /textedit/i.test(foreground.application.name) &&
+      bounds.bounds &&
+      result.verified === true &&
+      result.verification?.method === "ax-text-exact" &&
+      after.value === requested;
     console.log(`physical-runtime-snapshot-find-set-text=${pass ? "PASS" : "FAIL"}`);
     failed = !pass;
   } finally {

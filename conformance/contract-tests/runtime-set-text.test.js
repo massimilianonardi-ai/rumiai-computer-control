@@ -13,6 +13,10 @@ const {ComputerControlClient} = require("../../sdk/typescript/src");
 function mockLegacy() {
   return {
     ensureRuntime:() => ({ok:true, started:true, method:"mock-ready"}),
+    ensureReady:async app => ({ok:true, currentApp:app, snapshot:'@e0 text-field "Editor"', method:"mock-app-ready"}),
+    getForeground:() => ({ok:true, name:"TextEdit", bundle:"com.apple.TextEdit", pid:123, method:"mock-foreground"}),
+    get:({element, property}) => ({ok:true, ref:element.ref, property, value:"Ciao RumiAI.", method:"mock-get"}),
+    getBounds:({element}) => ({ok:true, ref:element.ref, bounds:{x:1,y:2,w:3,h:4}, method:"mock-bounds"}),
     shutdownRuntime:() => ({ok:true, method:"mock-stopped"}),
     snapshot:() => ({
       ok:true,
@@ -55,12 +59,17 @@ test("runtime.info and ui.setText cross the local RPC boundary", async t => {
 
   const client = new ComputerControlClient({socketPath, timeoutMs:2000});
   const info = await client.runtimeInfo();
-  assert.equal(info.contractVersion, "0.2.0");
+  assert.equal(info.contractVersion, "0.3.0");
   assert.equal(info.backend.name, "macos-agent-ctrl-v46-transition");
   assert.equal(info.capabilities.find(item => item.name === "ui.setText").available, true);
 
   const ready = await client.ensureReady();
   assert.equal(ready.verified, true);
+
+  const appReady = await client.ensureApplicationReady({application:"TextEdit"});
+  assert.equal(appReady.application.name, "TextEdit");
+  const foreground = await client.getForeground();
+  assert.equal(foreground.application.bundle, "com.apple.TextEdit");
 
   const snapshot = await client.snapshot({application:"TextEdit", settle:true});
   assert.equal(snapshot.state, "OBSERVED");
@@ -74,6 +83,11 @@ test("runtime.info and ui.setText cross the local RPC boundary", async t => {
   });
   assert.equal(editable.target.ref, "@e0");
   assert.equal(editable.source, "snapshot");
+
+  const value = await client.get({application:"TextEdit", target:editable.target, property:"text"});
+  assert.equal(value.value, "Ciao RumiAI.");
+  const bounds = await client.getBounds({application:"TextEdit", target:editable.target});
+  assert.deepEqual(bounds.bounds, {x:1,y:2,w:3,h:4});
 
   const result = await client.setText({
     application:"TextEdit",

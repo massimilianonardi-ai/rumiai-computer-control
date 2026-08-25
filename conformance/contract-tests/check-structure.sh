@@ -12,6 +12,8 @@ contract/schemas/operation-result.schema.json
 contract/schemas/set-text.params.schema.json
 contract/schemas/snapshot.params.schema.json
 contract/schemas/find.params.schema.json
+contract/schemas/application.params.schema.json
+contract/schemas/element-observation.params.schema.json
 runtime/README.md
 runtime/src/server.js
 runtime/src/router.js
@@ -28,6 +30,7 @@ docs/security.md
 docs/promotions/v46-strict-set-text.md
 conformance/results/2026-08-25-runtime-set-text-boundary-PASS.md
 conformance/results/2026-08-25-macos-snapshot-find-set-text-physical-PASS.md
+conformance/results/2026-08-25-macos-application-observation-physical-PASS.md
 "
 
 for relative_path in $required_paths; do

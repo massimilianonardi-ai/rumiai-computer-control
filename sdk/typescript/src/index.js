@@ -17,6 +17,14 @@ class ComputerControlClient {
     return this.call("runtime.ensureReady");
   }
 
+  ensureApplicationReady({application, timeoutMs}) {
+    return this.call("application.ensureReady", {application, timeoutMs});
+  }
+
+  getForeground() {
+    return this.call("application.getForeground");
+  }
+
   shutdownRuntime() {
     return this.call("runtime.shutdown");
   }
@@ -31,6 +39,14 @@ class ComputerControlClient {
 
   find({application, query = "", role = null, first = true, snapshot = null}) {
     return this.call("ui.find", {application, query, role, first, snapshot});
+  }
+
+  get({application, target, property}) {
+    return this.call("ui.get", {application, target, property});
+  }
+
+  getBounds({application, target}) {
+    return this.call("ui.getBounds", {application, target});
   }
 
   call(method, params = {}) {
