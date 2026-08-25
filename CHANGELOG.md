@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.8.0 — 2026-08-25
+
+- Add the synchronous RumiAI compatibility adapter over the standalone SDK and socket runtime.
+- Normalize legacy key arrays into canonical keyboard chords.
+- Recover safely from stale runtime sockets between consumer sessions.
+- Route all four high-level RumiAI consumers through the external project boundary.
+- Physically validate a complete RumiAI task and clean runtime shutdown.
+
 ## 0.7.0 — 2026-08-25
 
 - Extract the validated macOS v82 source into the standalone repository.

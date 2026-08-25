@@ -30,15 +30,15 @@ postcondition-oriented and must return verification evidence.
 
 ## Status
 
-This repository is initially a product scaffold. Code from
-`rumiai-computer-use-PoCs` is promoted here only after its boundary and physical
-tests pass. Existing PoC code is not automatically considered production code.
+The standalone macOS implementation owns the promoted v82 backend source and
+native helpers. It exposes application, observation, interaction, clipboard,
+synchronization, and window operations through a local JSON-RPC runtime and
+TypeScript SDK. RumiAI consumes it through `adapters/rumiai/compat.js`; its
+high-level production modules no longer import the old in-project facade.
 
-The standalone macOS implementation provides `runtime.info`, runtime lifecycle,
-`ui.snapshot`, `ui.find`, and strict verified `ui.setText` through a local
-JSON-RPC runtime and TypeScript SDK.
-The promoted v82 source and native helpers are owned by this repository. The
-runtime no longer imports source from `rumiai-computer-use-PoCs`.
+Release `0.8.0` has passed the standalone physical suites and a complete RumiAI
+task that created a TextEdit document, inserted exact text, verified both
+intents, and shut the external runtime down cleanly.
 
 ## Initial technical direction
 

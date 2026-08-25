@@ -49,7 +49,7 @@ function createEmbeddedMacOSBackend({modulePath = DEFAULT_EMBEDDED_MODULE, embed
       const available = Boolean(embeddedModule) || fs.existsSync(path.resolve(modulePath));
       return {
         name:"macos-embedded-v82",
-        version:"0.7.0",
+  version:"0.8.0",
         platform:"macos",
         capabilities:[
           {

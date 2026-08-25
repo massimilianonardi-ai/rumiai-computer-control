@@ -79,7 +79,7 @@ test("runtime.info and ui.setText cross the local RPC boundary", async t => {
 
   const client = new ComputerControlClient({socketPath, timeoutMs:2000});
   const info = await client.runtimeInfo();
-  assert.equal(info.contractVersion, "0.7.0");
+  assert.equal(info.contractVersion, "0.8.0");
   assert.equal(info.backend.name, "macos-embedded-v82");
   assert.equal(info.capabilities.find(item => item.name === "ui.setText").available, true);
 

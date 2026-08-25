@@ -18,6 +18,11 @@ function sleep(ms) {
 
 function ensureProcess() {
   if (runtimeChild && runtimeChild.exitCode == null && fs.existsSync(SOCKET)) return;
+  if (!runtimeChild && fs.existsSync(SOCKET)) {
+    const stat = fs.lstatSync(SOCKET);
+    if (!stat.isSocket()) throw new Error(`Refusing to replace non-socket runtime path: ${SOCKET}`);
+    fs.unlinkSync(SOCKET);
+  }
   runtimeChild = spawn(NODE, [RUNTIME], {
     cwd:ROOT,
     env:{...process.env, RUMIAI_CC_SOCKET:SOCKET},
@@ -103,7 +108,7 @@ function getBounds({app, element}) {
 function action(method, {app, element, keys, settle, text}) {
   const params = {application:app};
   if (element) params.target = element;
-  if (keys) params.keys = keys;
+  if (keys) params.keys = Array.isArray(keys) ? keys.join("+") : keys;
   if (settle != null) params.settle = settle;
   if (text != null) params.text = text;
   return safe(method, params, value => ({

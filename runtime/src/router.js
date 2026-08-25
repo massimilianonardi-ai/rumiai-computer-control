@@ -3,7 +3,7 @@
 const os = require("node:os");
 const {ComputerControlError} = require("./errors");
 
-const CONTRACT_VERSION = "0.7.0";
+const CONTRACT_VERSION = "0.8.0";
 const RUNTIME_VERSION = "0.7.0";
 
 function createRouter(backend) {

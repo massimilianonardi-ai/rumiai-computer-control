@@ -1,6 +1,6 @@
 {
   "name": "@rumiai/computer-control-workspace",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "description": "Standalone Computer Control runtime, contracts, backends, and SDKs",
   "scripts": {

@@ -117,7 +117,7 @@ async function main() {
     await client.writeClipboard(originalClipboard);
     originalClipboard = null;
 
-    console.log(`runtime-info=${info.contractVersion === "0.7.0" ? "PASS" : "FAIL"}`);
+    console.log(`runtime-info=${info.contractVersion === "0.8.0" ? "PASS" : "FAIL"}`);
     console.log(`runtime-ready=${ready.verified === true ? "PASS" : "FAIL"}`);
     console.log(`application-ready=${applicationReady.verified === true ? "PASS" : "FAIL"}`);
     console.log(`foreground-textedit=${/textedit/i.test(foreground.application.name) ? "PASS" : "FAIL"}`);
