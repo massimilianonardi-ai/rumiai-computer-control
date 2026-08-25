@@ -3,8 +3,8 @@
 const os = require("node:os");
 const {ComputerControlError} = require("./errors");
 
-const CONTRACT_VERSION = "0.3.0";
-const RUNTIME_VERSION = "0.3.0";
+const CONTRACT_VERSION = "0.4.0";
+const RUNTIME_VERSION = "0.4.0";
 
 function createRouter(backend) {
   if (!backend || typeof backend.info !== "function") {
@@ -63,6 +63,40 @@ function createRouter(backend) {
       case "ui.getBounds":
         validateElementParams(params, "ui.getBounds");
         return backend.getBounds(params);
+
+      case "ui.focus":
+        validateElementParams(params, "ui.focus");
+        return backend.focus(params);
+
+      case "ui.click":
+        validateElementParams(params, "ui.click");
+        return backend.click(params);
+
+      case "ui.press":
+        validateApplicationParams(params, "ui.press");
+        if (!String(params.keys || "").trim()) {
+          throw new ComputerControlError("KEYS_REQUIRED", "ui.press requires keys", "NONE");
+        }
+        return backend.press(params);
+
+      case "ui.clear":
+        validateElementParams(params, "ui.clear");
+        return backend.clear(params);
+
+      case "clipboard.read":
+        return backend.readClipboard();
+
+      case "clipboard.write":
+        if (typeof params?.text !== "string") {
+          throw new ComputerControlError("TEXT_REQUIRED", "clipboard.write requires text", "NONE");
+        }
+        return backend.writeClipboard(params);
+
+      case "clipboard.copy":
+        return backend.copy();
+
+      case "clipboard.paste":
+        return backend.paste();
 
       default:
         throw new ComputerControlError(

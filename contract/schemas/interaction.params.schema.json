@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/v0.3/interaction.params.schema.json",
+  "title": "UI interaction parameters",
+  "type": "object",
+  "required": ["application"],
+  "properties": {
+    "application": {"type": "string", "minLength": 1},
+    "target": {"type": "object", "required": ["ref"], "properties": {"ref": {"type": "string", "pattern": "^@e[0-9]+$"}}},
+    "keys": {"type": "string", "minLength": 1},
+    "settle": {"type": "boolean"}
+  },
+  "additionalProperties": false
+}

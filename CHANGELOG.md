@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.4.0 — 2026-08-25
+
+- Add `ui.focus`, `ui.click`, `ui.press`, and strict `ui.clear`.
+- Add clipboard read, verified write, copy, and paste.
+- Distinguish delivered input from caller-owned semantic consequences.
+- Physically validate interaction and clipboard behavior on TextEdit.
+
 ## 0.3.0 — 2026-08-25
 
 - Separate runtime readiness from application readiness.

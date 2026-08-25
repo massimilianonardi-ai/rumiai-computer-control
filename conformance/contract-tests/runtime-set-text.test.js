@@ -11,12 +11,21 @@ const {createLegacyMacOSBackend} = require("../../backends/macos/legacy-validate
 const {ComputerControlClient} = require("../../sdk/typescript/src");
 
 function mockLegacy() {
+  let clipboard = "";
   return {
     ensureRuntime:() => ({ok:true, started:true, method:"mock-ready"}),
     ensureReady:async app => ({ok:true, currentApp:app, snapshot:'@e0 text-field "Editor"', method:"mock-app-ready"}),
     getForeground:() => ({ok:true, name:"TextEdit", bundle:"com.apple.TextEdit", pid:123, method:"mock-foreground"}),
     get:({element, property}) => ({ok:true, ref:element.ref, property, value:"Ciao RumiAI.", method:"mock-get"}),
     getBounds:({element}) => ({ok:true, ref:element.ref, bounds:{x:1,y:2,w:3,h:4}, method:"mock-bounds"}),
+    focus:() => ({ok:true, verified:true, verificationMethod:"snapshot-ref", method:"mock-focus"}),
+    click:() => ({ok:true, method:"mock-click", fallbackUsed:false}),
+    press:() => ({ok:true, method:"mock-press"}),
+    clear:() => ({ok:true, verified:true, verificationMethod:"ax-text-exact", method:"ax-fill-empty", attempts:[]}),
+    clipboardRead:() => ({ok:true, stdout:JSON.stringify(clipboard), method:"mock-clipboard-read"}),
+    clipboardWrite:text => { clipboard = text; return {ok:true, method:"mock-clipboard-write"}; },
+    clipboardCopy:() => ({ok:true, method:"mock-copy"}),
+    clipboardPaste:() => ({ok:true, method:"mock-paste"}),
     shutdownRuntime:() => ({ok:true, method:"mock-stopped"}),
     snapshot:() => ({
       ok:true,
@@ -59,7 +68,7 @@ test("runtime.info and ui.setText cross the local RPC boundary", async t => {
 
   const client = new ComputerControlClient({socketPath, timeoutMs:2000});
   const info = await client.runtimeInfo();
-  assert.equal(info.contractVersion, "0.3.0");
+  assert.equal(info.contractVersion, "0.4.0");
   assert.equal(info.backend.name, "macos-agent-ctrl-v46-transition");
   assert.equal(info.capabilities.find(item => item.name === "ui.setText").available, true);
 
@@ -88,6 +97,14 @@ test("runtime.info and ui.setText cross the local RPC boundary", async t => {
   assert.equal(value.value, "Ciao RumiAI.");
   const bounds = await client.getBounds({application:"TextEdit", target:editable.target});
   assert.deepEqual(bounds.bounds, {x:1,y:2,w:3,h:4});
+  assert.equal((await client.focus({application:"TextEdit", target:editable.target})).state, "FOCUS_DELIVERED");
+  assert.equal((await client.click({application:"TextEdit", target:editable.target})).state, "CLICK_DELIVERED");
+  assert.equal((await client.press({application:"TextEdit", keys:"Right"})).state, "KEYS_DELIVERED");
+  assert.equal((await client.clear({application:"TextEdit", target:editable.target})).state, "CLEARED");
+  await client.writeClipboard("fixture");
+  assert.equal((await client.readClipboard()).text, "fixture");
+  assert.equal((await client.copy()).state, "COPY_DELIVERED");
+  assert.equal((await client.paste()).state, "PASTE_DELIVERED");
 
   const result = await client.setText({
     application:"TextEdit",

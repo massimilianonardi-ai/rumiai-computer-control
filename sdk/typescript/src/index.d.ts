@@ -93,5 +93,13 @@ export class ComputerControlClient {
   find(params: FindParams): Promise<FindResult>;
   get(params: {application: string; target: ObservedTarget; property: string}): Promise<{state: "OBSERVED"; target: ObservedTarget; property: string; value: unknown}>;
   getBounds(params: {application: string; target: ObservedTarget}): Promise<{state: "OBSERVED"; target: ObservedTarget; bounds: {x: number; y: number; w: number; h: number}}>;
+  focus(params: {application: string; target: ObservedTarget}): Promise<VerifiedOperationResult>;
+  click(params: {application: string; target: ObservedTarget; settle?: boolean}): Promise<VerifiedOperationResult>;
+  press(params: {application: string; keys: string; settle?: boolean}): Promise<VerifiedOperationResult>;
+  clear(params: {application: string; target: ObservedTarget}): Promise<VerifiedOperationResult>;
+  readClipboard(): Promise<{state: "OBSERVED"; text: string; observation: {method: string}}>;
+  writeClipboard(text: string): Promise<VerifiedOperationResult>;
+  copy(): Promise<VerifiedOperationResult>;
+  paste(): Promise<VerifiedOperationResult>;
   call(method: string, params?: Record<string, unknown>): Promise<unknown>;
 }

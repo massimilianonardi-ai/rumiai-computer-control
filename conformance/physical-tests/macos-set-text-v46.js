@@ -60,9 +60,11 @@ async function main() {
     stdio:["ignore", "pipe", "pipe"],
   });
   let failed = false;
+  let client = null;
+  let originalClipboard = null;
   try {
     await waitForRuntime(runtime);
-    const client = new ComputerControlClient({socketPath:SOCKET});
+    client = new ComputerControlClient({socketPath:SOCKET});
     const info = await client.runtimeInfo();
     const ready = await client.ensureReady();
     const applicationReady = await client.ensureApplicationReady({application:"TextEdit"});
@@ -80,6 +82,11 @@ async function main() {
 
     const bounds = await client.getBounds({application:"TextEdit", target:editable.target});
     const before = await client.get({application:"TextEdit", target:editable.target, property:"text"});
+    const focused = await client.focus({application:"TextEdit", target:editable.target});
+    const clicked = await client.click({application:"TextEdit", target:editable.target, settle:true});
+    const pressed = await client.press({application:"TextEdit", keys:"Right", settle:true});
+    const cleared = await client.clear({application:"TextEdit", target:editable.target});
+    const afterClear = await client.get({application:"TextEdit", target:editable.target, property:"text"});
 
     const result = await client.setText({
       application:"TextEdit",
@@ -87,8 +94,22 @@ async function main() {
       text:requested,
     });
     const after = await client.get({application:"TextEdit", target:editable.target, property:"text"});
+    originalClipboard = (await client.readClipboard()).text;
+    const clipboardFixture = "RumiAI clipboard physical fixture";
+    const clipboardWritten = await client.writeClipboard(clipboardFixture);
+    const clipboardObserved = await client.readClipboard();
+    await client.focus({application:"TextEdit", target:editable.target});
+    await client.press({application:"TextEdit", keys:"Cmd+A", settle:false});
+    const copied = await client.copy();
+    const copiedObserved = await client.readClipboard();
+    await client.clear({application:"TextEdit", target:editable.target});
+    const pasted = await client.paste();
+    await client.snapshot({application:"TextEdit", settle:true, compact:true});
+    const afterPaste = await client.get({application:"TextEdit", target:editable.target, property:"text"});
+    await client.writeClipboard(originalClipboard);
+    originalClipboard = null;
 
-    console.log(`runtime-info=${info.contractVersion === "0.3.0" ? "PASS" : "FAIL"}`);
+    console.log(`runtime-info=${info.contractVersion === "0.4.0" ? "PASS" : "FAIL"}`);
     console.log(`runtime-ready=${ready.verified === true ? "PASS" : "FAIL"}`);
     console.log(`application-ready=${applicationReady.verified === true ? "PASS" : "FAIL"}`);
     console.log(`foreground-textedit=${/textedit/i.test(foreground.application.name) ? "PASS" : "FAIL"}`);
@@ -97,20 +118,42 @@ async function main() {
     console.log(`editable-role=${editable.target.role}`);
     console.log(`bounds-observed=${bounds.bounds && Number.isFinite(bounds.bounds.x) ? "PASS" : "FAIL"}`);
     console.log(`text-before-observed=${typeof before.value === "string" ? "PASS" : "FAIL"}`);
+    console.log(`focus-delivered=${focused.verified === true ? "PASS" : "FAIL"}`);
+    console.log(`click-delivered=${clicked.verified === true ? "PASS" : "FAIL"}`);
+    console.log(`press-delivered=${pressed.verified === true ? "PASS" : "FAIL"}`);
+    console.log(`clear-verified=${cleared.verified === true ? "PASS" : "FAIL"}`);
+    console.log(`clear-empty-exact=${afterClear.value === "" ? "PASS" : "FAIL"}`);
     console.log(`set-text-state=${result.state}`);
     console.log(`set-text-verified=${result.verified === true}`);
     console.log(`set-text-verification=${result.verification?.method || "none"}`);
     console.log(`text-after-exact=${after.value === requested ? "PASS" : "FAIL"}`);
+    console.log(`clipboard-write-exact=${clipboardWritten.verified === true && clipboardObserved.text === clipboardFixture ? "PASS" : "FAIL"}`);
+    console.log(`clipboard-copy-exact=${copied.verified === true && copiedObserved.text === requested ? "PASS" : "FAIL"}`);
+    console.log(`clipboard-paste-exact=${pasted.verified === true && afterPaste.value === requested ? "PASS" : "FAIL"}`);
     const pass =
       applicationReady.verified === true &&
       /textedit/i.test(foreground.application.name) &&
       bounds.bounds &&
+      focused.verified === true &&
+      clicked.verified === true &&
+      pressed.verified === true &&
+      cleared.verified === true &&
+      afterClear.value === "" &&
       result.verified === true &&
       result.verification?.method === "ax-text-exact" &&
-      after.value === requested;
+      after.value === requested &&
+      clipboardWritten.verified === true &&
+      clipboardObserved.text === clipboardFixture &&
+      copied.verified === true &&
+      copiedObserved.text === requested &&
+      pasted.verified === true &&
+      afterPaste.value === requested;
     console.log(`physical-runtime-snapshot-find-set-text=${pass ? "PASS" : "FAIL"}`);
     failed = !pass;
   } finally {
+    if (client && originalClipboard !== null) {
+      try { await client.writeClipboard(originalClipboard); } catch (_) {}
+    }
     try { legacy.press({app:"TextEdit", keys:"Cmd+S", settle:true}); } catch (_) {}
     try { legacy.press({app:"TextEdit", keys:"Cmd+W", settle:true}); } catch (_) {}
     runtime.kill("SIGTERM");

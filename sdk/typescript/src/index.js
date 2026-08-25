@@ -49,6 +49,27 @@ class ComputerControlClient {
     return this.call("ui.getBounds", {application, target});
   }
 
+  focus({application, target}) {
+    return this.call("ui.focus", {application, target});
+  }
+
+  click({application, target, settle = true}) {
+    return this.call("ui.click", {application, target, settle});
+  }
+
+  press({application, keys, settle = true}) {
+    return this.call("ui.press", {application, keys, settle});
+  }
+
+  clear({application, target}) {
+    return this.call("ui.clear", {application, target});
+  }
+
+  readClipboard() { return this.call("clipboard.read"); }
+  writeClipboard(text) { return this.call("clipboard.write", {text}); }
+  copy() { return this.call("clipboard.copy"); }
+  paste() { return this.call("clipboard.paste"); }
+
   call(method, params = {}) {
     const id = this.nextId++;
     return new Promise((resolve, reject) => {

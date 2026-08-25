@@ -9,6 +9,7 @@ const DEFAULT_LEGACY_MODULE =
 
 function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyModule} = {}) {
   let loaded = legacyModule || null;
+  let primitives = null;
 
   function control() {
     if (loaded) return loaded;
@@ -24,12 +25,26 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
     return loaded;
   }
 
+  function backendPrimitives() {
+    if (primitives) return primitives;
+    if (legacyModule && typeof legacyModule.clipboardRead === "function") {
+      primitives = legacyModule;
+      return primitives;
+    }
+    const backendPath = path.join(path.dirname(path.resolve(modulePath)), "backends", "agent-ctrl.js");
+    if (!fs.existsSync(backendPath)) {
+      throw new ComputerControlError("BACKEND_UNAVAILABLE", `Backend primitives not found: ${backendPath}`, "NONE");
+    }
+    primitives = require(backendPath);
+    return primitives;
+  }
+
   return {
     async info() {
       const available = Boolean(legacyModule) || fs.existsSync(path.resolve(modulePath));
       return {
         name:"macos-agent-ctrl-v46-transition",
-        version:"0.3.0",
+        version:"0.4.0",
         platform:"macos",
         capabilities:[
           {
@@ -60,6 +75,14 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
           {name:"application.getForeground", available, validationState:"PHYSICALLY_VALIDATED", strategies:["native-foreground-observation"]},
           {name:"ui.get", available, validationState:"PHYSICALLY_VALIDATED", strategies:["accessibility-property"]},
           {name:"ui.getBounds", available, validationState:"PHYSICALLY_VALIDATED", strategies:["accessibility-bounds"]},
+          {name:"ui.focus", available, validationState:"PHYSICALLY_VALIDATED", strategies:["ax-focus"]},
+          {name:"ui.click", available, validationState:"PHYSICALLY_VALIDATED", strategies:["ax-click", "runtime-bounds-pointer"]},
+          {name:"ui.press", available, validationState:"PHYSICALLY_VALIDATED", strategies:["keyboard-delivery"]},
+          {name:"ui.clear", available, validationState:"PHYSICALLY_VALIDATED", strategies:["ax-fill-empty", "select-delete", "clipboard-empty"]},
+          {name:"clipboard.read", available, validationState:"PHYSICALLY_VALIDATED", strategies:["system-clipboard"]},
+          {name:"clipboard.write", available, validationState:"PHYSICALLY_VALIDATED", strategies:["system-clipboard-readback"]},
+          {name:"clipboard.copy", available, validationState:"PHYSICALLY_VALIDATED", strategies:["keyboard-copy-delivery"]},
+          {name:"clipboard.paste", available, validationState:"PHYSICALLY_VALIDATED", strategies:["keyboard-paste-delivery"]},
         ],
       };
     },
@@ -246,6 +269,105 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
         diagnostics:{observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
       };
     },
+
+    async focus({application, target}) {
+      const result = control().focus({app:application, element:target, verify:true});
+      if (!result?.ok) throw legacyFailure(result, "FOCUS_ACTION_FAILED");
+      return deliveredResult("FOCUS_DELIVERED", result, {
+        target,
+        semanticConsequenceVerified:result.verified === true,
+        semanticVerification:result.verificationMethod || "not-observed",
+      });
+    },
+
+    async click({application, target, settle = true}) {
+      const result = control().click({app:application, element:target, settle:Boolean(settle)});
+      if (!result?.ok) throw legacyFailure(result, "CLICK_ACTION_FAILED");
+      return deliveredResult("CLICK_DELIVERED", result, {
+        target,
+        fallback:Boolean(result.fallbackUsed),
+        boundsObserved:result.boundsObserved,
+      });
+    },
+
+    async press({application, keys, settle = true}) {
+      const result = control().press({app:application, keys, settle:Boolean(settle)});
+      if (!result?.ok) throw legacyFailure(result, "KEY_DELIVERY_FAILED");
+      return deliveredResult("KEYS_DELIVERED", result, {
+        keys:String(keys),
+        semanticConsequenceVerified:false,
+      });
+    },
+
+    async clear({application, target}) {
+      const result = control().clear({app:application, element:target, verify:true});
+      if (!result?.ok || result.verified !== true) throw legacyFailure(result, "CLEAR_VERIFICATION_FAILED");
+      return {
+        ok:true,
+        state:"CLEARED",
+        verified:true,
+        verification:{method:result.verificationMethod || "ax-text-exact", evidence:{observed:"", attempts:result.attempts || []}},
+        backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "unknown", fallback:Boolean(result.attempts?.length > 1)},
+        diagnostics:{actionSeconds:result.actionSeconds || 0, observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
+      };
+    },
+
+    async readClipboard() {
+      const result = backendPrimitives().clipboardRead();
+      if (!result?.ok) throw legacyFailure(result, "CLIPBOARD_READ_FAILED");
+      return {
+        state:"OBSERVED",
+        text:decodeObservedScalar(result.stdout, ""),
+        observation:{method:result.method || "system-clipboard"},
+        backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "system-clipboard"},
+      };
+    },
+
+    async writeClipboard({text}) {
+      const result = backendPrimitives().clipboardWrite(String(text));
+      if (!result?.ok) throw legacyFailure(result, "CLIPBOARD_WRITE_FAILED");
+      const observed = backendPrimitives().clipboardRead();
+      const value = observed?.ok ? decodeObservedScalar(observed.stdout, "") : null;
+      if (value !== String(text)) {
+        throw new ComputerControlError("CLIPBOARD_WRITE_UNVERIFIED", "Clipboard readback did not equal requested text", "NONE");
+      }
+      return deliveredResult("WRITTEN", result, {verification:{method:"clipboard-readback-exact", evidence:{length:value.length}}});
+    },
+
+    async copy() {
+      const result = backendPrimitives().clipboardCopy();
+      if (!result?.ok) throw legacyFailure(result, "CLIPBOARD_COPY_FAILED");
+      return deliveredResult("COPY_DELIVERED", result);
+    },
+
+    async paste() {
+      const result = backendPrimitives().clipboardPaste();
+      if (!result?.ok) throw legacyFailure(result, "CLIPBOARD_PASTE_FAILED");
+      return deliveredResult("PASTE_DELIVERED", result);
+    },
+  };
+}
+
+function deliveredResult(state, result, extra = {}) {
+  return {
+    ok:true,
+    state,
+    verified:true,
+    verification:{
+      method:"backend-action-delivered",
+      evidence:{backendMethod:result.method || "unknown"},
+    },
+    backend:{
+      name:"macos-agent-ctrl-v46-transition",
+      strategy:result.method || "unknown",
+      fallback:Boolean(result.fallbackUsed),
+    },
+    diagnostics:{
+      actionSeconds:result.actionSeconds || 0,
+      observeSeconds:result.observeSeconds || 0,
+      totalSeconds:result.totalSeconds || 0,
+    },
+    ...extra,
   };
 }
 

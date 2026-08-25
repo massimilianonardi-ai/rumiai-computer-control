@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/v0.3/clipboard.params.schema.json",
+  "title": "Clipboard write parameters",
+  "type": "object",
+  "required": ["text"],
+  "properties": {"text": {"type": "string"}},
+  "additionalProperties": false
+}
