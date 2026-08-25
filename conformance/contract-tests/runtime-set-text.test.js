@@ -7,7 +7,7 @@ const path = require("node:path");
 const test = require("node:test");
 const {createRouter} = require("../../runtime/src/router");
 const {createServer} = require("../../runtime/src/server");
-const {createLegacyMacOSBackend} = require("../../backends/macos/legacy-validated-backend");
+const {createEmbeddedMacOSBackend} = require("../../backends/macos/embedded-backend");
 const {ComputerControlClient} = require("../../sdk/typescript/src");
 
 function mockLegacy() {
@@ -69,7 +69,7 @@ function mockLegacy() {
 test("runtime.info and ui.setText cross the local RPC boundary", async t => {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), "rumiai-cc-test-"));
   const socketPath = path.join(directory, "runtime.sock");
-  const backend = createLegacyMacOSBackend({legacyModule:mockLegacy()});
+  const backend = createEmbeddedMacOSBackend({embeddedModule:mockLegacy()});
   const server = createServer({socketPath, route:createRouter(backend)});
   await server.listen();
   t.after(async () => {
@@ -79,8 +79,8 @@ test("runtime.info and ui.setText cross the local RPC boundary", async t => {
 
   const client = new ComputerControlClient({socketPath, timeoutMs:2000});
   const info = await client.runtimeInfo();
-  assert.equal(info.contractVersion, "0.6.0");
-  assert.equal(info.backend.name, "macos-agent-ctrl-v46-transition");
+  assert.equal(info.contractVersion, "0.7.0");
+  assert.equal(info.backend.name, "macos-embedded-v82");
   assert.equal(info.capabilities.find(item => item.name === "ui.setText").available, true);
 
   const ready = await client.ensureReady();
@@ -144,7 +144,7 @@ test("runtime.info and ui.setText cross the local RPC boundary", async t => {
 });
 
 test("ui.find performs normalized semantic matching over caller observation", async () => {
-  const backend = createLegacyMacOSBackend({legacyModule:mockLegacy()});
+  const backend = createEmbeddedMacOSBackend({embeddedModule:mockLegacy()});
   const result = await backend.find({
     application:"System Settings",
     query:"Wi-Fi",
@@ -156,7 +156,7 @@ test("ui.find performs normalized semantic matching over caller observation", as
 });
 
 test("ui.setText rejects empty text without invoking GUI recovery", async () => {
-  const backend = createLegacyMacOSBackend({legacyModule:mockLegacy()});
+  const backend = createEmbeddedMacOSBackend({embeddedModule:mockLegacy()});
   const route = createRouter(backend);
   await assert.rejects(
     route("ui.setText", {application:"TextEdit", target:{ref:"@e0"}, text:""}),

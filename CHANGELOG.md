@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.7.0 — 2026-08-25
+
+- Extract the validated macOS v82 source into the standalone repository.
+- Embed Provider Registry entries, desktop plugins, and Swift helper sources.
+- Remove all runtime source paths to `rumiai-computer-use-PoCs`.
+- Keep the third-party `agent-ctrl` executable as an untracked installed dependency.
+- Revalidate both core and window physical suites using only the standalone tree.
+
 ## 0.6.0 — 2026-08-25
 
 - Add the complete macOS v82 window matrix behind local RPC.

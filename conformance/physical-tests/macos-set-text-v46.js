@@ -17,8 +17,10 @@ const {ComputerControlClient} = require("../../sdk/typescript/src");
 
 const ROOT = path.resolve(__dirname, "../..");
 const NODE = process.env.RUMIAI_CC_NODE || process.execPath;
-const LEGACY_PATH = process.env.RUMIAI_CC_LEGACY_MODULE ||
-  "/Volumes/RumiAI/rumiai-computer-use-PoCs/app/computer-control/index.js";
+const BACKEND_PATH = process.env.RUMIAI_CC_BACKEND_MODULE || path.join(
+  ROOT,
+  "backends/macos/embedded/app/computer-control/index.js"
+);
 const SOCKET = process.env.RUMIAI_CC_SOCKET || "/tmp/rumiai-computer-control-physical.sock";
 
 function waitForRuntime(child) {
@@ -46,17 +48,17 @@ async function main() {
   const requested = "Ciao RumiAI.";
   fs.writeFileSync(fixturePath, "Initial fixture text", "utf8");
 
-  const legacy = require(LEGACY_PATH);
-  const preparedRuntime = legacy.ensureRuntime();
+  const fixtureControl = require(BACKEND_PATH);
+  const preparedRuntime = fixtureControl.ensureRuntime();
   if (!preparedRuntime.ok) throw new Error(preparedRuntime.detail || "legacy runtime unavailable");
   const opened = spawnSync("/usr/bin/open", ["-a", "TextEdit", fixturePath]);
   if (opened.status !== 0) throw new Error("could not open isolated TextEdit fixture");
-  const appReady = await legacy.ensureReady("TextEdit");
+  const appReady = await fixtureControl.ensureReady("TextEdit");
   if (!appReady.ok) throw new Error(appReady.detail || "TextEdit fixture not ready");
 
   const runtime = spawn(NODE, [path.join(ROOT, "runtime/src/cli.js")], {
     cwd:ROOT,
-    env:{...process.env, RUMIAI_CC_SOCKET:SOCKET, RUMIAI_CC_LEGACY_MODULE:LEGACY_PATH},
+    env:{...process.env, RUMIAI_CC_SOCKET:SOCKET, RUMIAI_CC_BACKEND_MODULE:BACKEND_PATH},
     stdio:["ignore", "pipe", "pipe"],
   });
   let failed = false;
@@ -115,7 +117,7 @@ async function main() {
     await client.writeClipboard(originalClipboard);
     originalClipboard = null;
 
-    console.log(`runtime-info=${info.contractVersion === "0.6.0" ? "PASS" : "FAIL"}`);
+    console.log(`runtime-info=${info.contractVersion === "0.7.0" ? "PASS" : "FAIL"}`);
     console.log(`runtime-ready=${ready.verified === true ? "PASS" : "FAIL"}`);
     console.log(`application-ready=${applicationReady.verified === true ? "PASS" : "FAIL"}`);
     console.log(`foreground-textedit=${/textedit/i.test(foreground.application.name) ? "PASS" : "FAIL"}`);
@@ -164,11 +166,11 @@ async function main() {
     if (client && originalClipboard !== null) {
       try { await client.writeClipboard(originalClipboard); } catch (_) {}
     }
-    try { legacy.press({app:"TextEdit", keys:"Cmd+S", settle:true}); } catch (_) {}
-    try { legacy.press({app:"TextEdit", keys:"Cmd+W", settle:true}); } catch (_) {}
+    try { fixtureControl.press({app:"TextEdit", keys:"Cmd+S", settle:true}); } catch (_) {}
+    try { fixtureControl.press({app:"TextEdit", keys:"Cmd+W", settle:true}); } catch (_) {}
     runtime.kill("SIGTERM");
     await new Promise(resolve => runtime.once("exit", resolve));
-    try { legacy.shutdownRuntime(); } catch (_) {}
+    try { fixtureControl.shutdownRuntime(); } catch (_) {}
     if (fs.existsSync(fixturePath)) fs.unlinkSync(fixturePath);
     if (fs.existsSync(fixtureDir)) fs.rmdirSync(fixtureDir);
   }

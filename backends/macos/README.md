@@ -11,9 +11,10 @@ current boundary test still reports `required full observed descriptor: FAIL`.
 
 ## Transition backend
 
-`legacy-validated-backend.js` promotes v46 strict setText behavior through the
-new runtime boundary without copying the whole PoC monolith. It is temporary and
-explicitly reports itself as `macos-agent-ctrl-v46-transition`.
+`embedded-backend.js` exposes the promoted v82 implementation owned by this
+repository. Its source, Provider Registry, plugins, and Swift helpers live under
+`embedded/`; it has no runtime source dependency on the laboratory repository.
 
-This keeps the product contract stable while the AX implementation and its
-minimum dependencies are extracted into the future Swift backend.
+`agent-ctrl` remains an installed backend executable and is intentionally not
+tracked. A future Swift-first backend can replace the embedded implementation
+behind the same canonical contract.

@@ -4,11 +4,16 @@ const fs = require("node:fs");
 const path = require("node:path");
 const {ComputerControlError} = require("../../runtime/src/errors");
 
-const DEFAULT_LEGACY_MODULE =
-  "/Volumes/RumiAI/rumiai-computer-use-PoCs/app/computer-control/index.js";
+const DEFAULT_EMBEDDED_MODULE = path.join(
+  __dirname,
+  "embedded",
+  "app",
+  "computer-control",
+  "index.js"
+);
 
-function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyModule} = {}) {
-  let loaded = legacyModule || null;
+function createEmbeddedMacOSBackend({modulePath = DEFAULT_EMBEDDED_MODULE, embeddedModule} = {}) {
+  let loaded = embeddedModule || null;
   let primitives = null;
 
   function control() {
@@ -17,7 +22,7 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
     if (!fs.existsSync(resolved)) {
       throw new ComputerControlError(
         "BACKEND_UNAVAILABLE",
-        `Validated transition backend not found: ${resolved}`,
+        `Embedded macOS backend not found: ${resolved}`,
         "NONE"
       );
     }
@@ -27,8 +32,8 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
 
   function backendPrimitives() {
     if (primitives) return primitives;
-    if (legacyModule && typeof legacyModule.clipboardRead === "function") {
-      primitives = legacyModule;
+    if (embeddedModule && typeof embeddedModule.clipboardRead === "function") {
+      primitives = embeddedModule;
       return primitives;
     }
     const backendPath = path.join(path.dirname(path.resolve(modulePath)), "backends", "agent-ctrl.js");
@@ -41,10 +46,10 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
 
   return {
     async info() {
-      const available = Boolean(legacyModule) || fs.existsSync(path.resolve(modulePath));
+      const available = Boolean(embeddedModule) || fs.existsSync(path.resolve(modulePath));
       return {
-        name:"macos-agent-ctrl-v46-transition",
-        version:"0.6.0",
+        name:"macos-embedded-v82",
+        version:"0.7.0",
         platform:"macos",
         capabilities:[
           {
@@ -95,19 +100,19 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
 
     async ensureRuntime() {
       const result = control().ensureRuntime();
-      if (!result?.ok) throw legacyFailure(result, "BACKEND_START_FAILED");
+      if (!result?.ok) throw backendFailure(result, "BACKEND_START_FAILED");
       return {
         ok:true,
         state:"READY",
         verified:true,
         verification:{method:"backend-runtime-ready", evidence:{started:Boolean(result.started)}},
-        backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "agent-ctrl"},
+        backend:{name:"macos-embedded-v82", strategy:result.method || "agent-ctrl"},
       };
     },
 
     async ensureApplicationReady({application, timeoutMs}) {
       const result = await control().ensureReady(application, timeoutMs ? {timeoutMs} : {});
-      if (!result?.ok) throw legacyFailure(result, "APPLICATION_NOT_READY");
+      if (!result?.ok) throw backendFailure(result, "APPLICATION_NOT_READY");
       return {
         ok:true,
         state:"READY",
@@ -115,14 +120,14 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
         application:{name:result.currentApp || application},
         snapshot:String(result.snapshot || ""),
         verification:{method:"application-snapshot-ready", evidence:{snapshotObserved:Boolean(result.snapshot)}},
-        backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "provider-desktop-readiness"},
+        backend:{name:"macos-embedded-v82", strategy:result.method || "provider-desktop-readiness"},
         diagnostics:result.diagnostics || {},
       };
     },
 
     async getForeground() {
       const result = control().getForeground();
-      if (!result?.ok) throw legacyFailure(result, "FOREGROUND_OBSERVATION_FAILED");
+      if (!result?.ok) throw backendFailure(result, "FOREGROUND_OBSERVATION_FAILED");
       return {
         state:"OBSERVED",
         application:{
@@ -131,7 +136,7 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
           pid:result.pid || result.application?.pid || null,
         },
         observation:{method:result.method || "native-foreground-observation"},
-        backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "native-foreground-observation"},
+        backend:{name:"macos-embedded-v82", strategy:result.method || "native-foreground-observation"},
         diagnostics:{observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
       };
     },
@@ -143,17 +148,17 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
           state:"STOPPED",
           verified:true,
           verification:{method:"runtime-not-loaded", evidence:{}},
-          backend:{name:"macos-agent-ctrl-v46-transition", strategy:"idempotent-noop"},
+          backend:{name:"macos-embedded-v82", strategy:"idempotent-noop"},
         };
       }
       const result = loaded.shutdownRuntime();
-      if (!result?.ok) throw legacyFailure(result, "BACKEND_SHUTDOWN_FAILED");
+      if (!result?.ok) throw backendFailure(result, "BACKEND_SHUTDOWN_FAILED");
       return {
         ok:true,
         state:"STOPPED",
         verified:true,
         verification:{method:"backend-runtime-stopped", evidence:{}},
-        backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "agent-ctrl"},
+        backend:{name:"macos-embedded-v82", strategy:result.method || "agent-ctrl"},
       };
     },
 
@@ -166,7 +171,7 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
       });
 
       if (!result?.ok || result.verified !== true) {
-        throw legacyFailure(result, "SET_TEXT_VERIFICATION_FAILED");
+        throw backendFailure(result, "SET_TEXT_VERIFICATION_FAILED");
       }
 
       return {
@@ -178,7 +183,7 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
           evidence:{observed:result.observed, attempts:result.attempts || []},
         },
         backend:{
-          name:"macos-agent-ctrl-v46-transition",
+          name:"macos-embedded-v82",
           strategy:result.method || "unknown",
           fallback:Boolean(result.attempts?.length > 1),
         },
@@ -197,7 +202,7 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
         compact:compact !== false,
         previousSnapshot,
       });
-      if (!result?.ok) throw legacyFailure(result, "SNAPSHOT_FAILED");
+      if (!result?.ok) throw backendFailure(result, "SNAPSHOT_FAILED");
       const value = String(result.snapshot || "");
       return {
         state:"OBSERVED",
@@ -205,7 +210,7 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
         nodes:parseActionableSnapshot(value),
         changed:result.changed == null ? null : Boolean(result.changed),
         observation:{method:result.method || "accessibility-tree"},
-        backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "accessibility-tree"},
+        backend:{name:"macos-embedded-v82", strategy:result.method || "accessibility-tree"},
         diagnostics:{
           observeSeconds:result.observeSeconds || 0,
           totalSeconds:result.totalSeconds || 0,
@@ -240,7 +245,7 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
         first:first !== false,
         snapshot,
       });
-      if (!result?.ok) throw legacyFailure(result, "ELEMENT_NOT_FOUND");
+      if (!result?.ok) throw backendFailure(result, "ELEMENT_NOT_FOUND");
       const snapshotNodes = snapshot == null ? [] : parseActionableSnapshot(snapshot);
       const targets = (result.refs || [result.ref]).filter(Boolean).map(ref => {
         const observed = snapshotNodes.find(node => node.ref === ref);
@@ -251,34 +256,34 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
 
     async get({application, target, property}) {
       const result = control().get({app:application, element:target, property});
-      if (!result?.ok) throw legacyFailure(result, "PROPERTY_OBSERVATION_FAILED");
+      if (!result?.ok) throw backendFailure(result, "PROPERTY_OBSERVATION_FAILED");
       return {
         state:"OBSERVED",
         target:{...target, ref:result.ref || target.ref},
         property:String(property),
         value:decodeObservedScalar(result.raw, result.value),
         observation:{method:result.method || "accessibility-property"},
-        backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "accessibility-property"},
+        backend:{name:"macos-embedded-v82", strategy:result.method || "accessibility-property"},
         diagnostics:{observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
       };
     },
 
     async getBounds({application, target}) {
       const result = control().getBounds({app:application, element:target});
-      if (!result?.ok || !result.bounds) throw legacyFailure(result, "BOUNDS_OBSERVATION_FAILED");
+      if (!result?.ok || !result.bounds) throw backendFailure(result, "BOUNDS_OBSERVATION_FAILED");
       return {
         state:"OBSERVED",
         target:{...target, ref:result.ref || target.ref},
         bounds:normalizeBounds(result.bounds),
         observation:{method:result.method || "accessibility-bounds"},
-        backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "accessibility-bounds"},
+        backend:{name:"macos-embedded-v82", strategy:result.method || "accessibility-bounds"},
         diagnostics:{observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
       };
     },
 
     async focus({application, target}) {
       const result = control().focus({app:application, element:target, verify:true});
-      if (!result?.ok) throw legacyFailure(result, "FOCUS_ACTION_FAILED");
+      if (!result?.ok) throw backendFailure(result, "FOCUS_ACTION_FAILED");
       return deliveredResult("FOCUS_DELIVERED", result, {
         target,
         semanticConsequenceVerified:result.verified === true,
@@ -288,7 +293,7 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
 
     async click({application, target, settle = true}) {
       const result = control().click({app:application, element:target, settle:Boolean(settle)});
-      if (!result?.ok) throw legacyFailure(result, "CLICK_ACTION_FAILED");
+      if (!result?.ok) throw backendFailure(result, "CLICK_ACTION_FAILED");
       return deliveredResult("CLICK_DELIVERED", result, {
         target,
         fallback:Boolean(result.fallbackUsed),
@@ -298,7 +303,7 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
 
     async press({application, keys, settle = true}) {
       const result = control().press({app:application, keys, settle:Boolean(settle)});
-      if (!result?.ok) throw legacyFailure(result, "KEY_DELIVERY_FAILED");
+      if (!result?.ok) throw backendFailure(result, "KEY_DELIVERY_FAILED");
       return deliveredResult("KEYS_DELIVERED", result, {
         keys:String(keys),
         semanticConsequenceVerified:false,
@@ -307,31 +312,31 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
 
     async clear({application, target}) {
       const result = control().clear({app:application, element:target, verify:true});
-      if (!result?.ok || result.verified !== true) throw legacyFailure(result, "CLEAR_VERIFICATION_FAILED");
+      if (!result?.ok || result.verified !== true) throw backendFailure(result, "CLEAR_VERIFICATION_FAILED");
       return {
         ok:true,
         state:"CLEARED",
         verified:true,
         verification:{method:result.verificationMethod || "ax-text-exact", evidence:{observed:"", attempts:result.attempts || []}},
-        backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "unknown", fallback:Boolean(result.attempts?.length > 1)},
+        backend:{name:"macos-embedded-v82", strategy:result.method || "unknown", fallback:Boolean(result.attempts?.length > 1)},
         diagnostics:{actionSeconds:result.actionSeconds || 0, observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
       };
     },
 
     async readClipboard() {
       const result = backendPrimitives().clipboardRead();
-      if (!result?.ok) throw legacyFailure(result, "CLIPBOARD_READ_FAILED");
+      if (!result?.ok) throw backendFailure(result, "CLIPBOARD_READ_FAILED");
       return {
         state:"OBSERVED",
         text:decodeObservedScalar(result.stdout, ""),
         observation:{method:result.method || "system-clipboard"},
-        backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "system-clipboard"},
+        backend:{name:"macos-embedded-v82", strategy:result.method || "system-clipboard"},
       };
     },
 
     async writeClipboard({text}) {
       const result = backendPrimitives().clipboardWrite(String(text));
-      if (!result?.ok) throw legacyFailure(result, "CLIPBOARD_WRITE_FAILED");
+      if (!result?.ok) throw backendFailure(result, "CLIPBOARD_WRITE_FAILED");
       const observed = backendPrimitives().clipboardRead();
       const value = observed?.ok ? decodeObservedScalar(observed.stdout, "") : null;
       if (value !== String(text)) {
@@ -342,61 +347,61 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
 
     async copy() {
       const result = backendPrimitives().clipboardCopy();
-      if (!result?.ok) throw legacyFailure(result, "CLIPBOARD_COPY_FAILED");
+      if (!result?.ok) throw backendFailure(result, "CLIPBOARD_COPY_FAILED");
       return deliveredResult("COPY_DELIVERED", result);
     },
 
     async paste() {
       const result = backendPrimitives().clipboardPaste();
-      if (!result?.ok) throw legacyFailure(result, "CLIPBOARD_PASTE_FAILED");
+      if (!result?.ok) throw backendFailure(result, "CLIPBOARD_PASTE_FAILED");
       return deliveredResult("PASTE_DELIVERED", result);
     },
 
     async waitStable({application, timeoutMs = 5000, pollMs = 200}) {
       const result = control().waitStable({app:application, timeoutMs, pollMs});
-      if (!result?.ok) throw legacyFailure(result, "STABILITY_WAIT_FAILED");
+      if (!result?.ok) throw backendFailure(result, "STABILITY_WAIT_FAILED");
       return {
         state:"STABLE",
         snapshot:String(result.snapshot || ""),
         observation:{method:result.method || "observed-state-stability"},
-        backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "observed-state-stability"},
+        backend:{name:"macos-embedded-v82", strategy:result.method || "observed-state-stability"},
         diagnostics:{waitSeconds:result.waitSeconds || 0, observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
       };
     },
 
     async waitUntilChanged({application, previousSnapshot, timeoutMs = 12000, pollMs = 300, compact = true}) {
       const result = await control().waitUntilChanged(application, previousSnapshot, {timeoutMs, pollMs, compact:Boolean(compact)});
-      if (!result?.ok || result.changed !== true) throw legacyFailure(result, "STATE_CHANGE_TIMEOUT");
+      if (!result?.ok || result.changed !== true) throw backendFailure(result, "STATE_CHANGE_TIMEOUT");
       return {
         state:"CHANGED",
         changed:true,
         snapshot:String(result.snapshot || ""),
         observation:{method:result.method || "equivalent-snapshot-delta"},
-        backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "equivalent-snapshot-delta"},
+        backend:{name:"macos-embedded-v82", strategy:result.method || "equivalent-snapshot-delta"},
         diagnostics:{attempts:result.attempts || 0, waitSeconds:result.waitSeconds || 0, compact:Boolean(compact)},
       };
     },
 
     async listWindows({application}) {
       const result = control().listWindows({app:application});
-      if (!result?.ok) throw legacyFailure(result, "WINDOW_LIST_FAILED");
+      if (!result?.ok) throw backendFailure(result, "WINDOW_LIST_FAILED");
       return {
         state:"OBSERVED",
         windows:(result.windows || []).map(normalizeWindow),
         observation:{method:result.method || "macos-v82-window-list"},
-        backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "macos-v82-window-list"},
+        backend:{name:"macos-embedded-v82", strategy:result.method || "macos-v82-window-list"},
         diagnostics:{observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
       };
     },
 
     async getCurrentWindow({application}) {
       const result = control().getCurrentWindow({app:application});
-      if (!result?.ok || !result.window) throw legacyFailure(result, "WINDOW_OBSERVATION_FAILED");
+      if (!result?.ok || !result.window) throw backendFailure(result, "WINDOW_OBSERVATION_FAILED");
       return {
         state:"OBSERVED",
         window:normalizeWindow(result.window),
         observation:{method:result.method || "native-focused-window-descriptor"},
-        backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "native-focused-window-descriptor"},
+        backend:{name:"macos-embedded-v82", strategy:result.method || "native-focused-window-descriptor"},
         diagnostics:{observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
       };
     },
@@ -441,7 +446,7 @@ function deliveredResult(state, result, extra = {}) {
       evidence:{backendMethod:result.method || "unknown"},
     },
     backend:{
-      name:"macos-agent-ctrl-v46-transition",
+      name:"macos-embedded-v82",
       strategy:result.method || "unknown",
       fallback:Boolean(result.fallbackUsed),
     },
@@ -476,7 +481,7 @@ function normalizeBounds(bounds) {
 }
 
 function verifiedWindowMutation(result, state, fallbackCode) {
-  if (!result?.ok || result.verified !== true) throw legacyFailure(result, fallbackCode);
+  if (!result?.ok || result.verified !== true) throw backendFailure(result, fallbackCode);
   return {
     ok:true,
     state,
@@ -489,7 +494,7 @@ function verifiedWindowMutation(result, state, fallbackCode) {
     bounds:normalizeBounds(result.bounds),
     previousBounds:normalizeBounds(result.previousBounds),
     verification:{method:result.verificationMethod || "native-window-postcondition", evidence:{}},
-    backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "macos-v82-descriptor-safe"},
+    backend:{name:"macos-embedded-v82", strategy:result.method || "macos-v82-descriptor-safe"},
     diagnostics:{actionSeconds:result.actionSeconds || 0, observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
   };
 }
@@ -551,11 +556,11 @@ function foundResult(targets, query, role, method, source) {
     targets,
     source,
     observation:{method},
-    backend:{name:"macos-agent-ctrl-v46-transition", strategy:method},
+    backend:{name:"macos-embedded-v82", strategy:method},
   };
 }
 
-function legacyFailure(result, fallbackCode) {
+function backendFailure(result, fallbackCode) {
   return new ComputerControlError(
     result?.error || fallbackCode,
     result?.detail || fallbackCode,
@@ -565,8 +570,8 @@ function legacyFailure(result, fallbackCode) {
 }
 
 module.exports = {
-  createLegacyMacOSBackend,
-  DEFAULT_LEGACY_MODULE,
+  createEmbeddedMacOSBackend,
+  DEFAULT_EMBEDDED_MODULE,
   parseActionableSnapshot,
   findSnapshotNodes,
 };

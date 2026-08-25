@@ -4,17 +4,17 @@
 const path = require("node:path");
 const {createRouter} = require("./router");
 const {createServer} = require("./server");
-const {createLegacyMacOSBackend} = require("../../backends/macos/legacy-validated-backend");
+const {createEmbeddedMacOSBackend} = require("../../backends/macos/embedded-backend");
 
 const socketPath = process.env.RUMIAI_CC_SOCKET || "/tmp/rumiai-computer-control.sock";
 
 async function main() {
   if (process.platform !== "darwin") {
-    throw new Error("The initial runtime supports the macOS transition backend only");
+    throw new Error("The current runtime supports the embedded macOS backend only");
   }
 
-  const backend = createLegacyMacOSBackend({
-    modulePath:process.env.RUMIAI_CC_LEGACY_MODULE,
+  const backend = createEmbeddedMacOSBackend({
+    modulePath:process.env.RUMIAI_CC_BACKEND_MODULE,
   });
   const server = createServer({socketPath:path.resolve(socketPath), route:createRouter(backend)});
   await server.listen();

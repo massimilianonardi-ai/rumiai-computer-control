@@ -27,12 +27,15 @@ Initial observation:
 
 The runtime selects exactly one OS backend and reports its capability matrix.
 
-Start the current macOS transition runtime with:
+Start the embedded macOS runtime with:
 
 ```text
 npm run runtime
 ```
 
 The default socket is `/tmp/rumiai-computer-control.sock`. Override it with
-`RUMIAI_CC_SOCKET`. Override the validated legacy module location with
-`RUMIAI_CC_LEGACY_MODULE`.
+`RUMIAI_CC_SOCKET`. The runtime loads the embedded v82 backend by default;
+`RUMIAI_CC_BACKEND_MODULE` is reserved for controlled conformance injection.
+
+Install `agent-ctrl` at `backends/macos/embedded/bin/agent-ctrl` or set its
+absolute path through `AGENT_CTRL`.

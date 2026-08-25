@@ -34,11 +34,11 @@ This repository is initially a product scaffold. Code from
 `rumiai-computer-use-PoCs` is promoted here only after its boundary and physical
 tests pass. Existing PoC code is not automatically considered production code.
 
-The first vertical slice now provides `runtime.info`, runtime lifecycle,
+The standalone macOS implementation provides `runtime.info`, runtime lifecycle,
 `ui.snapshot`, `ui.find`, and strict verified `ui.setText` through a local
 JSON-RPC runtime and TypeScript SDK.
-The macOS implementation is an explicitly temporary bridge to the v46 validated
-backend while native code is extracted behind the same contract.
+The promoted v82 source and native helpers are owned by this repository. The
+runtime no longer imports source from `rumiai-computer-use-PoCs`.
 
 ## Initial technical direction
 

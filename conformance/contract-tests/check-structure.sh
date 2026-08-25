@@ -22,7 +22,10 @@ runtime/README.md
 runtime/src/server.js
 runtime/src/router.js
 backends/macos/README.md
-backends/macos/legacy-validated-backend.js
+backends/macos/embedded-backend.js
+backends/macos/embedded/PROVENANCE.md
+backends/macos/embedded/app/computer-control/index.js
+backends/macos/embedded/app/computer-control/desktop/plugins/macos-v82.js
 backends/windows/README.md
 backends/linux/README.md
 adapters/mcp/README.md
@@ -39,6 +42,7 @@ conformance/results/2026-08-25-macos-interaction-clipboard-physical-PASS.md
 conformance/results/2026-08-25-macos-synchronization-physical-PASS.md
 conformance/physical-tests/macos-window-v82.js
 conformance/results/2026-08-25-macos-window-v82-physical-PASS.md
+conformance/results/2026-08-25-standalone-source-separation-physical-PASS.md
 "
 
 for relative_path in $required_paths; do

@@ -9,8 +9,10 @@ const {ComputerControlClient} = require("../../sdk/typescript/src");
 
 const ROOT = path.resolve(__dirname, "../..");
 const NODE = process.env.RUMIAI_CC_NODE || process.execPath;
-const LEGACY_PATH = process.env.RUMIAI_CC_LEGACY_MODULE ||
-  "/Volumes/RumiAI/rumiai-computer-use-PoCs/app/computer-control/index.js";
+const BACKEND_PATH = process.env.RUMIAI_CC_BACKEND_MODULE || path.join(
+  ROOT,
+  "backends/macos/embedded/app/computer-control/index.js"
+);
 const SOCKET = process.env.RUMIAI_CC_SOCKET || "/tmp/rumiai-computer-control-window-physical.sock";
 
 function waitForRuntime(child) {
@@ -37,16 +39,16 @@ async function main() {
   fs.writeFileSync(fixturePath, "RumiAI Computer Control window fixture\n", "utf8");
   fs.writeFileSync(survivorPath, "RumiAI Computer Control survivor fixture\n", "utf8");
 
-  const legacy = require(LEGACY_PATH);
-  if (!legacy.ensureRuntime().ok) throw new Error("legacy runtime unavailable");
+  const fixtureControl = require(BACKEND_PATH);
+  if (!fixtureControl.ensureRuntime().ok) throw new Error("embedded runtime unavailable");
   if (spawnSync("/usr/bin/open", ["-a", "TextEdit", survivorPath]).status !== 0) throw new Error("survivor open failed");
   if (spawnSync("/usr/bin/open", ["-a", "TextEdit", fixturePath]).status !== 0) throw new Error("fixture open failed");
-  const ready = await legacy.ensureReady("TextEdit");
+  const ready = await fixtureControl.ensureReady("TextEdit");
   if (!ready.ok) throw new Error(ready.detail || "TextEdit not ready");
 
   const runtime = spawn(NODE, [path.join(ROOT, "runtime/src/cli.js")], {
     cwd:ROOT,
-    env:{...process.env, RUMIAI_CC_SOCKET:SOCKET, RUMIAI_CC_LEGACY_MODULE:LEGACY_PATH},
+    env:{...process.env, RUMIAI_CC_SOCKET:SOCKET, RUMIAI_CC_BACKEND_MODULE:BACKEND_PATH},
     stdio:["ignore", "pipe", "pipe"],
   });
 
@@ -109,10 +111,10 @@ async function main() {
       try { await client.focusWindow("TextEdit", target); } catch (_) {}
       try { await client.closeWindow("TextEdit"); } catch (_) {}
     }
-    try { legacy.press({app:"TextEdit", keys:"Cmd+W", settle:false}); } catch (_) {}
+    try { fixtureControl.press({app:"TextEdit", keys:"Cmd+W", settle:false}); } catch (_) {}
     runtime.kill("SIGTERM");
     await new Promise(resolve => runtime.once("exit", resolve));
-    try { legacy.shutdownRuntime(); } catch (_) {}
+    try { fixtureControl.shutdownRuntime(); } catch (_) {}
     if (fs.existsSync(fixturePath)) fs.unlinkSync(fixturePath);
     if (fs.existsSync(survivorPath)) fs.unlinkSync(survivorPath);
     if (fs.existsSync(fixtureDir)) fs.rmdirSync(fixtureDir);
