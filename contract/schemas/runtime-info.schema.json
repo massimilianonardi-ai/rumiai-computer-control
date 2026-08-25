@@ -1,0 +1,35 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/v0.1/runtime-info.schema.json",
+  "title": "runtime.info result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contractVersion", "runtimeVersion", "backend", "platform", "capabilities"],
+  "properties": {
+    "contractVersion": { "$ref": "common.schema.json#/$defs/contractVersion" },
+    "runtimeVersion": { "type": "string" },
+    "backend": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string" }
+      }
+    },
+    "platform": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["os", "architecture"],
+      "properties": {
+        "os": { "enum": ["macos", "windows", "linux"] },
+        "version": { "type": "string" },
+        "architecture": { "type": "string" }
+      }
+    },
+    "capabilities": {
+      "type": "array",
+      "items": { "$ref": "common.schema.json#/$defs/capability" }
+    }
+  }
+}

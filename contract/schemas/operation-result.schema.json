@@ -1,0 +1,47 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/v0.1/operation-result.schema.json",
+  "title": "Verified operation result envelope",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["ok", "state", "verified", "backend"],
+  "properties": {
+    "ok": { "type": "boolean" },
+    "state": { "type": "string", "minLength": 1 },
+    "verified": { "type": "boolean" },
+    "verification": {
+      "type": "object",
+      "required": ["method"],
+      "properties": {
+        "method": { "type": "string", "minLength": 1 },
+        "evidence": {}
+      },
+      "additionalProperties": false
+    },
+    "backend": {
+      "type": "object",
+      "required": ["name", "strategy"],
+      "properties": {
+        "name": { "type": "string" },
+        "strategy": { "type": "string" },
+        "fallback": { "type": "boolean", "default": false }
+      },
+      "additionalProperties": false
+    },
+    "error": { "$ref": "common.schema.json#/$defs/error" },
+    "diagnostics": { "type": "object" }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "ok": { "const": true } } },
+      "then": {
+        "properties": { "verified": { "const": true } },
+        "required": ["verification"]
+      }
+    },
+    {
+      "if": { "properties": { "ok": { "const": false } } },
+      "then": { "required": ["error"] }
+    }
+  ]
+}

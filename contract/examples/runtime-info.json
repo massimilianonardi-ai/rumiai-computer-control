@@ -1,0 +1,21 @@
+{
+  "contractVersion": "0.1.0",
+  "runtimeVersion": "0.1.0-dev",
+  "backend": {
+    "name": "macos-placeholder",
+    "version": "0.0.0"
+  },
+  "platform": {
+    "os": "macos",
+    "version": "unknown",
+    "architecture": "arm64"
+  },
+  "capabilities": [
+    {
+      "name": "runtime.info",
+      "available": true,
+      "validationState": "PROPOSED",
+      "strategies": ["local-json-rpc"]
+    }
+  ]
+}

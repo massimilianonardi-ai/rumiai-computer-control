@@ -1,0 +1,13 @@
+name: contract
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  structure:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check repository contract structure
+        run: sh conformance/contract-tests/check-structure.sh
