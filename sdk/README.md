@@ -9,3 +9,6 @@ for RumiAI; additional SDKs are added only when there is a concrete consumer.
 
 The initial TypeScript-compatible Node client is in `typescript/src`. It uses no
 runtime dependencies and connects only to the configured local socket.
+
+See [`docs/api.md`](../docs/api.md) for the complete method list, parameters and
+result semantics.

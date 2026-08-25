@@ -43,7 +43,7 @@ through a local JSON-RPC runtime and TypeScript SDK. RumiAI consumes it through
   progressively lower-priority fallbacks.
 - MCP is an adapter, not the internal Computer Control contract.
 
-See `docs/architecture.md`.
+See the [API reference](docs/api.md) and [architecture](docs/architecture.md).
 
 ## Installation
 
