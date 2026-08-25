@@ -3,8 +3,8 @@
 const os = require("node:os");
 const {ComputerControlError} = require("./errors");
 
-const CONTRACT_VERSION = "0.8.0";
-const RUNTIME_VERSION = "0.8.0";
+const CONTRACT_VERSION = "0.9.0";
+const RUNTIME_VERSION = "0.9.0";
 
 function createRouter(backend) {
   if (!backend || typeof backend.info !== "function") {
@@ -41,6 +41,10 @@ function createRouter(backend) {
       case "ui.snapshot":
         validateSnapshotParams(params);
         return backend.snapshot(params);
+
+      case "ui.describe":
+        validateElementParams(params, "ui.describe");
+        return backend.describe(params);
 
       case "ui.find":
         validateFindParams(params);

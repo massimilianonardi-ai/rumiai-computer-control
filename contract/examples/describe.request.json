@@ -1,0 +1,12 @@
+{
+  "jsonrpc": "2.0",
+  "id": "example-describe-1",
+  "method": "ui.describe",
+  "params": {
+    "application": "TextEdit",
+    "target": {
+      "ref": "@e0",
+      "role": "text-field"
+    }
+  }
+}

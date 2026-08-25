@@ -1085,6 +1085,7 @@ module.exports = {
   resizeWindow,
   closeWindow,
   snapshot:operations.snapshot,
+  describe:operations.describe,
   getBounds:operations.getBounds,
   find:operations.find,
   get:operations.get,

@@ -49,7 +49,7 @@ function createMacOSBackend({modulePath = DEFAULT_MACOS_MODULE, backendModule} =
       const available = Boolean(backendModule) || fs.existsSync(path.resolve(modulePath));
       return {
         name:"macos-ax",
-  version:"0.8.0",
+        version:"0.9.0",
         platform:"macos",
         capabilities:[
           {
@@ -69,6 +69,12 @@ function createMacOSBackend({modulePath = DEFAULT_MACOS_MODULE, backendModule} =
             available,
             validationState:"PHYSICALLY_VALIDATED",
             strategies:["accessibility-tree"],
+          },
+          {
+            name:"ui.describe",
+            available,
+            validationState:"PHYSICALLY_VALIDATED",
+            strategies:["accessibility-cached-properties"],
           },
           {
             name:"ui.find",
@@ -211,6 +217,38 @@ function createMacOSBackend({modulePath = DEFAULT_MACOS_MODULE, backendModule} =
         changed:result.changed == null ? null : Boolean(result.changed),
         observation:{method:result.method || "accessibility-tree"},
         backend:{name:"macos-ax", strategy:result.method || "accessibility-tree"},
+        diagnostics:{
+          observeSeconds:result.observeSeconds || 0,
+          totalSeconds:result.totalSeconds || 0,
+        },
+      };
+    },
+
+    async describe({application, target}) {
+      const result = control().describe({app:application, element:target});
+      if (!result?.ok) throw backendFailure(result, "CONTROL_DESCRIPTION_FAILED");
+      return {
+        state:"DESCRIBED",
+        target:{ref:result.ref || target.ref, role:result.role, name:result.name},
+        description:result.description,
+        value:result.value,
+        valueType:result.valueType,
+        visible:result.visible,
+        enabled:result.enabled,
+        focused:result.focused,
+        selected:result.selected,
+        checked:result.checked,
+        mixed:result.mixed,
+        expanded:result.expanded,
+        readOnly:result.readOnly,
+        required:result.required,
+        range:result.range,
+        actions:result.actions,
+        childCount:result.childCount,
+        parentRole:result.parentRole,
+        bounds:result.bounds,
+        observation:{method:result.method || "accessibility-cached-properties"},
+        backend:{name:"macos-ax", strategy:result.method || "accessibility-cached-properties"},
         diagnostics:{
           observeSeconds:result.observeSeconds || 0,
           totalSeconds:result.totalSeconds || 0,

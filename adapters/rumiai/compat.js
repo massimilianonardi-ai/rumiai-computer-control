@@ -93,6 +93,17 @@ function snapshot({app, settle = false, compact = true, previousSnapshot = null}
   return safe("ui.snapshot", {application:app, settle, compact, previousSnapshot}, value => ({ok:true, state:value.state, snapshot:value.snapshot, changed:value.changed, method:value.observation.method, observeSeconds:value.diagnostics?.observeSeconds || 0}));
 }
 
+function describe({app, element}) {
+  return safe("ui.describe", {application:app, target:element}, value => ({
+    ok:true,
+    ...value,
+    ref:value.target.ref,
+    role:value.target.role,
+    name:value.target.name,
+    method:value.observation.method,
+  }));
+}
+
 function find({app, query = "", role = null, first = true, snapshot = null}) {
   return safe("ui.find", {application:app, query, role, first, snapshot}, value => ({ok:true, state:"FOUND", query:value.query, role:value.role, ref:value.target.ref, refs:value.targets.map(target => target.ref), method:value.observation.method, source:value.source}));
 }
@@ -170,7 +181,7 @@ const resizeWindow = params => windowCall("window.resize", params);
 
 module.exports = {
   runtimeInfo, ensureRuntime, shutdownRuntime, ensureReady, getForeground,
-  snapshot, find, get, getBounds, focus, click, press, setText, clear,
+  snapshot, describe, find, get, getBounds, focus, click, press, setText, clear,
   waitStable, waitUntilChanged, waitUntilSnapshotCondition, waitUntil,
   listWindows, getCurrentWindow, focusWindow, closeWindow, minimizeWindow,
   restoreWindow, maximizeWindow, moveWindow, resizeWindow,

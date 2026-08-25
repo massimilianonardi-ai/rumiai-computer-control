@@ -2,7 +2,7 @@
 
 set -eu
 
-VERSION="0.8.0"
+VERSION="0.9.0"
 SOURCE_ROOT="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
 PORTABLE_ROOT="${RUMIAI_CC_PORTABLE_ROOT:-}"
 AGENT_CTRL_VERSION="0.1.4"
@@ -49,7 +49,7 @@ case "$PORTABLE_ROOT" in
 esac
 
 [ "$(uname -s)" = "Darwin" ] || {
-  echo "RumiAI Computer Control 0.8.0 currently supports macOS only." >&2
+  echo "RumiAI Computer Control 0.9.0 currently supports macOS only." >&2
   exit 2
 }
 

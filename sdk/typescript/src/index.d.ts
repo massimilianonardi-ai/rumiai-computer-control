@@ -42,6 +42,55 @@ export interface ObservedTarget {
   disabled?: boolean;
 }
 
+export type ControlRole =
+  | "application" | "window" | "dialog" | "alert" | "group" | "generic" | "region"
+  | "toolbar" | "menu-bar" | "menu" | "menu-item" | "button" | "link"
+  | "checkbox" | "switch" | "radio-button" | "combo-box" | "list"
+  | "list-item" | "option" | "slider" | "spin-button" | "text-field"
+  | "text-area" | "search-box" | "static-text" | "date" | "time" | "date-time"
+  | "tab-list" | "tab" | "tree" | "tree-item" | "table" | "row"
+  | "column" | "cell" | "header" | "scroll-area" | "progress-bar"
+  | "image" | "separator" | "unknown";
+
+export type ControlValueType = "null" | "string" | "number" | "boolean" | "date" | "time" | "date-time";
+
+export type ControlAction =
+  | "focus" | "click" | "set-text" | "clear" | "invoke" | "toggle"
+  | "select" | "set-value" | "expand" | "collapse" | "increment"
+  | "decrement" | "scroll" | "scroll-into-view";
+
+export interface ControlRange {
+  min: number;
+  max: number;
+  step: number | null;
+  value: number;
+}
+
+export interface ControlDescription {
+  state: "DESCRIBED";
+  target: {ref: `@e${number}`; role: ControlRole; name: string};
+  description: string | null;
+  value: string | number | boolean | null;
+  valueType: ControlValueType;
+  visible: boolean | null;
+  enabled: boolean | null;
+  focused: boolean | null;
+  selected: boolean | null;
+  checked: boolean | null;
+  mixed: boolean | null;
+  expanded: boolean | null;
+  readOnly: boolean | null;
+  required: boolean | null;
+  range: ControlRange | null;
+  actions: ControlAction[] | null;
+  childCount: number | null;
+  parentRole: ControlRole | null;
+  bounds: {x: number; y: number; width: number; height: number} | null;
+  observation: {method: string};
+  backend: {name: string; strategy: string};
+  diagnostics?: Record<string, unknown>;
+}
+
 export interface SnapshotResult {
   state: "OBSERVED";
   snapshot: string;
@@ -98,6 +147,10 @@ export class ComputerControlClient {
     compact?: boolean;
     previousSnapshot?: string | null;
   }): Promise<SnapshotResult>;
+  describe(params: {
+    application: string;
+    target: {ref: `@e${number}`; role?: string; name?: string};
+  }): Promise<ControlDescription>;
   find(params: FindParams): Promise<FindResult>;
   get(params: {application: string; target: ObservedTarget; property: string}): Promise<{state: "OBSERVED"; target: ObservedTarget; property: string; value: unknown}>;
   getBounds(params: {application: string; target: ObservedTarget}): Promise<{state: "OBSERVED"; target: ObservedTarget; bounds: {x: number; y: number; width: number; height: number}}>;

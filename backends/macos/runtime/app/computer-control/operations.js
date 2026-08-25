@@ -651,6 +651,174 @@ function getBounds({app, element}) {
   };
 }
 
+const CONTROL_ROLES = new Set([
+  "application", "window", "dialog", "alert", "group", "generic", "region", "toolbar",
+  "menu-bar", "menu", "menu-item", "button", "link", "checkbox", "switch",
+  "radio-button", "combo-box", "list", "list-item", "option", "slider",
+  "spin-button", "text-field", "text-area", "search-box", "static-text", "date", "time",
+  "date-time", "tab-list", "tab", "tree", "tree-item", "table", "row",
+  "column", "cell", "header", "scroll-area", "progress-bar", "image",
+  "separator", "unknown",
+]);
+
+const ROLE_ALIASES = new Map([
+  ["check-box", "checkbox"],
+  ["radio", "radio-button"],
+  ["radiobutton", "radio-button"],
+  ["combobox", "combo-box"],
+  ["list-box", "list"],
+  ["listbox", "list"],
+  ["outline", "tree"],
+  ["outline-row", "tree-item"],
+  ["table-row", "row"],
+  ["table-column", "column"],
+  ["table-cell", "cell"],
+  ["incrementor", "spin-button"],
+  ["textfield", "text-field"],
+  ["textarea", "text-area"],
+  ["label", "static-text"],
+  ["progress-indicator", "progress-bar"],
+  ["scroll-view", "scroll-area"],
+]);
+
+const NUMERIC_CONTROL_ROLES = new Set([
+  "slider", "spin-button", "progress-bar",
+]);
+
+function normalizeControlRole(value) {
+  const raw = String(value || "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-")
+    .trim();
+  const role = ROLE_ALIASES.get(raw) || raw;
+  return CONTROL_ROLES.has(role) ? role : "unknown";
+}
+
+function normalizeControlValue(role, value) {
+  if (value === null || value === undefined) {
+    return {value:null, valueType:"null"};
+  }
+  if (typeof value === "boolean") {
+    return {value, valueType:"boolean"};
+  }
+  if (typeof value === "number" && Number.isFinite(value)) {
+    return {value, valueType:"number"};
+  }
+  if (typeof value === "string") {
+    if (NUMERIC_CONTROL_ROLES.has(role)) {
+      const number = Number(value);
+      if (Number.isFinite(number)) return {value:number, valueType:"number"};
+    }
+    return {value, valueType:"string"};
+  }
+  return {value:null, valueType:"null"};
+}
+
+function observedStateValue(state, ...keys) {
+  if (!state || typeof state !== "object" || Array.isArray(state)) return null;
+  for (const key of keys) {
+    if (Object.prototype.hasOwnProperty.call(state, key)) {
+      return typeof state[key] === "boolean" ? state[key] : null;
+    }
+  }
+  return null;
+}
+
+/*
+ * Public normalized control observation:
+ *
+ *   describe({ app, element })
+ *
+ * The backend reports only state present in the cached Accessibility
+ * observation. Missing state remains null; it is never inferred from role.
+ */
+function describe({app, element}) {
+  const started = performance.now();
+
+  if (!app) {
+    return {ok:false, error:"APP_REQUIRED", detail:"describe requires an application", state:"FAILED"};
+  }
+
+  const ref = typeof element === "string"
+    ? element
+    : String(element?.ref || "").trim();
+
+  if (!/^@e\d+$/.test(ref)) {
+    return {
+      ok:false,
+      error:"ACTIONABLE_ELEMENT_REQUIRED",
+      detail:"describe requires an actionable @e element reference",
+      state:"FAILED",
+    };
+  }
+
+  const providerResolved = resolveProviderIdentity(app);
+  if (!providerResolved.ok) {
+    return {ok:false, error:providerResolved.error, detail:providerResolved.detail, state:"FAILED"};
+  }
+
+  const roleResult = agentCtrl.getElementPropertyJson(ref, "role");
+  if (!roleResult.ok || !String(roleResult.value || "").trim()) {
+    return {
+      ok:false,
+      error:"CONTROL_DESCRIPTION_FAILED",
+      detail:(roleResult.stderr || roleResult.stdout || "control role unavailable").trim(),
+      state:"FAILED",
+      ref,
+      method:roleResult.method,
+      observeSeconds:roleResult.seconds || 0,
+      totalSeconds:(performance.now() - started) / 1000,
+    };
+  }
+
+  const nameResult = agentCtrl.getElementPropertyJson(ref, "name");
+  const valueResult = agentCtrl.getElementPropertyJson(ref, "value");
+  const stateResult = agentCtrl.getElementPropertyJson(ref, "state");
+  const boundsResult = agentCtrl.getElementBounds(ref);
+  const observeSeconds = [roleResult, nameResult, valueResult, stateResult, boundsResult]
+    .reduce((sum, result) => sum + (result.seconds || 0), 0);
+
+  const role = normalizeControlRole(roleResult.value);
+  const normalizedValue = normalizeControlValue(role, valueResult.ok ? valueResult.value : null);
+  const state = stateResult.ok ? stateResult.value : null;
+  const bounds = boundsResult.ok && boundsResult.bounds
+    ? {
+        x:Number(boundsResult.bounds.x),
+        y:Number(boundsResult.bounds.y),
+        width:Number(boundsResult.bounds.w),
+        height:Number(boundsResult.bounds.h),
+      }
+    : null;
+
+  return {
+    ok:true,
+    state:"DESCRIBED",
+    ref,
+    role,
+    name:nameResult.ok && typeof nameResult.value === "string" ? nameResult.value : "",
+    description:null,
+    ...normalizedValue,
+    visible:observedStateValue(state, "visible"),
+    enabled:observedStateValue(state, "enabled"),
+    focused:observedStateValue(state, "focused"),
+    selected:observedStateValue(state, "selected"),
+    checked:observedStateValue(state, "checked"),
+    mixed:observedStateValue(state, "mixed", "indeterminate"),
+    expanded:observedStateValue(state, "expanded"),
+    readOnly:observedStateValue(state, "readOnly", "read_only", "readonly"),
+    required:observedStateValue(state, "required"),
+    range:null,
+    actions:null,
+    childCount:null,
+    parentRole:null,
+    bounds,
+    method:"agent-ctrl cached accessibility description",
+    observeSeconds,
+    totalSeconds:(performance.now() - started) / 1000,
+  };
+}
+
 /*
  * Public Computer Control semantic observation:
  *
@@ -1608,6 +1776,7 @@ module.exports = {
   waitStable,
   getCurrentWindow,
   snapshot,
+  describe,
   getBounds,
   find,
   get,

@@ -1,7 +1,7 @@
 # Computer Control API reference
 
-This document describes the 29 public Computer Control operations implemented
-by release `0.8.0`.
+This document describes the 30 public Computer Control operations implemented
+by the `0.9.0` development contract. The latest tagged release remains `v0.8.0`.
 
 ## Implementation status
 
@@ -75,6 +75,13 @@ An actionable target is obtained from `ui.snapshot` or `ui.find`:
 An `@e` reference is an observation-scoped handle. It must not be persisted or
 treated as durable identity. Re-observe the application before a later action.
 
+`ui.describe` returns normalized role, value, observable state and bounds for
+such a target. State not exposed by the current Accessibility observation is
+returned as `null`; it is not inferred from the role. The current macOS backend
+cannot yet observe native action names, complete range metadata, parent role or
+child count through its cached element reference, so `actions`, `range`,
+`parentRole` and `childCount` are also `null`.
+
 ### Window descriptor
 
 Window observation returns:
@@ -139,6 +146,7 @@ resulting state with `ui.snapshot`, `ui.get` or a synchronization operation.
 | JSON-RPC method | SDK method | Required parameters | What it does |
 | --- | --- | --- | --- |
 | `ui.snapshot` | `snapshot(...)` | `application` | Observes the accessibility tree. `compact` defaults to `true`; `settle` can wait for a stable surface; `previousSnapshot` enables change reporting. Returns text plus parsed actionable nodes. |
+| `ui.describe` | `describe(...)` | `application`, `target` | Returns normalized role, name, typed value, observable state and bounds. Unobservable fields remain `null`, and stale references fail closed. |
 | `ui.find` | `find(...)` | `application` and at least one of `query` or `role` | Finds enabled semantic elements. It first uses a supplied snapshot when present, then the backend. `first:false` returns all matches. Matching is normalized, exact-first and then substring-based. |
 | `ui.get` | `get(...)` | `application`, `target`, `property` | Reads an element property. The macOS backend currently exposes `text` and `value`. |
 | `ui.getBounds` | `getBounds(...)` | `application`, `target` | Observes element geometry as `{x, y, width, height}`. |
@@ -147,6 +155,38 @@ resulting state with `ui.snapshot`, `ui.get` or a synchronization operation.
 | `ui.press` | `press(...)` | `application`, `keys` | Delivers a key or chord such as `"Right"` or `"Cmd+S"`. `settle` defaults to `true`; the caller must observe the semantic consequence. |
 | `ui.setText` | `setText(...)` | `application`, `target`, non-empty `text` | Replaces editable text and verifies exact equality. Strategies can include AX fill, clipboard paste and typing. Empty text is rejected; use `ui.clear`. |
 | `ui.clear` | `clear(...)` | `application`, `target` | Clears editable text and verifies that the observed value is exactly empty. |
+
+For example, `describe({application:"TextEdit", target:{ref:"@e0"}})` can
+return:
+
+```json
+{
+  "state": "DESCRIBED",
+  "target": {"ref": "@e0", "role": "text-field", "name": "Document"},
+  "description": null,
+  "value": "Ciao RumiAI.",
+  "valueType": "string",
+  "visible": true,
+  "enabled": true,
+  "focused": true,
+  "selected": null,
+  "checked": null,
+  "mixed": null,
+  "expanded": null,
+  "readOnly": null,
+  "required": null,
+  "range": null,
+  "actions": null,
+  "childCount": null,
+  "parentRole": null,
+  "bounds": {"x": 240, "y": 160, "width": 720, "height": 480},
+  "observation": {"method": "agent-ctrl cached accessibility description"},
+  "backend": {
+    "name": "macos-ax",
+    "strategy": "agent-ctrl cached accessibility description"
+  }
+}
+```
 
 Example:
 

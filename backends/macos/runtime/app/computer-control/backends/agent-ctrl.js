@@ -239,6 +239,30 @@ function getElementProperty(ref, property) {
   );
 }
 
+function getElementPropertyJson(ref, property) {
+  const prop = String(property || "").trim();
+  const result = runAction(
+    ["get", prop, ref, "--json"],
+    `agent-ctrl get ${prop} ${ref} --json`
+  );
+
+  if (!result.ok) return {...result, value:null, data:null};
+
+  try {
+    const data = JSON.parse(result.stdout);
+    return {...result, value:data?.value ?? null, data};
+  } catch (error) {
+    return {
+      ...result,
+      ok:false,
+      code:1,
+      value:null,
+      data:null,
+      stderr:`invalid get ${prop} JSON: ${error.message}`,
+    };
+  }
+}
+
 function getElementBounds(ref) {
   const r = runAction(
     ["get", "bounds", ref],
@@ -427,6 +451,7 @@ module.exports = {
   findElement,
   getElementBounds,
   getElementProperty,
+  getElementPropertyJson,
   getElementValue,
   getElementText,
   pressKeys,

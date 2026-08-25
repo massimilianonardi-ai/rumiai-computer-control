@@ -37,6 +37,10 @@ class ComputerControlClient {
     return this.call("ui.snapshot", {application, settle, compact, previousSnapshot});
   }
 
+  describe({application, target}) {
+    return this.call("ui.describe", {application, target});
+  }
+
   find({application, query = "", role = null, first = true, snapshot = null}) {
     return this.call("ui.find", {application, query, role, first, snapshot});
   }

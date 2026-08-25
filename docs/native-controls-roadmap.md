@@ -70,6 +70,15 @@ objects and AT-SPI interfaces must not cross the canonical boundary.
 
 ## Delivery sequence
 
+Current progress on `main`:
+
+```text
+Phase 0 contract foundation  IMPLEMENTED
+Phase 1 ui.describe          PHYSICALLY_VALIDATED
+Phase 2 ui.invoke            PENDING
+Phase 3 ui.toggle/select     PENDING
+```
+
 ### Phase 0 — Contract foundation
 
 Purpose: establish the shared vocabulary before adding actions.

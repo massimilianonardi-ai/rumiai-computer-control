@@ -1,9 +1,9 @@
 {
-  "contractVersion": "0.8.0",
-  "runtimeVersion": "0.8.0",
+  "contractVersion": "0.9.0",
+  "runtimeVersion": "0.9.0",
   "backend": {
     "name": "macos-ax",
-    "version": "0.8.0"
+    "version": "0.9.0"
   },
   "platform": {
     "os": "macos",
@@ -16,6 +16,12 @@
       "available": true,
       "validationState": "PHYSICALLY_VALIDATED",
       "strategies": ["local-json-rpc"]
+    },
+    {
+      "name": "ui.describe",
+      "available": true,
+      "validationState": "PHYSICALLY_VALIDATED",
+      "strategies": ["accessibility-cached-properties"]
     }
   ]
 }
