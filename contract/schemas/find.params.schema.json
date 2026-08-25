@@ -1,0 +1,19 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/v0.2/find.params.schema.json",
+  "title": "ui.find parameters",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["application"],
+  "properties": {
+    "application": { "type": "string", "minLength": 1 },
+    "query": { "type": "string" },
+    "role": { "type": ["string", "null"] },
+    "first": { "type": "boolean", "default": true },
+    "snapshot": { "type": ["string", "null"] }
+  },
+  "anyOf": [
+    { "required": ["query"], "properties": { "query": { "minLength": 1 } } },
+    { "required": ["role"], "properties": { "role": { "type": "string", "minLength": 1 } } }
+  ]
+}

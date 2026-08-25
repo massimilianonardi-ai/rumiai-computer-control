@@ -5,10 +5,13 @@ root=$(CDPATH= cd -- "$(dirname -- "$0")/../.." && pwd)
 
 required_paths="
 contract/VERSION
+CHANGELOG.md
 contract/schemas/common.schema.json
 contract/schemas/runtime-info.schema.json
 contract/schemas/operation-result.schema.json
 contract/schemas/set-text.params.schema.json
+contract/schemas/snapshot.params.schema.json
+contract/schemas/find.params.schema.json
 runtime/README.md
 runtime/src/server.js
 runtime/src/router.js
@@ -24,6 +27,7 @@ docs/versioning.md
 docs/security.md
 docs/promotions/v46-strict-set-text.md
 conformance/results/2026-08-25-runtime-set-text-boundary-PASS.md
+conformance/results/2026-08-25-macos-snapshot-find-set-text-physical-PASS.md
 "
 
 for relative_path in $required_paths; do

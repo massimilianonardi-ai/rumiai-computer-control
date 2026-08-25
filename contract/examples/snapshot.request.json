@@ -1,0 +1,10 @@
+{
+  "jsonrpc": "2.0",
+  "id": "example-snapshot-1",
+  "method": "ui.snapshot",
+  "params": {
+    "application": "TextEdit",
+    "settle": true,
+    "compact": true
+  }
+}

@@ -20,6 +20,11 @@ Initial verified interaction:
 
 - `ui.setText`
 
+Initial observation:
+
+- `ui.snapshot`
+- `ui.find`
+
 The runtime selects exactly one OS backend and reports its capability matrix.
 
 Start the current macOS transition runtime with:

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://rumiai.local/computer-control/v0.1/runtime-info.schema.json",
+  "$id": "https://rumiai.local/computer-control/v0.2/runtime-info.schema.json",
   "title": "runtime.info result",
   "type": "object",
   "additionalProperties": false,

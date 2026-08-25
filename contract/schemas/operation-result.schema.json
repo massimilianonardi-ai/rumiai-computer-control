@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://rumiai.local/computer-control/v0.1/operation-result.schema.json",
+  "$id": "https://rumiai.local/computer-control/v0.2/operation-result.schema.json",
   "title": "Verified operation result envelope",
   "type": "object",
   "additionalProperties": false,

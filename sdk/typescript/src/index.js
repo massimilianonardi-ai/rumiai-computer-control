@@ -25,6 +25,14 @@ class ComputerControlClient {
     return this.call("ui.setText", {application, target, text});
   }
 
+  snapshot({application, settle = false, compact = true, previousSnapshot = null}) {
+    return this.call("ui.snapshot", {application, settle, compact, previousSnapshot});
+  }
+
+  find({application, query = "", role = null, first = true, snapshot = null}) {
+    return this.call("ui.find", {application, query, role, first, snapshot});
+  }
+
   call(method, params = {}) {
     const id = this.nextId++;
     return new Promise((resolve, reject) => {

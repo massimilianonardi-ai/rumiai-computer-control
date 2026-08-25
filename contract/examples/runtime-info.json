@@ -1,6 +1,6 @@
 {
-  "contractVersion": "0.1.0",
-  "runtimeVersion": "0.1.0-dev",
+  "contractVersion": "0.2.0",
+  "runtimeVersion": "0.2.0-dev",
   "backend": {
     "name": "macos-placeholder",
     "version": "0.0.0"

@@ -3,8 +3,8 @@
 The contract is independent from OS APIs, implementation languages, transports,
 and MCP tool dialects.
 
-Version `0.1.0` is deliberately minimal. It establishes runtime discovery and
-the common operation-result envelope before validated operations are promoted.
+Version `0.2.0` establishes runtime discovery, observation through `ui.snapshot`
+and `ui.find`, and strict verified text replacement through `ui.setText`.
 
 Rules:
 

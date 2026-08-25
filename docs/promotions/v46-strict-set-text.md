@@ -20,13 +20,14 @@ TypeScript SDK -> local JSON-RPC -> Computer Control runtime
   -> macOS validated transition backend -> exact postcondition evidence
 ```
 
-The original operation is physically validated. The new end-to-end RPC path is
-not classified as physically validated until
-`conformance/physical-tests/macos-set-text-v46.js` passes on the target Mac.
+The original operation and the new end-to-end RPC path are physically validated.
+On 2026-08-25 `conformance/physical-tests/macos-set-text-v46.js` obtained a fresh
+TextEdit reference through `ui.snapshot` and role-based `ui.find`, then verified
+strict equality through `ui.setText`.
 
-Accordingly, runtime capability discovery reports `BOUNDARY_PASS`. The source
-v46 evidence is preserved separately and does not automatically validate the
-new transport boundary.
+Runtime capability discovery therefore reports `PHYSICALLY_VALIDATED` for the
+tested macOS transition backend. This classification does not transfer to the
+future standalone Swift backend until it passes the same conformance scenario.
 
 The transition backend is deliberately named and must not be confused with the
 future standalone Swift macOS backend.

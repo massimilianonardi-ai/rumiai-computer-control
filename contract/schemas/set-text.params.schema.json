@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://rumiai.local/computer-control/v0.1/set-text.params.schema.json",
+  "$id": "https://rumiai.local/computer-control/v0.2/set-text.params.schema.json",
   "title": "ui.setText parameters",
   "type": "object",
   "additionalProperties": false,

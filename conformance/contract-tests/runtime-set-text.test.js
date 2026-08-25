@@ -14,6 +14,20 @@ function mockLegacy() {
   return {
     ensureRuntime:() => ({ok:true, started:true, method:"mock-ready"}),
     shutdownRuntime:() => ({ok:true, method:"mock-stopped"}),
+    snapshot:() => ({
+      ok:true,
+      snapshot:'@e0 text-area ""\n@e1 button "Save"',
+      changed:null,
+      method:"mock-snapshot",
+    }),
+    find:({query}) => ({
+      ok:true,
+      ref:"@e1",
+      refs:["@e1"],
+      method:"mock-find",
+      source:"backend",
+      query,
+    }),
     setText:({app, element, text, verify}) => ({
       ok:true,
       state:"VERIFIED",
@@ -41,12 +55,25 @@ test("runtime.info and ui.setText cross the local RPC boundary", async t => {
 
   const client = new ComputerControlClient({socketPath, timeoutMs:2000});
   const info = await client.runtimeInfo();
-  assert.equal(info.contractVersion, "0.1.0");
+  assert.equal(info.contractVersion, "0.2.0");
   assert.equal(info.backend.name, "macos-agent-ctrl-v46-transition");
   assert.equal(info.capabilities.find(item => item.name === "ui.setText").available, true);
 
   const ready = await client.ensureReady();
   assert.equal(ready.verified, true);
+
+  const snapshot = await client.snapshot({application:"TextEdit", settle:true});
+  assert.equal(snapshot.state, "OBSERVED");
+  assert.equal(snapshot.nodes[0].ref, "@e0");
+  assert.equal(snapshot.nodes[0].role, "text-area");
+
+  const editable = await client.find({
+    application:"TextEdit",
+    role:"text-area",
+    snapshot:snapshot.snapshot,
+  });
+  assert.equal(editable.target.ref, "@e0");
+  assert.equal(editable.source, "snapshot");
 
   const result = await client.setText({
     application:"TextEdit",
@@ -60,6 +87,18 @@ test("runtime.info and ui.setText cross the local RPC boundary", async t => {
 
   const stopped = await client.shutdownRuntime();
   assert.equal(stopped.state, "STOPPED");
+});
+
+test("ui.find performs normalized semantic matching over caller observation", async () => {
+  const backend = createLegacyMacOSBackend({legacyModule:mockLegacy()});
+  const result = await backend.find({
+    application:"System Settings",
+    query:"Wi-Fi",
+    role:"button",
+    snapshot:'@e4 button "Wi‑Fi"',
+  });
+  assert.equal(result.target.ref, "@e4");
+  assert.equal(result.source, "snapshot");
 });
 
 test("ui.setText rejects empty text without invoking GUI recovery", async () => {

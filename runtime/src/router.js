@@ -3,8 +3,8 @@
 const os = require("node:os");
 const {ComputerControlError} = require("./errors");
 
-const CONTRACT_VERSION = "0.1.0";
-const RUNTIME_VERSION = "0.1.0";
+const CONTRACT_VERSION = "0.2.0";
+const RUNTIME_VERSION = "0.2.0";
 
 function createRouter(backend) {
   if (!backend || typeof backend.info !== "function") {
@@ -38,6 +38,14 @@ function createRouter(backend) {
         validateSetTextParams(params);
         return backend.setText(params);
 
+      case "ui.snapshot":
+        validateSnapshotParams(params);
+        return backend.snapshot(params);
+
+      case "ui.find":
+        validateFindParams(params);
+        return backend.find(params);
+
       default:
         throw new ComputerControlError(
           "METHOD_NOT_FOUND",
@@ -46,6 +54,29 @@ function createRouter(backend) {
         );
     }
   };
+}
+
+function validateSnapshotParams(params) {
+  if (!params || typeof params !== "object" || Array.isArray(params)) {
+    throw new ComputerControlError("INVALID_PARAMS", "ui.snapshot requires an object", "NONE");
+  }
+  if (!String(params.application || "").trim()) {
+    throw new ComputerControlError("APP_REQUIRED", "ui.snapshot requires application", "NONE");
+  }
+}
+
+function validateFindParams(params) {
+  if (!params || typeof params !== "object" || Array.isArray(params)) {
+    throw new ComputerControlError("INVALID_PARAMS", "ui.find requires an object", "NONE");
+  }
+  if (!String(params.application || "").trim()) {
+    throw new ComputerControlError("APP_REQUIRED", "ui.find requires application", "NONE");
+  }
+  const query = String(params.query || "").trim();
+  const role = String(params.role || "").trim();
+  if (!query && !role) {
+    throw new ComputerControlError("QUERY_OR_ROLE_REQUIRED", "ui.find requires query or role", "NONE");
+  }
 }
 
 function validateSetTextParams(params) {
@@ -71,4 +102,11 @@ function validateSetTextParams(params) {
   }
 }
 
-module.exports = {createRouter, validateSetTextParams, CONTRACT_VERSION, RUNTIME_VERSION};
+module.exports = {
+  createRouter,
+  validateSetTextParams,
+  validateSnapshotParams,
+  validateFindParams,
+  CONTRACT_VERSION,
+  RUNTIME_VERSION,
+};

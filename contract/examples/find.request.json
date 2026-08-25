@@ -1,0 +1,11 @@
+{
+  "jsonrpc": "2.0",
+  "id": "example-find-1",
+  "method": "ui.find",
+  "params": {
+    "application": "TextEdit",
+    "role": "text-area",
+    "first": true,
+    "snapshot": "@e0 text-area"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/v0.2/snapshot.params.schema.json",
+  "title": "ui.snapshot parameters",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["application"],
+  "properties": {
+    "application": { "type": "string", "minLength": 1 },
+    "settle": { "type": "boolean", "default": false },
+    "compact": { "type": "boolean", "default": true },
+    "previousSnapshot": { "type": ["string", "null"] }
+  }
+}
