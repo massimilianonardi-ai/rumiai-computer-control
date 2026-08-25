@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/v0.5/window.params.schema.json",
+  "title": "Window operation parameters",
+  "$defs": {
+    "window": {
+      "type": "object",
+      "required": ["id", "process", "pid"],
+      "properties": {
+        "id": {"type": "string", "minLength": 1},
+        "title": {"type": ["string", "null"]},
+        "process": {"type": "string", "minLength": 1},
+        "pid": {"type": "integer", "minimum": 1},
+        "bundle": {"type": ["string", "null"]}
+      },
+      "additionalProperties": false
+    }
+  },
+  "type": "object",
+  "required": ["application"],
+  "properties": {
+    "application": {"type": "string", "minLength": 1},
+    "window": {"$ref": "#/$defs/window"},
+    "position": {"type": "object", "required": ["x", "y"], "properties": {"x": {"type": "number"}, "y": {"type": "number"}}, "additionalProperties": false},
+    "size": {"type": "object", "required": ["width", "height"], "properties": {"width": {"type": "number", "exclusiveMinimum": 0}, "height": {"type": "number", "exclusiveMinimum": 0}}, "additionalProperties": false}
+  },
+  "additionalProperties": false
+}

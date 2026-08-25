@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.6.0 — 2026-08-25
+
+- Add the complete macOS v82 window matrix behind local RPC.
+- Add safe list/current/focus/close/minimize/restore/maximize/move/resize.
+- Canonicalize window descriptors and `{x,y,width,height}` geometry.
+- Normalize the legacy current-window wrapper at the adapter boundary.
+- Physically validate all window operations and geometry restoration.
+
 ## 0.5.0 — 2026-08-25
 
 - Add `sync.waitStable` and `sync.waitUntilChanged`.

@@ -3,8 +3,8 @@
 const os = require("node:os");
 const {ComputerControlError} = require("./errors");
 
-const CONTRACT_VERSION = "0.5.0";
-const RUNTIME_VERSION = "0.5.0";
+const CONTRACT_VERSION = "0.6.0";
+const RUNTIME_VERSION = "0.6.0";
 
 function createRouter(backend) {
   if (!backend || typeof backend.info !== "function") {
@@ -109,6 +109,48 @@ function createRouter(backend) {
         }
         return backend.waitUntilChanged(params);
 
+      case "window.list":
+        validateApplicationParams(params, "window.list");
+        return backend.listWindows(params);
+
+      case "window.getCurrent":
+        validateApplicationParams(params, "window.getCurrent");
+        return backend.getCurrentWindow(params);
+
+      case "window.focus":
+        validateWindowParams(params, "window.focus");
+        return backend.focusWindow(params);
+
+      case "window.close":
+        validateApplicationParams(params, "window.close");
+        return backend.closeWindow(params);
+
+      case "window.minimize":
+        validateWindowParams(params, "window.minimize");
+        return backend.minimizeWindow(params);
+
+      case "window.restore":
+        validateWindowParams(params, "window.restore");
+        return backend.restoreWindow(params);
+
+      case "window.maximize":
+        validateWindowParams(params, "window.maximize");
+        return backend.maximizeWindow(params);
+
+      case "window.move":
+        validateWindowParams(params, "window.move");
+        if (!Number.isFinite(params.position?.x) || !Number.isFinite(params.position?.y)) {
+          throw new ComputerControlError("WINDOW_POSITION_REQUIRED", "window.move requires finite x/y", "NONE");
+        }
+        return backend.moveWindow(params);
+
+      case "window.resize":
+        validateWindowParams(params, "window.resize");
+        if (!Number.isFinite(params.size?.width) || !Number.isFinite(params.size?.height) || params.size.width <= 0 || params.size.height <= 0) {
+          throw new ComputerControlError("WINDOW_SIZE_REQUIRED", "window.resize requires positive width/height", "NONE");
+        }
+        return backend.resizeWindow(params);
+
       default:
         throw new ComputerControlError(
           "METHOD_NOT_FOUND",
@@ -132,6 +174,14 @@ function validateElementParams(params, method) {
   validateApplicationParams(params, method);
   if (!/^@e\d+$/.test(String(params.target?.ref || ""))) {
     throw new ComputerControlError("ACTIONABLE_ELEMENT_REQUIRED", `${method} requires an @e target`, "NONE");
+  }
+}
+
+function validateWindowParams(params, method) {
+  validateApplicationParams(params, method);
+  const window = params.window;
+  if (!window || !String(window.id || "").trim() || !String(window.process || "").trim() || !Number.isFinite(Number(window.pid))) {
+    throw new ComputerControlError("WINDOW_DESCRIPTOR_REQUIRED", `${method} requires id, process, and pid`, "NONE");
   }
 }
 
@@ -188,6 +238,7 @@ module.exports = {
   validateFindParams,
   validateApplicationParams,
   validateElementParams,
+  validateWindowParams,
   CONTRACT_VERSION,
   RUNTIME_VERSION,
 };

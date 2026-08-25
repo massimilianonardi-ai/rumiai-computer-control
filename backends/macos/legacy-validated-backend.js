@@ -44,7 +44,7 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
       const available = Boolean(legacyModule) || fs.existsSync(path.resolve(modulePath));
       return {
         name:"macos-agent-ctrl-v46-transition",
-        version:"0.5.0",
+        version:"0.6.0",
         platform:"macos",
         capabilities:[
           {
@@ -85,6 +85,10 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
           {name:"clipboard.paste", available, validationState:"PHYSICALLY_VALIDATED", strategies:["keyboard-paste-delivery"]},
           {name:"sync.waitStable", available, validationState:"PHYSICALLY_VALIDATED", strategies:["observed-state-stability"]},
           {name:"sync.waitUntilChanged", available, validationState:"PHYSICALLY_VALIDATED", strategies:["equivalent-snapshot-delta"]},
+          ...[
+            "window.list", "window.getCurrent", "window.focus", "window.close",
+            "window.minimize", "window.restore", "window.maximize", "window.move", "window.resize",
+          ].map(name => ({name, available, validationState:"PHYSICALLY_VALIDATED", strategies:["macos-v82-descriptor-safe"]})),
         ],
       };
     },
@@ -265,7 +269,7 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
       return {
         state:"OBSERVED",
         target:{...target, ref:result.ref || target.ref},
-        bounds:result.bounds,
+        bounds:normalizeBounds(result.bounds),
         observation:{method:result.method || "accessibility-bounds"},
         backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "accessibility-bounds"},
         diagnostics:{observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
@@ -372,6 +376,58 @@ function createLegacyMacOSBackend({modulePath = DEFAULT_LEGACY_MODULE, legacyMod
         diagnostics:{attempts:result.attempts || 0, waitSeconds:result.waitSeconds || 0, compact:Boolean(compact)},
       };
     },
+
+    async listWindows({application}) {
+      const result = control().listWindows({app:application});
+      if (!result?.ok) throw legacyFailure(result, "WINDOW_LIST_FAILED");
+      return {
+        state:"OBSERVED",
+        windows:(result.windows || []).map(normalizeWindow),
+        observation:{method:result.method || "macos-v82-window-list"},
+        backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "macos-v82-window-list"},
+        diagnostics:{observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
+      };
+    },
+
+    async getCurrentWindow({application}) {
+      const result = control().getCurrentWindow({app:application});
+      if (!result?.ok || !result.window) throw legacyFailure(result, "WINDOW_OBSERVATION_FAILED");
+      return {
+        state:"OBSERVED",
+        window:normalizeWindow(result.window),
+        observation:{method:result.method || "native-focused-window-descriptor"},
+        backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "native-focused-window-descriptor"},
+        diagnostics:{observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
+      };
+    },
+
+    async focusWindow({application, window}) {
+      return verifiedWindowMutation(control().focusWindow({app:application, window}), "FOCUSED", "WINDOW_FOCUS_UNVERIFIED");
+    },
+
+    async closeWindow({application}) {
+      return verifiedWindowMutation(control().closeWindow({app:application}), "CLOSED", "WINDOW_CLOSE_UNVERIFIED");
+    },
+
+    async minimizeWindow({application, window}) {
+      return verifiedWindowMutation(control().minimizeWindow({app:application, window}), "MINIMIZED", "WINDOW_MINIMIZE_UNVERIFIED");
+    },
+
+    async restoreWindow({application, window}) {
+      return verifiedWindowMutation(control().restoreWindow({app:application, window}), "RESTORED", "WINDOW_RESTORE_UNVERIFIED");
+    },
+
+    async maximizeWindow({application, window}) {
+      return verifiedWindowMutation(control().maximizeWindow({app:application, window}), "MAXIMIZED", "WINDOW_MAXIMIZE_UNVERIFIED");
+    },
+
+    async moveWindow({application, window, position}) {
+      return verifiedWindowMutation(control().moveWindow({app:application, window, position}), "MOVED", "WINDOW_MOVE_UNVERIFIED");
+    },
+
+    async resizeWindow({application, window, size}) {
+      return verifiedWindowMutation(control().resizeWindow({app:application, window, size}), "RESIZED", "WINDOW_RESIZE_UNVERIFIED");
+    },
   };
 }
 
@@ -395,6 +451,46 @@ function deliveredResult(state, result, extra = {}) {
       totalSeconds:result.totalSeconds || 0,
     },
     ...extra,
+  };
+}
+
+function normalizeWindow(window) {
+  const source = window?.field === "window" && window?.value ? window.value : window;
+  return {
+    id:String(source?.id || ""),
+    title:source?.title == null ? null : String(source.title),
+    process:String(source?.process || ""),
+    pid:Number(source?.pid || 0),
+    bundle:source?.bundle == null ? null : String(source.bundle),
+  };
+}
+
+function normalizeBounds(bounds) {
+  if (!bounds) return null;
+  const width = Number(bounds.width ?? bounds.w);
+  const height = Number(bounds.height ?? bounds.h);
+  const x = Number(bounds.x);
+  const y = Number(bounds.y);
+  if (![x, y, width, height].every(Number.isFinite)) return null;
+  return {x, y, width, height};
+}
+
+function verifiedWindowMutation(result, state, fallbackCode) {
+  if (!result?.ok || result.verified !== true) throw legacyFailure(result, fallbackCode);
+  return {
+    ok:true,
+    state,
+    verified:true,
+    window:result.window ? normalizeWindow(result.window) : null,
+    currentWindow:result.currentWindow ? normalizeWindow(result.currentWindow) : null,
+    observedHandle:result.observedHandle || null,
+    actionHandle:result.actionHandle || null,
+    handleRebound:result.handleRebound === true,
+    bounds:normalizeBounds(result.bounds),
+    previousBounds:normalizeBounds(result.previousBounds),
+    verification:{method:result.verificationMethod || "native-window-postcondition", evidence:{}},
+    backend:{name:"macos-agent-ctrl-v46-transition", strategy:result.method || "macos-v82-descriptor-safe"},
+    diagnostics:{actionSeconds:result.actionSeconds || 0, observeSeconds:result.observeSeconds || 0, totalSeconds:result.totalSeconds || 0},
   };
 }
 

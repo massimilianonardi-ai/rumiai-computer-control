@@ -78,6 +78,16 @@ class ComputerControlClient {
     return this.call("sync.waitUntilChanged", {application, previousSnapshot, timeoutMs, pollMs, compact});
   }
 
+  listWindows(application) { return this.call("window.list", {application}); }
+  getCurrentWindow(application) { return this.call("window.getCurrent", {application}); }
+  focusWindow(application, window) { return this.call("window.focus", {application, window}); }
+  closeWindow(application) { return this.call("window.close", {application}); }
+  minimizeWindow(application, window) { return this.call("window.minimize", {application, window}); }
+  restoreWindow(application, window) { return this.call("window.restore", {application, window}); }
+  maximizeWindow(application, window) { return this.call("window.maximize", {application, window}); }
+  moveWindow(application, window, position) { return this.call("window.move", {application, window, position}); }
+  resizeWindow(application, window, size) { return this.call("window.resize", {application, window, size}); }
+
   call(method, params = {}) {
     const id = this.nextId++;
     return new Promise((resolve, reject) => {

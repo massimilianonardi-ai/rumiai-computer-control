@@ -71,6 +71,14 @@ export interface FindResult {
   backend: {name: string; strategy: string};
 }
 
+export interface WindowDescriptor {
+  id: string;
+  title: string | null;
+  process: string;
+  pid: number;
+  bundle: string | null;
+}
+
 export interface ComputerControlClientOptions {
   socketPath?: string;
   timeoutMs?: number;
@@ -92,7 +100,7 @@ export class ComputerControlClient {
   }): Promise<SnapshotResult>;
   find(params: FindParams): Promise<FindResult>;
   get(params: {application: string; target: ObservedTarget; property: string}): Promise<{state: "OBSERVED"; target: ObservedTarget; property: string; value: unknown}>;
-  getBounds(params: {application: string; target: ObservedTarget}): Promise<{state: "OBSERVED"; target: ObservedTarget; bounds: {x: number; y: number; w: number; h: number}}>;
+  getBounds(params: {application: string; target: ObservedTarget}): Promise<{state: "OBSERVED"; target: ObservedTarget; bounds: {x: number; y: number; width: number; height: number}}>;
   focus(params: {application: string; target: ObservedTarget}): Promise<VerifiedOperationResult>;
   click(params: {application: string; target: ObservedTarget; settle?: boolean}): Promise<VerifiedOperationResult>;
   press(params: {application: string; keys: string; settle?: boolean}): Promise<VerifiedOperationResult>;
@@ -103,5 +111,14 @@ export class ComputerControlClient {
   paste(): Promise<VerifiedOperationResult>;
   waitStable(params: {application: string; timeoutMs?: number; pollMs?: number}): Promise<{state: "STABLE"; snapshot: string; observation: {method: string}}>;
   waitUntilChanged(params: {application: string; previousSnapshot: string; timeoutMs?: number; pollMs?: number; compact?: boolean}): Promise<{state: "CHANGED"; changed: true; snapshot: string; observation: {method: string}}>;
+  listWindows(application: string): Promise<{state: "OBSERVED"; windows: WindowDescriptor[]}>;
+  getCurrentWindow(application: string): Promise<{state: "OBSERVED"; window: WindowDescriptor}>;
+  focusWindow(application: string, window: WindowDescriptor): Promise<VerifiedOperationResult>;
+  closeWindow(application: string): Promise<VerifiedOperationResult>;
+  minimizeWindow(application: string, window: WindowDescriptor): Promise<VerifiedOperationResult>;
+  restoreWindow(application: string, window: WindowDescriptor): Promise<VerifiedOperationResult>;
+  maximizeWindow(application: string, window: WindowDescriptor): Promise<VerifiedOperationResult>;
+  moveWindow(application: string, window: WindowDescriptor, position: {x: number; y: number}): Promise<VerifiedOperationResult>;
+  resizeWindow(application: string, window: WindowDescriptor, size: {width: number; height: number}): Promise<VerifiedOperationResult>;
   call(method: string, params?: Record<string, unknown>): Promise<unknown>;
 }
