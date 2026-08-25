@@ -4,19 +4,19 @@ set -eu
 
 VERSION="0.8.0"
 SOURCE_ROOT="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
-PREFIX="${RUMIAI_CC_INSTALL_PREFIX:-${HOME}/.local}"
+PORTABLE_ROOT="${RUMIAI_CC_PORTABLE_ROOT:-}"
 AGENT_CTRL_VERSION="0.1.4"
 AGENT_CTRL_SOURCE="${RUMIAI_CC_AGENT_CTRL_SOURCE:-}"
 
 usage() {
-  echo "Usage: $0 [--prefix PATH]"
+  echo "Usage: $0 --portable-root PATH"
 }
 
 while [ "$#" -gt 0 ]; do
   case "$1" in
-    --prefix)
+    --portable-root)
       [ "$#" -ge 2 ] || { usage >&2; exit 2; }
-      PREFIX="$2"
+      PORTABLE_ROOT="$2"
       shift 2
       ;;
     -h|--help)
@@ -30,6 +30,23 @@ while [ "$#" -gt 0 ]; do
       ;;
   esac
 done
+
+[ -n "$PORTABLE_ROOT" ] || {
+  echo "A project-local --portable-root is required; no system or user-profile default is allowed." >&2
+  exit 2
+}
+
+case "$PORTABLE_ROOT" in
+  /*) ;;
+  *) echo "--portable-root must be an absolute project path." >&2; exit 2 ;;
+esac
+
+case "$PORTABLE_ROOT" in
+  "$HOME"|"$HOME/.local"|"$HOME/.local/"*|/usr|/usr/*|/opt|/opt/*|/Library|/Library/*|/Applications|/Applications/*)
+    echo "Refusing non-portable installation root: $PORTABLE_ROOT" >&2
+    exit 2
+    ;;
+esac
 
 [ "$(uname -s)" = "Darwin" ] || {
   echo "RumiAI Computer Control 0.8.0 currently supports macOS only." >&2
@@ -51,17 +68,16 @@ case "$(uname -m)" in
     ;;
 esac
 
-INSTALL_ROOT="$PREFIX/lib/rumiai-computer-control"
+INSTALL_ROOT="$PORTABLE_ROOT/rumiai-computer-control"
 DESTINATION="$INSTALL_ROOT/$VERSION"
 CURRENT="$INSTALL_ROOT/current"
-COMMAND="$PREFIX/bin/rumiai-computer-control"
 
 if [ -e "$DESTINATION" ] || [ -L "$DESTINATION" ]; then
   echo "Version $VERSION is already installed at $DESTINATION" >&2
   exit 3
 fi
 
-mkdir -p "$INSTALL_ROOT" "$PREFIX/bin"
+mkdir -p "$INSTALL_ROOT"
 TEMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/rumiai-cc-install.XXXXXX")"
 trap 'rm -rf "$TEMP_ROOT"' EXIT INT TERM HUP
 STAGED="$TEMP_ROOT/$VERSION"
@@ -104,7 +120,6 @@ xcrun swiftc "$STAGED/backends/macos/embedded/tools/macos-window-minimized.swift
 
 mv "$STAGED" "$DESTINATION"
 ln -sfn "$VERSION" "$CURRENT"
-ln -sfn "$CURRENT/scripts/rumiai-computer-control" "$COMMAND"
 
 trap - EXIT INT TERM HUP
 rm -rf "$TEMP_ROOT"
@@ -112,4 +127,4 @@ rm -rf "$TEMP_ROOT"
 echo "RumiAI Computer Control $VERSION installed."
 echo "Home: $CURRENT"
 echo "Adapter: $CURRENT/adapters/rumiai/compat.js"
-echo "Command: $COMMAND"
+echo "Command: $CURRENT/scripts/rumiai-computer-control"

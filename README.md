@@ -53,9 +53,11 @@ See `docs/architecture.md` and `docs/development-workflow.md`.
 
 ## Installation
 
-Release `v0.8.0` includes a macOS installer that creates a versioned local
-installation, verifies the downloaded backend dependency, compiles native
-helpers, and exposes a stable `current` path. See `docs/installation.md`.
+Release `v0.8.0` includes a macOS installer that requires an explicit portable
+project root, creates a versioned project-local installation, verifies the
+downloaded backend dependency, compiles native helpers, and exposes a stable
+`current` path. It never defaults to a system or user-profile location. See
+`docs/installation.md`.
 
 ## Checks
 

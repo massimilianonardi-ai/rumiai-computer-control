@@ -17,9 +17,9 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Install release layout from a clean prefix
-        run: ./scripts/install.sh --prefix "$RUNNER_TEMP/rumiai-computer-control"
+        run: ./scripts/install.sh --portable-root "$RUNNER_TEMP/portable/bin"
       - name: Verify installed runtime and backend
         env:
           RUMIAI_CC_NODE: node
         run: |
-          "$RUNNER_TEMP/rumiai-computer-control/bin/rumiai-computer-control" doctor
+          "$RUNNER_TEMP/portable/bin/rumiai-computer-control/current/scripts/rumiai-computer-control" doctor

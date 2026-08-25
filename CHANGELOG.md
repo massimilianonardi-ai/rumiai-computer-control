@@ -9,6 +9,7 @@
 - Physically validate a complete RumiAI task and clean runtime shutdown.
 - Add a versioned macOS installer with verified backend download and compiled native helpers.
 - Remove the development-volume path from RumiAI adapter resolution.
+- Require an explicit project-local portable root and reject system/user-profile installation paths.
 
 ## 0.7.0 — 2026-08-25
 
