@@ -30,6 +30,9 @@ backends/windows/README.md
 backends/linux/README.md
 adapters/mcp/README.md
 adapters/rumiai/compat.js
+scripts/install.sh
+scripts/rumiai-computer-control
+docs/installation.md
 sdk/typescript/src/index.js
 sdk/typescript/src/sync-call.js
 docs/architecture.md
@@ -46,6 +49,7 @@ conformance/physical-tests/macos-window-v82.js
 conformance/physical-tests/rumiai-compat.js
 conformance/results/2026-08-25-macos-window-v82-physical-PASS.md
 conformance/results/2026-08-25-standalone-source-separation-physical-PASS.md
+conformance/results/2026-08-25-macos-clean-install-v080-physical-PASS.md
 "
 
 for relative_path in $required_paths; do

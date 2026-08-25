@@ -51,6 +51,12 @@ intents, and shut the external runtime down cleanly.
 
 See `docs/architecture.md` and `docs/development-workflow.md`.
 
+## Installation
+
+Release `v0.8.0` includes a macOS installer that creates a versioned local
+installation, verifies the downloaded backend dependency, compiles native
+helpers, and exposes a stable `current` path. See `docs/installation.md`.
+
 ## Checks
 
 ```text

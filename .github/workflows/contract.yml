@@ -11,3 +11,14 @@ jobs:
       - uses: actions/checkout@v4
       - name: Check repository contract structure
         run: npm run check
+
+  clean-install-macos:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install release layout from a clean prefix
+        run: ./scripts/install.sh --prefix "$RUNNER_TEMP/rumiai-computer-control"
+      - name: Verify installed runtime and backend
+        env:
+          RUMIAI_CC_NODE: node
+        run: "$RUNNER_TEMP/rumiai-computer-control/bin/rumiai-computer-control" doctor

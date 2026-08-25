@@ -7,6 +7,8 @@
 - Recover safely from stale runtime sockets between consumer sessions.
 - Route all four high-level RumiAI consumers through the external project boundary.
 - Physically validate a complete RumiAI task and clean runtime shutdown.
+- Add a versioned macOS installer with verified backend download and compiled native helpers.
+- Remove the development-volume path from RumiAI adapter resolution.
 
 ## 0.7.0 — 2026-08-25
 

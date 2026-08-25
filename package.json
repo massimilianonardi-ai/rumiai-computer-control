@@ -5,6 +5,7 @@
   "description": "Standalone Computer Control runtime, contracts, backends, and SDKs",
   "scripts": {
     "check": "sh conformance/contract-tests/check-structure.sh && node --test conformance/contract-tests/*.test.js",
+    "install:macos": "sh scripts/install.sh",
     "runtime": "node runtime/src/cli.js"
   },
   "engines": {

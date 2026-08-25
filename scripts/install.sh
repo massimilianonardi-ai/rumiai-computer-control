@@ -1,0 +1,115 @@
+#!/bin/sh
+
+set -eu
+
+VERSION="0.8.0"
+SOURCE_ROOT="$(CDPATH= cd -- "$(dirname "$0")/.." && pwd)"
+PREFIX="${RUMIAI_CC_INSTALL_PREFIX:-${HOME}/.local}"
+AGENT_CTRL_VERSION="0.1.4"
+AGENT_CTRL_SOURCE="${RUMIAI_CC_AGENT_CTRL_SOURCE:-}"
+
+usage() {
+  echo "Usage: $0 [--prefix PATH]"
+}
+
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    --prefix)
+      [ "$#" -ge 2 ] || { usage >&2; exit 2; }
+      PREFIX="$2"
+      shift 2
+      ;;
+    -h|--help)
+      usage
+      exit 0
+      ;;
+    *)
+      echo "Unknown option: $1" >&2
+      usage >&2
+      exit 2
+      ;;
+  esac
+done
+
+[ "$(uname -s)" = "Darwin" ] || {
+  echo "RumiAI Computer Control 0.8.0 currently supports macOS only." >&2
+  exit 2
+}
+
+case "$(uname -m)" in
+  arm64)
+    AGENT_CTRL_ASSET="agent-ctrl-darwin-arm64"
+    AGENT_CTRL_SHA256="68b3a6a17b068d2a5ddbc39a422c84fdb21cd620059ed913b0469ada61bc3378"
+    ;;
+  x86_64)
+    AGENT_CTRL_ASSET="agent-ctrl-darwin-x64"
+    AGENT_CTRL_SHA256="5ec48718ead182bed698f3cf050bda840ac32d0724586ba7bc5c63be9b19e284"
+    ;;
+  *)
+    echo "Unsupported macOS architecture: $(uname -m)" >&2
+    exit 2
+    ;;
+esac
+
+INSTALL_ROOT="$PREFIX/lib/rumiai-computer-control"
+DESTINATION="$INSTALL_ROOT/$VERSION"
+CURRENT="$INSTALL_ROOT/current"
+COMMAND="$PREFIX/bin/rumiai-computer-control"
+
+if [ -e "$DESTINATION" ] || [ -L "$DESTINATION" ]; then
+  echo "Version $VERSION is already installed at $DESTINATION" >&2
+  exit 3
+fi
+
+mkdir -p "$INSTALL_ROOT" "$PREFIX/bin"
+TEMP_ROOT="$(mktemp -d "${TMPDIR:-/tmp}/rumiai-cc-install.XXXXXX")"
+trap 'rm -rf "$TEMP_ROOT"' EXIT INT TERM HUP
+STAGED="$TEMP_ROOT/$VERSION"
+mkdir -p "$STAGED"
+
+(cd "$SOURCE_ROOT" && tar \
+  --exclude='.git' \
+  --exclude='.DS_Store' \
+  --exclude='local' \
+  --exclude='backends/macos/embedded/bin/agent-ctrl' \
+  --exclude='backends/macos/embedded/bin/rumiai-*' \
+  -cf - .) | (cd "$STAGED" && tar -xf -)
+
+AGENT_CTRL_BIN="$STAGED/backends/macos/embedded/bin/agent-ctrl"
+mkdir -p "$(dirname "$AGENT_CTRL_BIN")"
+if [ -n "$AGENT_CTRL_SOURCE" ]; then
+  cp "$AGENT_CTRL_SOURCE" "$AGENT_CTRL_BIN"
+else
+  curl -fL --retry 3 \
+    "https://github.com/k4cper-g/agent-ctrl/releases/download/v${AGENT_CTRL_VERSION}/${AGENT_CTRL_ASSET}" \
+    -o "$AGENT_CTRL_BIN"
+fi
+
+ACTUAL_SHA256="$(shasum -a 256 "$AGENT_CTRL_BIN" | awk '{print $1}')"
+[ "$ACTUAL_SHA256" = "$AGENT_CTRL_SHA256" ] || {
+  echo "agent-ctrl checksum mismatch" >&2
+  exit 4
+}
+chmod 755 "$AGENT_CTRL_BIN"
+
+xcrun --find swiftc >/dev/null
+xcrun swiftc "$STAGED/backends/macos/embedded/tools/macos-focused-window.swift" \
+  -o "$STAGED/backends/macos/embedded/bin/rumiai-macos-focused-window"
+xcrun swiftc "$STAGED/backends/macos/embedded/tools/enable-ax-manual.swift" \
+  -o "$STAGED/backends/macos/embedded/bin/rumiai-enable-ax-manual"
+xcrun swiftc "$STAGED/backends/macos/embedded/tools/macos-window-bounds.swift" \
+  -o "$STAGED/backends/macos/embedded/bin/rumiai-macos-window-bounds"
+xcrun swiftc "$STAGED/backends/macos/embedded/tools/macos-window-minimized.swift" \
+  -o "$STAGED/backends/macos/embedded/bin/rumiai-macos-window-minimized"
+
+mv "$STAGED" "$DESTINATION"
+ln -sfn "$VERSION" "$CURRENT"
+ln -sfn "$CURRENT/scripts/rumiai-computer-control" "$COMMAND"
+
+trap - EXIT INT TERM HUP
+rm -rf "$TEMP_ROOT"
+
+echo "RumiAI Computer Control $VERSION installed."
+echo "Home: $CURRENT"
+echo "Adapter: $CURRENT/adapters/rumiai/compat.js"
+echo "Command: $COMMAND"
