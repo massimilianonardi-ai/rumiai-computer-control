@@ -18,6 +18,7 @@ class ComputerControlClient {
   snapshot({application, settle = false, compact = true, previousSnapshot = null}) { return this.call("ui.snapshot", {application, settle, compact, previousSnapshot}); }
   describe({application, target}) { return this.call("ui.describe", {application, target}); }
   getTextSelection({application, target}) { return this.call("ui.getTextSelection", {application, target}); }
+  selectTextRange({application, target, range}) { return this.call("ui.selectTextRange", {application, target, range}); }
   invoke({application, target, settle = true}) { return this.call("ui.invoke", {application, target, settle}); }
   find({application, query = "", role = null, first = true, snapshot = null}) { return this.call("ui.find", {application, query, role, first, snapshot}); }
   get({application, target, property}) { return this.call("ui.get", {application, target, property}); }
