@@ -44,7 +44,7 @@ function createMacOSBackend(options = {}) {
       const before = resolveInTree(beforeTree, target);
       const beforeContext = scrollContext(before);
       const beforeSignature = control().stableTreeSignature(beforeContext);
-      const dy = (direction === "down" ? 1 : -1) * SCROLL_UNIT_POINTS * amount;
+      const dy = (direction === "down" ? -1 : 1) * SCROLL_UNIT_POINTS * amount;
       const action = control().scrollElement(before.ref, 0, dy);
       if (!action?.ok) throw new ComputerControlError("SCROLL_ACTION_FAILED", (action?.stderr || action?.stdout || "target-aware scroll delivery failed").trim(), "NONE", {state:"FAILED", method:action?.method || "none"});
       if (settle && typeof base.waitStable === "function") await base.waitStable({application});

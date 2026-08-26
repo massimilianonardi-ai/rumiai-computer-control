@@ -17,7 +17,7 @@ function checkElement(ref){return runAction(["check",ref,"--json"],`agent-ctrl c
 function uncheckElement(ref){return runAction(["uncheck",ref,"--json"],`agent-ctrl uncheck ${ref} --json`);}
 function toggleElement(ref){return runAction(["toggle",ref,"--json"],`agent-ctrl toggle ${ref} --json`);}
 function scrollIntoViewElement(ref){return runAction(["scroll-into-view",ref,"--json"],`agent-ctrl scroll-into-view ${ref} --json`);}
-function scrollElement(ref,dx,dy){return runAction(["scroll",String(dx),String(dy),"--ref",ref,"--json"],`agent-ctrl scroll ${dx} ${dy} --ref ${ref} --json`);}
+function scrollElement(ref,dx,dy){return runAction(["scroll","--ref",ref,"--json","--",String(dx),String(dy)],`agent-ctrl scroll --ref ${ref} --json -- ${dx} ${dy}`);}
 function pointerClickElement(ref,app,bounds=null){const r=deterministicPointerClick(ref,app,bounds);return{ok:r.ok,code:r.ok?0:1,seconds:r.seconds||0,stdout:"",stderr:r.ok?"":(r.summary||"deterministic pointer click failed"),method:"deterministic AX-bounds pointer click",summary:r.summary||""};}
 function focusElement(ref){return runAction(["focus",ref],`agent-ctrl focus ${ref}`);}
 function getElementProperty(ref,property){const prop=String(property||"").trim();return runAction(["get",prop,ref],`agent-ctrl get ${prop} ${ref}`);}
