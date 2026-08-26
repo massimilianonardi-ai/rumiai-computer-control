@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/v0.9/text-mutation-result.schema.json",
+  "title": "Verified text mutation result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "ok",
+    "state",
+    "verified",
+    "operation",
+    "target",
+    "requestedRange",
+    "replacementLength",
+    "previousTextLength",
+    "resultingTextLength",
+    "resultingSelection",
+    "caret",
+    "textChanged",
+    "selectionChanged",
+    "changed",
+    "idempotent",
+    "verification",
+    "backend"
+  ],
+  "$defs": {
+    "range": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end", "length", "collapsed", "unit"],
+      "properties": {
+        "start": {"type": "integer", "minimum": 0},
+        "end": {"type": "integer", "minimum": 0},
+        "length": {"type": "integer", "minimum": 0},
+        "collapsed": {"type": "boolean"},
+        "unit": {"const": "utf16-code-unit"}
+      }
+    }
+  },
+  "properties": {
+    "ok": {"const": true},
+    "state": {"const": "TEXT_MUTATED"},
+    "verified": {"const": true},
+    "operation": {"enum": ["ui.replaceTextRange", "ui.insertText", "ui.appendText"]},
+    "target": {
+      "type": "object",
+      "required": ["ref", "role", "name"],
+      "properties": {
+        "ref": {"type": "string", "pattern": "^@e[0-9]+$"},
+        "role": {"type": "string", "minLength": 1},
+        "name": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": true
+    },
+    "requestedRange": {"$ref": "#/$defs/range"},
+    "replacementLength": {"type": "integer", "minimum": 0},
+    "previousTextLength": {"type": "integer", "minimum": 0},
+    "resultingTextLength": {"type": "integer", "minimum": 0},
+    "resultingSelection": {"$ref": "#/$defs/range"},
+    "caret": {"type": "integer", "minimum": 0},
+    "textChanged": {"type": "boolean"},
+    "selectionChanged": {"type": "boolean"},
+    "changed": {"type": "boolean"},
+    "idempotent": {"type": "boolean"},
+    "verification": {
+      "type": "object",
+      "required": ["method", "evidence"],
+      "properties": {
+        "method": {"type": "string", "minLength": 1},
+        "evidence": {"type": "object"}
+      },
+      "additionalProperties": true
+    },
+    "backend": {
+      "type": "object",
+      "required": ["name", "strategy", "fallback"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "strategy": {"type": "string", "minLength": 1},
+        "fallback": {"type": "boolean"}
+      },
+      "additionalProperties": true
+    },
+    "diagnostics": {"type": "object"}
+  }
+}
