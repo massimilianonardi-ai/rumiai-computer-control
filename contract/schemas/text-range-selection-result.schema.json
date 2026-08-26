@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/v0.9/text-range-selection-result.schema.json",
+  "title": "Verified text range selection result",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["ok", "state", "verified", "target", "requestedRange", "previousRange", "observedRange", "caret", "selectedText", "changed", "idempotent", "verification", "backend"],
+  "properties": {
+    "ok": {"const": true},
+    "state": {"const": "TEXT_RANGE_SELECTED"},
+    "verified": {"const": true},
+    "target": {
+      "type": "object",
+      "required": ["ref", "role", "name"],
+      "properties": {
+        "ref": {"type": "string", "pattern": "^@e[0-9]+$"},
+        "role": {"enum": ["text-field", "text-area", "search-box"]},
+        "name": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "requestedRange": {"$ref": "text-selection-result.schema.json#/$defs/range"},
+    "previousRange": {"$ref": "text-selection-result.schema.json#/$defs/range"},
+    "observedRange": {"$ref": "text-selection-result.schema.json#/$defs/range"},
+    "caret": {"type": ["integer", "null"], "minimum": 0},
+    "selectedText": {"type": ["string", "null"]},
+    "changed": {"type": "boolean"},
+    "idempotent": {"type": "boolean"},
+    "verification": {"type": "object"},
+    "backend": {"type": "object"},
+    "diagnostics": {"type": "object"}
+  }
+}
