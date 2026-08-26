@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/v0.9/replace-text-range.params.schema.json",
+  "title": "Text range replacement parameters",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["application", "target", "range", "text"],
+  "properties": {
+    "application": {"type": "string", "minLength": 1},
+    "target": {
+      "type": "object",
+      "required": ["ref"],
+      "properties": {"ref": {"type": "string", "pattern": "^@e[0-9]+$"}},
+      "additionalProperties": true
+    },
+    "range": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["start", "end", "unit"],
+      "properties": {
+        "start": {"type": "integer", "minimum": 0},
+        "end": {"type": "integer", "minimum": 0},
+        "unit": {"const": "utf16-code-unit"}
+      }
+    },
+    "text": {"type": "string"}
+  }
+}
