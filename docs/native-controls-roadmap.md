@@ -79,7 +79,7 @@ AT-SPI interfaces do not cross the canonical boundary.
 
 ## Current progress on `main`
 
-Authoritative macOS Cocoa/AppKit evidence:
+Authoritative macOS Cocoa/AppKit evidence for the generic native-control core:
 
 ```text
 rumiai-computer-use-PoCs
@@ -87,26 +87,37 @@ rumiai-computer-use-PoCs
   evidence commit: 2334690a069d65ebd5546508f447c39f10d3cd8f
 ```
 
-Validated product revision:
+Authoritative Phase 8A text-selection evidence:
 
 ```text
-ea4a7f0bc190aa8d836ec2f123e0c1d0e470c4e1
+rumiai-computer-use-PoCs
+  session: cc-phase8a-text-selection-s04
+  evidence commit: faf24053aa8b9b31abc7f3ac730941921c3625f9
+  result: 14 PASS / 0 FAIL / 0 BLOCKED
 ```
 
-Current lifecycle state after that evidence:
+Phase 8A was physically validated against product revision:
 
 ```text
-Phase 0 contract foundation  IMPLEMENTED
-Phase 1 ui.describe          PHYSICALLY_VALIDATED
-Phase 2 ui.invoke            PHYSICALLY_VALIDATED
-Phase 3 ui.toggle/select     PHYSICALLY_VALIDATED on AppKit reference controls
-Phase 4 ui.expand/collapse   PHYSICALLY_VALIDATED on AppKit reference controls
-Phase 5 value mutations      PHYSICALLY_VALIDATED on AppKit numeric controls
-Phase 6 ui.children          PHYSICALLY_VALIDATED on AppKit hierarchy fixture
-Phase 7 scrolling            PHYSICALLY_VALIDATED on AppKit scroll fixture
-Phase 8 advanced text        NEXT
-Phase 9 app/system surfaces  PENDING
-Phase 10 low-level fallback  PENDING
+4166cab8c6b535d627c0f93fe0015ad3c69fcc6a
+```
+
+Current lifecycle state:
+
+```text
+Phase 0 contract foundation   IMPLEMENTED
+Phase 1 ui.describe           PHYSICALLY_VALIDATED
+Phase 2 ui.invoke             PHYSICALLY_VALIDATED
+Phase 3 ui.toggle/select      PHYSICALLY_VALIDATED on AppKit reference controls
+Phase 4 ui.expand/collapse    PHYSICALLY_VALIDATED on AppKit reference controls
+Phase 5 value mutations       PHYSICALLY_VALIDATED on AppKit numeric controls
+Phase 6 ui.children           PHYSICALLY_VALIDATED on AppKit hierarchy fixture
+Phase 7 scrolling             PHYSICALLY_VALIDATED on AppKit scroll fixture
+Phase 8A text observation     PHYSICALLY_VALIDATED on AppKit NSTextView
+Phase 8B text range selection IMPLEMENTED; physical checkpoint pending
+Phase 8C text mutation        PENDING
+Phase 9 app/system surfaces   PENDING
+Phase 10 low-level fallback   PENDING
 ```
 
 The Phase 3-7 promotion is evidence-scoped. Remaining role coverage is tracked
@@ -360,20 +371,40 @@ committed physical evidence set.
 
 ## Phase 8 — Advanced text controls
 
-Begin only after the generic control-state model is stable. That prerequisite is
-now satisfied for the AppKit reference surface.
+The generic control-state prerequisite is satisfied for the AppKit reference
+surface. Phase 8 is split into three physical checkpoints so later mutation work
+does not build on an unverified text-position or text-selection model.
 
-Phase 8 is split into three physical checkpoints so later mutation work does not
-build on an unverified text-position model.
+All Phase 8 canonical offsets use one explicit unit:
+
+```text
+utf16-code-unit
+```
+
+Offsets are zero-based and `end` is exclusive. Backend-native `NSRange`,
+`AXTextMarkerRange`, UIA TextRange and AT-SPI objects never cross the public
+boundary.
 
 ### Phase 8A — text selection observation
 
 Purpose: define and physically prove the canonical text-position model.
 
-Candidate public API:
+Public API:
 
 ```js
 client.getTextSelection({application, target})
+```
+
+Canonical range model:
+
+```json
+{
+  "start": 1,
+  "end": 3,
+  "length": 2,
+  "collapsed": false,
+  "unit": "utf16-code-unit"
+}
 ```
 
 Required result semantics:
@@ -385,47 +416,72 @@ Required result semantics:
 - text length when observable and useful for validation;
 - explicit `null`/unavailable values rather than inference.
 
-Canonical range model:
-
-```json
-{
-  "start": 12,
-  "end": 18,
-  "length": 6,
-  "collapsed": false
-}
-```
-
 Rules:
 
-- offsets are zero-based logical text offsets in the canonical exposed text;
-- `end` is exclusive;
 - `length == end - start`;
-- a caret is a collapsed range where `start == end`;
-- backend-native `NSRange`, `AXTextMarkerRange`, UIA TextRange and AT-SPI objects
-  never cross the public boundary;
-- Unicode indexing semantics must be explicitly fixed by the contract before
-  mutation APIs are released. The implementation must not silently mix UTF-16
-  code units, Unicode scalar values and grapheme clusters.
+- a caret is a collapsed range where `start == end` and `length == 0`;
+- a non-BMP character occupies two canonical UTF-16 units;
+- native target re-resolution remains inside the pinned application process;
+- target ambiguity, unavailable selection and inconsistent native observations
+  fail closed.
 
-Exit criterion: physical AppKit evidence proves caret, non-empty selection and
-selected-text observation against a deterministic native text fixture.
+Status: `PHYSICALLY_VALIDATED` on deterministic AppKit `NSTextView` controls.
+The reference checkpoint proves a non-empty selection containing `😀` at
+`[1,3)` and a collapsed caret at offset `3`.
+
+Evidence:
+
+```text
+session: cc-phase8a-text-selection-s04
+test evidence: faf24053aa8b9b31abc7f3ac730941921c3625f9
+validated product: 4166cab8c6b535d627c0f93fe0015ad3c69fcc6a
+result: 14 PASS / 0 FAIL / 0 BLOCKED
+```
 
 ### Phase 8B — range selection
 
-Candidate public API:
+Purpose: select a native text range or place a caret without keyboard,
+clipboard or coordinate delivery.
+
+Public API:
 
 ```js
-client.selectTextRange({application, target, range})
+client.selectTextRange({
+  application,
+  target,
+  range:{start:3, end:5, unit:"utf16-code-unit"}
+})
 ```
+
+The request contains only independent fields. `length` and `collapsed` are
+derived by Computer Control.
 
 Required behavior:
 
-- validate canonical range bounds;
-- set selection through the strongest native text Accessibility primitive;
-- re-observe selection;
-- succeed only when the observed canonical range equals the request;
-- preserve collapsed selection as explicit caret placement when supported.
+- validate `0 <= start <= end` and the explicit index unit before dispatch;
+- observe full UTF-16 text length when available and reject out-of-bounds ranges
+  before mutation;
+- return idempotently when the exact range is already selected;
+- set selection through the strongest native Accessibility primitive;
+- on macOS, require `AXSelectedTextRange` to be settable and write a real
+  `CFRange` with `AXUIElementSetAttributeValue`;
+- verify the exact native range immediately after the write;
+- independently re-observe the selection through the Phase 8A observation path;
+- succeed only when the independent observed canonical range equals the request;
+- preserve collapsed selection as explicit caret placement;
+- never loosen target matching after permission, ambiguity, mutation or
+  verification failures.
+
+Status: `IMPLEMENTED`; deterministic Cocoa/AppKit physical checkpoint pending.
+
+The physical checkpoint must prove:
+
+1. non-empty range selection;
+2. exact selected text after the write;
+3. idempotent re-selection;
+4. collapsed range/caret placement;
+5. UTF-16 consistency around the existing non-BMP fixture;
+6. out-of-bounds rejection without changing the current range.
 
 ### Phase 8C — range mutation and insertion
 
@@ -448,6 +504,9 @@ Required behavior:
 
 Clipboard-assisted or keyboard-assisted delivery may be backend strategies, but
 must not change canonical semantics or weaken verification.
+
+Phase 8C must not start from an assumption that 8B works physically; its
+implementation checkpoint begins only after committed Phase 8B physical PASS.
 
 ## Phase 9 — Application and system surfaces
 
@@ -557,35 +616,3 @@ checkpoint:
 Windows and Linux implementations follow the same contract when there is a
 concrete target environment. They do not delay macOS progress, but macOS-only
 details cannot become canonical semantics.
-
-## Completion criteria for every operation
-
-An operation is complete only when:
-
-- request/result schemas are unambiguous;
-- invalid and unsupported states fail closed;
-- backend re-resolves fresh ephemeral handles before acting;
-- documented verification is actually observed;
-- `runtime.info` reports real support and validation state;
-- SDK types match runtime behavior;
-- API docs include parameters, behavior and result semantics;
-- external validation repository contains relevant evidence;
-- no test/experimental artifact is added to the product repository;
-- portable execution introduces no system-wide or user-profile installation.
-
-## Release planning
-
-The earlier proposed `0.9.0` slice (Phase 0-3) has been overtaken by successful
-physical validation through Phase 7. Before selecting the first release scope,
-perform a dedicated release review rather than automatically publishing every
-implemented capability.
-
-That review should decide:
-
-- which validated roles are claimed as supported versus still coverage-pending;
-- whether residual Phase 5 structured-value work belongs before the first
-  public native-controls release;
-- compatibility/versioning of the canonical contract;
-- macOS backend dependency pinning and portable runtime requirements;
-- release notes that clearly state the validated surface and do not imply
-  browser support.
