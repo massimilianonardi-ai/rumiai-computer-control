@@ -700,6 +700,10 @@ function normalizeControlRole(value) {
   return CONTROL_ROLES.has(role) ? role : "unknown";
 }
 
+function agentCtrlFindRole(value) {
+  return normalizeControlRole(value) === "radio-button" ? "radio" : value;
+}
+
 function normalizeControlValue(role, value) {
   if (value === null || value === undefined) {
     return {value:null, valueType:"null"};
@@ -1001,7 +1005,7 @@ function find({
 
   // Backend semantic locator remains useful when the caller has no suitable
   // snapshot or when the snapshot does not contain the target.
-  const backendRole = normalizeControlRole(role) === "radio-button" ? "radio" : role;
+  const backendRole = agentCtrlFindRole(role);
   const found = agentCtrl.findElement(wanted, backendRole, first);
   if (!found.ok) {
     return {
@@ -1903,6 +1907,7 @@ function clear({app, element, verify = true}) {
 
 module.exports = {
   normText,
+  agentCtrlFindRole,
   getForeground,
   waitStable,
   getCurrentWindow,
