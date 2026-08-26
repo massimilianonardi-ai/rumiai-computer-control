@@ -2,10 +2,11 @@
 
 const cp=require("node:child_process");
 const fs=require("node:fs");
+const os=require("node:os");
 const path=require("node:path");
 
 const SOURCE=path.resolve(__dirname,"..","..","..","tools","macos-text-selection.swift");
-const BINARY=path.resolve(__dirname,"..","..","..","bin","rumiai-macos-text-selection");
+const BINARY=path.join(os.tmpdir(),"rumiai-computer-control","rumiai-macos-text-selection");
 
 function run(cmd,args){const started=performance.now();const result=cp.spawnSync(cmd,args,{encoding:"utf8",maxBuffer:8*1024*1024});return{ok:(result.status??1)===0,code:result.status??1,stdout:result.stdout||"",stderr:result.stderr||"",seconds:(performance.now()-started)/1000,method:`${cmd} ${args.join(" ")}`};}
 function needsCompile(){if(!fs.existsSync(BINARY))return true;try{return fs.statSync(SOURCE).mtimeMs>fs.statSync(BINARY).mtimeMs;}catch{return true;}}

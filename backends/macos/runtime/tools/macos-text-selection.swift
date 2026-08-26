@@ -1,5 +1,6 @@
 import Foundation
 import ApplicationServices
+import Darwin
 
 struct CanonicalRange: Codable {
     let start: Int
@@ -24,6 +25,11 @@ struct Observation: Codable {
     let detail: String?
 }
 
+enum TargetResolution {
+    case success(AXUIElement)
+    case failure(code: String, detail: String)
+}
+
 func copyAttribute(_ element: AXUIElement, _ attribute: CFString) -> CFTypeRef? {
     var value: CFTypeRef?
     let error = AXUIElementCopyAttributeValue(element, attribute, &value)
@@ -32,15 +38,12 @@ func copyAttribute(_ element: AXUIElement, _ attribute: CFString) -> CFTypeRef? 
 
 func stringAttribute(_ element: AXUIElement, _ attribute: CFString) -> String? {
     guard let value = copyAttribute(element, attribute) else { return nil }
-    if let string = value as? String { return string }
-    return nil
+    return value as? String
 }
 
 func elementName(_ element: AXUIElement) -> String? {
     for attribute in [kAXTitleAttribute, kAXDescriptionAttribute, kAXIdentifierAttribute, kAXHelpAttribute] {
-        if let value = stringAttribute(element, attribute as CFString), !value.isEmpty {
-            return value
-        }
+        if let value = stringAttribute(element, attribute as CFString), !value.isEmpty { return value }
     }
     return nil
 }
@@ -62,28 +65,25 @@ func children(_ element: AXUIElement) -> [AXUIElement] {
     return value as? [AXUIElement] ?? []
 }
 
-func resolveTarget(app: AXUIElement, role: String, name: String) -> Result<AXUIElement, String> {
+func resolveTarget(app: AXUIElement, role: String, name: String) -> TargetResolution {
     var queue: [AXUIElement] = [app]
     var matches: [AXUIElement] = []
     var visited = 0
     let maxNodes = 20000
-
     while !queue.isEmpty && visited < maxNodes {
         let element = queue.removeFirst()
         visited += 1
         let observedRole = canonicalRole(element)
         let observedName = elementName(element) ?? ""
-        let roleMatches = role.isEmpty || observedRole == role
-        if roleMatches && observedName == name {
+        if (role.isEmpty || observedRole == role) && observedName == name {
             matches.append(element)
             if matches.count > 1 { break }
         }
         queue.append(contentsOf: children(element))
     }
-
     if matches.count == 1 { return .success(matches[0]) }
-    if matches.isEmpty { return .failure("No native AX text element matched role=\(role) name=\(name)") }
-    return .failure("Native AX text target is ambiguous for role=\(role) name=\(name)")
+    if matches.isEmpty { return .failure(code:"TEXT_TARGET_STALE", detail:"No native AX text element matched role=\(role) name=\(name)") }
+    return .failure(code:"TEXT_TARGET_AMBIGUOUS", detail:"Native AX text target is ambiguous for role=\(role) name=\(name)")
 }
 
 func selectedRange(_ element: AXUIElement) -> CFRange? {
@@ -99,24 +99,19 @@ func selectedRange(_ element: AXUIElement) -> CFRange? {
 func emit(_ observation: Observation, exitCode: Int32 = 0) -> Never {
     let encoder = JSONEncoder()
     encoder.outputFormatting = [.sortedKeys]
-    if let data = try? encoder.encode(observation), let text = String(data: data, encoding: .utf8) {
-        print(text)
-    }
-    Foundation.exit(exitCode)
+    if let data = try? encoder.encode(observation), let text = String(data: data, encoding: .utf8) { print(text) }
+    Darwin.exit(exitCode)
 }
 
 guard CommandLine.arguments.count >= 4 else {
     emit(Observation(ok:false,state:"FAILED",pid:0,role:nil,name:nil,range:nil,caret:nil,selectedText:nil,textLength:nil,method:"macos-ax-selected-text-range",error:"INVALID_ARGUMENTS",detail:"usage: helper <pid> <role> <name>"), exitCode: 2)
 }
-
 guard AXIsProcessTrusted() else {
     emit(Observation(ok:false,state:"FAILED",pid:0,role:nil,name:nil,range:nil,caret:nil,selectedText:nil,textLength:nil,method:"macos-ax-selected-text-range",error:"ACCESSIBILITY_PERMISSION_REQUIRED",detail:"macOS Accessibility permission is required"), exitCode: 3)
 }
-
 guard let parsedPid = Int32(CommandLine.arguments[1]), parsedPid > 0 else {
     emit(Observation(ok:false,state:"FAILED",pid:0,role:nil,name:nil,range:nil,caret:nil,selectedText:nil,textLength:nil,method:"macos-ax-selected-text-range",error:"INVALID_PID",detail:"positive pid required"), exitCode: 2)
 }
-
 let requestedRole = CommandLine.arguments[2]
 let requestedName = CommandLine.arguments[3]
 if requestedName.isEmpty {
@@ -125,13 +120,12 @@ if requestedName.isEmpty {
 
 let app = AXUIElementCreateApplication(pid_t(parsedPid))
 switch resolveTarget(app: app, role: requestedRole, name: requestedName) {
-case .failure(let detail):
-    emit(Observation(ok:false,state:"FAILED",pid:parsedPid,role:requestedRole,name:requestedName,range:nil,caret:nil,selectedText:nil,textLength:nil,method:"macos-ax-selected-text-range",error:detail.contains("ambiguous") ? "TEXT_TARGET_AMBIGUOUS" : "TEXT_TARGET_STALE",detail:detail), exitCode: 5)
+case .failure(let code, let detail):
+    emit(Observation(ok:false,state:"FAILED",pid:parsedPid,role:requestedRole,name:requestedName,range:nil,caret:nil,selectedText:nil,textLength:nil,method:"macos-ax-selected-text-range",error:code,detail:detail), exitCode: 5)
 case .success(let element):
     guard let nativeRange = selectedRange(element), nativeRange.location >= 0, nativeRange.length >= 0 else {
         emit(Observation(ok:false,state:"FAILED",pid:parsedPid,role:canonicalRole(element),name:elementName(element),range:nil,caret:nil,selectedText:nil,textLength:nil,method:"macos-ax-selected-text-range",error:"TEXT_SELECTION_UNAVAILABLE",detail:"AXSelectedTextRange is unavailable or not a CFRange"), exitCode: 6)
     }
-
     let start = nativeRange.location
     let length = nativeRange.length
     let end = start + length
@@ -139,14 +133,11 @@ case .success(let element):
     let selected = stringAttribute(element, kAXSelectedTextAttribute as CFString)
     let fullText = stringAttribute(element, kAXValueAttribute as CFString)
     let textLength = fullText.map { $0.utf16.count }
-
     if let total = textLength, end > total {
         emit(Observation(ok:false,state:"FAILED",pid:parsedPid,role:canonicalRole(element),name:elementName(element),range:range,caret:nil,selectedText:selected,textLength:total,method:"macos-ax-selected-text-range",error:"TEXT_SELECTION_INVALID",detail:"observed selection exceeds observed UTF-16 text length"), exitCode: 7)
     }
-
     if let selected = selected, selected.utf16.count != length {
         emit(Observation(ok:false,state:"FAILED",pid:parsedPid,role:canonicalRole(element),name:elementName(element),range:range,caret:nil,selectedText:selected,textLength:textLength,method:"macos-ax-selected-text-range",error:"TEXT_SELECTION_INCONSISTENT",detail:"AXSelectedText UTF-16 length does not match AXSelectedTextRange"), exitCode: 8)
     }
-
     emit(Observation(ok:true,state:"OBSERVED",pid:parsedPid,role:canonicalRole(element),name:elementName(element),range:range,caret:length == 0 ? start : nil,selectedText:selected,textLength:textLength,method:"macos-ax-selected-text-range",error:nil,detail:nil))
 }
