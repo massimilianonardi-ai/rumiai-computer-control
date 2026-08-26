@@ -46,7 +46,7 @@ function createMacOSBackend(options = {}) {
       const additions = [
         {name:"ui.scroll", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["target-aware-wheel", "native-scroll-tree-postcondition"]},
         {name:"ui.scrollIntoView", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["ax-scroll-to-visible", "scroll-area-geometry-postcondition"]},
-        {name:"ui.getTextSelection", available:true, validationState:"IMPLEMENTED", strategies:["native-ax-selected-text-range", "semantic-descriptor-rebind"]},
+        {name:"ui.getTextSelection", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["native-ax-selected-text-range", "semantic-descriptor-rebind"]},
       ].filter(x => !names.has(x.name));
       return {...info, capabilities:[...info.capabilities, ...additions]};
     },
