@@ -23,7 +23,7 @@ function createMacOSBackend(options = {}) {
     return found;
   }
   function scrollContext(found) {
-    const node = control().nearestTreeAncestor(found, "scroll-area");
+    const node = control().nearestScrollTreeAncestor(found);
     if (!node) throw new ComputerControlError("SCROLL_CONTEXT_UNAVAILABLE", "Target is not observed inside a native scroll-area", "NONE", {state:"UNVERIFIED"});
     return node;
   }

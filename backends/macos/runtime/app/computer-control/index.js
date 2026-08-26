@@ -20,6 +20,7 @@ module.exports = {
   collectTreeDescendants:nativeTree.collectDescendants,
   treeRectangle:nativeTree.rectangle,
   nearestTreeAncestor:nativeTree.nearestAncestor,
+  nearestScrollTreeAncestor:nativeTree.nearestScrollAncestor,
   treeIntersects:nativeTree.intersects,
   stableTreeSignature:nativeTree.stableNodeSignature,
   scrollElement:agentCtrl.scrollElement,
