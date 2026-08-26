@@ -2,7 +2,7 @@
 
 const operations=require("./operations");
 const stateful=require("./stateful-controls");
-const DISCLOSURE_ROLES=new Set(["combo-box","menu","tree-item","list-item","row","group"]);
+const DISCLOSURE_ROLES=new Set(["button","combo-box","menu","tree-item","list-item","row","group"]);
 
 function mutate({app,element,expected,settle=true}) {
   const started=performance.now();
