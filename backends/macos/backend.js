@@ -1,9 +1,79 @@
 "use strict";
-const prior=require("./backend-structure");const path=require("node:path");const {ComputerControlError}=require("../../runtime/src/errors");
-const SCROLL_UNIT_POINTS=240;
-function createMacOSBackend(options={}){const base=prior.createMacOSBackend(options);let controlModule=null;function control(){if(controlModule)return controlModule;if(options.backendModule)return(controlModule=options.backendModule);return(controlModule=require(path.resolve(options.modulePath||prior.DEFAULT_MACOS_MODULE)));}
-function freshTree(application,settle=false){const tree=control().snapshotTree({app:application,settle,depth:12});if(!tree.ok)throw new ComputerControlError(tree.error||"SNAPSHOT_FAILED",tree.detail||"native AX tree unavailable","NONE");return tree;}
-function resolveInTree(tree,target){const found=control().findTreeNode(tree.root,target);if(!found.ok)throw new ComputerControlError(found.error,found.detail,"NONE");return found;}
-function scrollContext(found){const node=control().nearestTreeAncestor(found,"scroll-area");if(!node)throw new ComputerControlError("SCROLL_CONTEXT_UNAVAILABLE","Target is not observed inside a native scroll-area","NONE",{state:"UNVERIFIED"});return node;}
-return{...base,async info(){const info=await base.info();const names=new Set(info.capabilities.map(x=>x.name));const additions=[{name:"ui.scroll",available:true,validationState:"IMPLEMENTED",strategies:["target-aware-wheel","native-scroll-tree-postcondition"]},{name:"ui.scrollIntoView",available:true,validationState:"IMPLEMENTED",strategies:["ax-scroll-to-visible","scroll-area-geometry-postcondition"]}].filter(x=>!names.has(x.name));return{...info,capabilities:[...info.capabilities,...additions]};},async scroll({application,target,direction,amount=1,settle=true}){const beforeTree=freshTree(application,false);const before=resolveInTree(beforeTree,target);const beforeContext=scrollContext(before);const beforeSignature=control().stableTreeSignature(beforeContext);const dy=(direction==="down"?1:-1)*SCROLL_UNIT_POINTS*amount;const delivered=require(path.resolve(options.modulePath||prior.DEFAULT_MACOS_MODULE)).scrollElement?require(path.resolve(options.modulePath||prior.DEFAULT_MACOS_MODULE)).scrollElement(before.ref,0,dy):null;let action=delivered;if(!action){const agentCtrl=require(path.resolve(__dirname,"runtime/app/computer-control/backends/agent-ctrl"));action=agentCtrl.scrollElement(before.ref,0,dy);}if(!action?.ok)throw new ComputerControlError("SCROLL_ACTION_FAILED",(action?.stderr||action?.stdout||"target-aware scroll delivery failed").trim(),"NONE",{state:"FAILED",method:action?.method||"none"});if(settle)await base.waitStable({application});const afterTree=freshTree(application,false);const after=resolveInTree(afterTree,{ref:before.ref,role:before.role,name:before.name});const afterContext=scrollContext(after);const afterSignature=control().stableTreeSignature(afterContext);if(beforeSignature===afterSignature)throw new ComputerControlError("SCROLL_UNVERIFIED","Target-aware wheel delivery did not produce an observable change in the native scroll-area subtree","NONE",{state:"UNVERIFIED",direction,amount});return{ok:true,state:"SCROLLED",verified:true,target:{ref:after.ref,role:after.role,name:after.name},direction,amount,verification:{method:"native-scroll-area-tree-changed",evidence:{changed:true,scrollUnitPoints:SCROLL_UNIT_POINTS}},backend:{name:"macos-ax",strategy:action.method||"target-aware-wheel",fallback:true},diagnostics:{actionSeconds:action.seconds||0}};},async scrollIntoView({application,target}){const beforeTree=freshTree(application,false);const before=resolveInTree(beforeTree,target);const beforeContext=scrollContext(before);const beforeTargetBounds=control().treeRectangle(before.node);const beforeContextBounds=control().treeRectangle(beforeContext);if(beforeTargetBounds&&beforeContextBounds&&control().treeIntersects(beforeTargetBounds,beforeContextBounds))return{ok:true,state:"VISIBLE",verified:true,target:{ref:before.ref,role:before.role,name:before.name},idempotent:true,changed:false,verification:{method:"native-scroll-area-geometry",evidence:{intersects:true}},backend:{name:"macos-ax",strategy:"idempotent-native-geometry",fallback:false}};const agentCtrl=require(path.resolve(__dirname,"runtime/app/computer-control/backends/agent-ctrl"));const action=agentCtrl.scrollIntoViewElement(before.ref);if(!action.ok)throw new ComputerControlError("SCROLL_INTO_VIEW_ACTION_FAILED",(action.stderr||action.stdout||"AXScrollToVisible delivery failed").trim(),"NONE",{state:"FAILED",method:action.method});const afterTree=freshTree(application,true);const after=resolveInTree(afterTree,{ref:before.ref,role:before.role,name:before.name});const afterContext=scrollContext(after);const targetBounds=control().treeRectangle(after.node);const contextBounds=control().treeRectangle(afterContext);if(!targetBounds||!contextBounds||!control().treeIntersects(targetBounds,contextBounds))throw new ComputerControlError("SCROLL_INTO_VIEW_UNVERIFIED","AXScrollToVisible completed but target geometry was not observed inside the native scroll-area viewport","NONE",{state:"UNVERIFIED"});return{ok:true,state:"VISIBLE",verified:true,target:{ref:after.ref,role:after.role,name:after.name},idempotent:false,changed:true,verification:{method:"ax-scroll-to-visible-plus-native-geometry",evidence:{intersects:true}},backend:{name:"macos-ax",strategy:action.method||"ax-scroll-to-visible",fallback:false},diagnostics:{actionSeconds:action.seconds||0}};}};}
-module.exports={...prior,createMacOSBackend,SCROLL_UNIT_POINTS};
+const prior = require("./backend-structure");
+const path = require("node:path");
+const {ComputerControlError} = require("../../runtime/src/errors");
+const SCROLL_UNIT_POINTS = 240;
+
+function createMacOSBackend(options = {}) {
+  const base = prior.createMacOSBackend(options);
+  let controlModule = null;
+  function control() {
+    if (controlModule) return controlModule;
+    if (options.backendModule) return (controlModule = options.backendModule);
+    return (controlModule = require(path.resolve(options.modulePath || prior.DEFAULT_MACOS_MODULE)));
+  }
+  function freshTree(application, settle = false) {
+    const tree = control().snapshotTree({app:application, settle, depth:12});
+    if (!tree.ok) throw new ComputerControlError(tree.error || "SNAPSHOT_FAILED", tree.detail || "native AX tree unavailable", "NONE");
+    return tree;
+  }
+  function resolveInTree(tree, target) {
+    const found = control().findTreeNode(tree.root, target);
+    if (!found.ok) throw new ComputerControlError(found.error, found.detail, "NONE");
+    return found;
+  }
+  function scrollContext(found) {
+    const node = control().nearestTreeAncestor(found, "scroll-area");
+    if (!node) throw new ComputerControlError("SCROLL_CONTEXT_UNAVAILABLE", "Target is not observed inside a native scroll-area", "NONE", {state:"UNVERIFIED"});
+    return node;
+  }
+
+  return {
+    ...base,
+    async info() {
+      const info = await base.info();
+      const names = new Set(info.capabilities.map(x => x.name));
+      const additions = [
+        {name:"ui.scroll", available:true, validationState:"IMPLEMENTED", strategies:["target-aware-wheel", "native-scroll-tree-postcondition"]},
+        {name:"ui.scrollIntoView", available:true, validationState:"IMPLEMENTED", strategies:["ax-scroll-to-visible", "scroll-area-geometry-postcondition"]},
+      ].filter(x => !names.has(x.name));
+      return {...info, capabilities:[...info.capabilities, ...additions]};
+    },
+    async scroll({application, target, direction, amount = 1, settle = true}) {
+      const beforeTree = freshTree(application, false);
+      const before = resolveInTree(beforeTree, target);
+      const beforeContext = scrollContext(before);
+      const beforeSignature = control().stableTreeSignature(beforeContext);
+      const dy = (direction === "down" ? 1 : -1) * SCROLL_UNIT_POINTS * amount;
+      const action = control().scrollElement(before.ref, 0, dy);
+      if (!action?.ok) throw new ComputerControlError("SCROLL_ACTION_FAILED", (action?.stderr || action?.stdout || "target-aware scroll delivery failed").trim(), "NONE", {state:"FAILED", method:action?.method || "none"});
+      if (settle && typeof base.waitStable === "function") await base.waitStable({application});
+      const afterTree = freshTree(application, false);
+      const after = resolveInTree(afterTree, {ref:before.ref, role:before.role, name:before.name});
+      const afterContext = scrollContext(after);
+      const afterSignature = control().stableTreeSignature(afterContext);
+      if (beforeSignature === afterSignature) throw new ComputerControlError("SCROLL_UNVERIFIED", "Target-aware wheel delivery did not produce an observable change in the native scroll-area subtree", "NONE", {state:"UNVERIFIED", direction, amount});
+      return {ok:true,state:"SCROLLED",verified:true,target:{ref:after.ref,role:after.role,name:after.name},direction,amount,verification:{method:"native-scroll-area-tree-changed",evidence:{changed:true,scrollUnitPoints:SCROLL_UNIT_POINTS}},backend:{name:"macos-ax",strategy:action.method||"target-aware-wheel",fallback:true},diagnostics:{actionSeconds:action.seconds||0}};
+    },
+    async scrollIntoView({application, target}) {
+      const beforeTree = freshTree(application, false);
+      const before = resolveInTree(beforeTree, target);
+      const beforeContext = scrollContext(before);
+      const beforeTargetBounds = control().treeRectangle(before.node);
+      const beforeContextBounds = control().treeRectangle(beforeContext);
+      if (beforeTargetBounds && beforeContextBounds && control().treeIntersects(beforeTargetBounds, beforeContextBounds)) {
+        return {ok:true,state:"VISIBLE",verified:true,target:{ref:before.ref,role:before.role,name:before.name},idempotent:true,changed:false,verification:{method:"native-scroll-area-geometry",evidence:{intersects:true}},backend:{name:"macos-ax",strategy:"idempotent-native-geometry",fallback:false}};
+      }
+      const action = control().scrollIntoViewElement(before.ref);
+      if (!action?.ok) throw new ComputerControlError("SCROLL_INTO_VIEW_ACTION_FAILED", (action?.stderr || action?.stdout || "AXScrollToVisible delivery failed").trim(), "NONE", {state:"FAILED", method:action?.method || "none"});
+      const afterTree = freshTree(application, true);
+      const after = resolveInTree(afterTree, {ref:before.ref, role:before.role, name:before.name});
+      const afterContext = scrollContext(after);
+      const targetBounds = control().treeRectangle(after.node);
+      const contextBounds = control().treeRectangle(afterContext);
+      if (!targetBounds || !contextBounds || !control().treeIntersects(targetBounds, contextBounds)) throw new ComputerControlError("SCROLL_INTO_VIEW_UNVERIFIED", "AXScrollToVisible completed but target geometry was not observed inside the native scroll-area viewport", "NONE", {state:"UNVERIFIED"});
+      return {ok:true,state:"VISIBLE",verified:true,target:{ref:after.ref,role:after.role,name:after.name},idempotent:false,changed:true,verification:{method:"ax-scroll-to-visible-plus-native-geometry",evidence:{intersects:true}},backend:{name:"macos-ax",strategy:action.method||"ax-scroll-to-visible",fallback:false},diagnostics:{actionSeconds:action.seconds||0}};
+    },
+  };
+}
+module.exports = {...prior, createMacOSBackend, SCROLL_UNIT_POINTS};
