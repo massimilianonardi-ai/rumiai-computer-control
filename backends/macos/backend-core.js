@@ -581,12 +581,22 @@ function parseActionableSnapshot(snapshot) {
     if (!match) continue;
     nodes.push({
       ref:match[1],
-      role:match[2] || "",
+      role:normalizeSnapshotRole(match[2]),
       name:match[3] || "",
       disabled:/\[disabled\]/.test(raw),
     });
   }
   return nodes;
+}
+
+function normalizeSnapshotRole(value) {
+  const raw = String(value || "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-")
+    .trim();
+  if (raw === "radio" || raw === "radiobutton") return "radio-button";
+  return raw;
 }
 
 function normalize(value) {

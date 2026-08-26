@@ -852,7 +852,7 @@ function parseActionableSnapshot(snapshot) {
 
     nodes.push({
       ref:m[1],
-      role:m[2] || "",
+      role:normalizeSnapshotRole(m[2]),
       name:m[3] || "",
       disabled:/\[disabled\]/.test(raw),
       raw,
@@ -860,6 +860,15 @@ function parseActionableSnapshot(snapshot) {
   }
 
   return nodes;
+}
+
+function normalizeSnapshotRole(value) {
+  const raw = String(value || "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-")
+    .trim();
+  return ROLE_ALIASES.get(raw) || raw;
 }
 
 function findInSnapshot(snapshot, query, role = null, first = true) {
