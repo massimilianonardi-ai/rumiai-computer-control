@@ -1,0 +1,14 @@
+{
+  "$schema":"https://json-schema.org/draft/2020-12/schema",
+  "$id":"https://rumiai.local/computer-control/v0.9/select-result.schema.json",
+  "title":"Verified native selection result",
+  "type":"object",
+  "additionalProperties":false,
+  "required":["ok","state","verified","target","previousValue","observedValue","changed","idempotent","verification","backend","diagnostics"],
+  "properties":{
+    "ok":{"const":true},"state":{"const":"SELECTED"},"verified":{"const":true},
+    "target":{"type":"object","additionalProperties":false,"required":["ref","role","name"],"properties":{"ref":{"type":"string","pattern":"^@e[0-9]+$"},"role":{"enum":["radio-button","tab","option","list-item","row"]},"name":{"type":"string"}}},
+    "previousValue":{"type":"boolean"},"observedValue":{"const":true},"changed":{"type":"boolean"},"idempotent":{"type":"boolean"},
+    "verification":{"type":"object"},"backend":{"type":"object"},"diagnostics":{"type":"object"}
+  }
+}

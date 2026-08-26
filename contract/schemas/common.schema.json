@@ -13,7 +13,7 @@
     },
     "validationState": {
       "type": "string",
-      "enum": ["PROPOSED", "BOUNDARY_PASS", "PHYSICALLY_VALIDATED", "PROMOTED", "RELEASED"]
+      "enum": ["PROPOSED", "IMPLEMENTED", "BOUNDARY_PASS", "PHYSICALLY_VALIDATED", "PROMOTED", "RELEASED"]
     },
     "capability": {
       "type": "object",

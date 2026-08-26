@@ -1,0 +1,6 @@
+{
+  "jsonrpc":"2.0",
+  "id":"example-select-1",
+  "method":"ui.select",
+  "params":{"application":"Safari","target":{"ref":"@e8","role":"radio-button","name":"Example"},"settle":true}
+}

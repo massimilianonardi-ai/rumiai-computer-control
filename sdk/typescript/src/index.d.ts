@@ -1,5 +1,6 @@
 export type ValidationState =
   | "PROPOSED"
+  | "IMPLEMENTED"
   | "BOUNDARY_PASS"
   | "PHYSICALLY_VALIDATED"
   | "PROMOTED"
@@ -53,6 +54,8 @@ export type ControlRole =
   | "image" | "separator" | "unknown";
 
 export type InvokableControlRole = "button" | "link" | "menu-item" | "toolbar-item";
+export type ToggleControlRole = "checkbox" | "switch";
+export type SelectControlRole = "radio-button" | "tab" | "option" | "list-item" | "row";
 
 export type ControlValueType = "null" | "string" | "number" | "boolean" | "date" | "time" | "date-time";
 
@@ -97,6 +100,25 @@ export interface InvokeResult extends VerifiedOperationResult {
   state: "INVOKED";
   target: {ref: `@e${number}`; role: InvokableControlRole; name: string};
   semanticConsequenceVerified: false;
+}
+
+export interface ToggleResult extends VerifiedOperationResult {
+  state: "TOGGLED";
+  target: {ref: `@e${number}`; role: ToggleControlRole; name: string};
+  requestedValue: boolean;
+  previousValue: boolean | null;
+  observedValue: boolean;
+  changed: boolean;
+  idempotent: boolean;
+}
+
+export interface SelectResult extends VerifiedOperationResult {
+  state: "SELECTED";
+  target: {ref: `@e${number}`; role: SelectControlRole; name: string};
+  previousValue: boolean;
+  observedValue: true;
+  changed: boolean;
+  idempotent: boolean;
 }
 
 export interface SnapshotResult {
@@ -149,21 +171,11 @@ export class ComputerControlClient {
   getForeground(): Promise<{state: "OBSERVED"; application: {name: string; bundle: string | null; pid: number | null}; observation: {method: string}}>;
   shutdownRuntime(): Promise<VerifiedOperationResult>;
   setText(params: SetTextParams): Promise<VerifiedOperationResult>;
-  snapshot(params: {
-    application: string;
-    settle?: boolean;
-    compact?: boolean;
-    previousSnapshot?: string | null;
-  }): Promise<SnapshotResult>;
-  describe(params: {
-    application: string;
-    target: {ref: `@e${number}`; role?: string; name?: string};
-  }): Promise<ControlDescription>;
-  invoke(params: {
-    application: string;
-    target: {ref: `@e${number}`; role?: string; name?: string};
-    settle?: boolean;
-  }): Promise<InvokeResult>;
+  snapshot(params: {application: string; settle?: boolean; compact?: boolean; previousSnapshot?: string | null}): Promise<SnapshotResult>;
+  describe(params: {application: string; target: {ref: `@e${number}`; role?: string; name?: string}}): Promise<ControlDescription>;
+  invoke(params: {application: string; target: {ref: `@e${number}`; role?: string; name?: string}; settle?: boolean}): Promise<InvokeResult>;
+  toggle(params: {application: string; target: {ref: `@e${number}`; role?: string; name?: string}; value: boolean; settle?: boolean}): Promise<ToggleResult>;
+  select(params: {application: string; target: {ref: `@e${number}`; role?: string; name?: string}; settle?: boolean}): Promise<SelectResult>;
   find(params: FindParams): Promise<FindResult>;
   get(params: {application: string; target: ObservedTarget; property: string}): Promise<{state: "OBSERVED"; target: ObservedTarget; property: string; value: unknown}>;
   getBounds(params: {application: string; target: ObservedTarget}): Promise<{state: "OBSERVED"; target: ObservedTarget; bounds: {x: number; y: number; width: number; height: number}}>;

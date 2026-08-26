@@ -1,0 +1,6 @@
+{
+  "jsonrpc":"2.0",
+  "id":"example-toggle-1",
+  "method":"ui.toggle",
+  "params":{"application":"System Settings","target":{"ref":"@e12","role":"checkbox","name":"Example"},"value":true,"settle":true}
+}
