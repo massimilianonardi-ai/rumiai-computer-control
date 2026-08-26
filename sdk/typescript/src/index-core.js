@@ -19,6 +19,9 @@ class ComputerControlClient {
   describe({application, target}) { return this.call("ui.describe", {application, target}); }
   getTextSelection({application, target}) { return this.call("ui.getTextSelection", {application, target}); }
   selectTextRange({application, target, range}) { return this.call("ui.selectTextRange", {application, target, range}); }
+  replaceTextRange({application, target, range, text}) { return this.call("ui.replaceTextRange", {application, target, range, text}); }
+  insertText({application, target, text}) { return this.call("ui.insertText", {application, target, text}); }
+  appendText({application, target, text}) { return this.call("ui.appendText", {application, target, text}); }
   invoke({application, target, settle = true}) { return this.call("ui.invoke", {application, target, settle}); }
   find({application, query = "", role = null, first = true, snapshot = null}) { return this.call("ui.find", {application, query, role, first, snapshot}); }
   get({application, target, property}) { return this.call("ui.get", {application, target, property}); }
