@@ -36,13 +36,43 @@ function extensionCall(method, params) {
   const value = envelope.result;
   return {
     ...value,
-    method:value.backend?.strategy,
+    method:value.backend?.strategy || value.observation?.method,
     verificationMethod:value.verification?.method,
     fallbackUsed:value.backend?.fallback === true,
     actionSeconds:value.diagnostics?.actionSeconds || 0,
     observeSeconds:value.diagnostics?.observeSeconds || 0,
   };
 }
+
+function safe(method, params, map = value => value) {
+  const value = extensionCall(method, params);
+  if (value?.ok === false) return value;
+  return map(value);
+}
+
+function describe({app, element}) {
+  return safe("ui.describe", {application:app, target:element}, value => ({
+    ok:true,
+    ...value,
+    ref:value.target.ref,
+    role:value.target.role,
+    name:value.target.name,
+    method:value.observation?.method || value.method,
+  }));
+}
+
+function action(method, {app, element, settle = true}) {
+  return safe(method, {application:app, target:element, settle}, value => ({
+    ...value,
+    method:value.backend?.strategy || value.method,
+    verificationMethod:value.verification?.method || value.verificationMethod,
+    fallbackUsed:value.backend?.fallback === true || value.fallbackUsed === true,
+    actionSeconds:value.diagnostics?.actionSeconds || value.actionSeconds || 0,
+    observeSeconds:value.diagnostics?.observeSeconds || value.observeSeconds || 0,
+  }));
+}
+
+const invoke = params => action("ui.invoke", params);
 
 function toggle({app, element, value, settle = true}) {
   return extensionCall("ui.toggle", {application:app, target:element, value:Boolean(value), settle});
@@ -52,4 +82,4 @@ function select({app, element, settle = true}) {
   return extensionCall("ui.select", {application:app, target:element, settle});
 }
 
-module.exports = {...core, toggle, select};
+module.exports = {...core, describe, invoke, toggle, select};
