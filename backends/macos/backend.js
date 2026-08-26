@@ -3,8 +3,12 @@ const prior = require("./backend-structure");
 const path = require("node:path");
 const {ComputerControlError} = require("../../runtime/src/errors");
 const textSelection = require("./runtime/app/computer-control/backends/macos-text-selection");
+const textRangeSelection = require("./runtime/app/computer-control/backends/macos-text-range-selection");
 const SCROLL_UNIT_POINTS = 240;
 const TEXT_SELECTION_ROLES = new Set(["text-field","text-area","search-box"]);
+
+function canonicalTextRange(start,end){return{start,end,length:end-start,collapsed:start===end,unit:"utf16-code-unit"};}
+function sameTextRange(a,b){return Boolean(a&&b&&a.start===b.start&&a.end===b.end&&a.length===b.length&&a.collapsed===b.collapsed&&a.unit===b.unit);}
 
 function createMacOSBackend(options = {}) {
   const base = prior.createMacOSBackend(options);
@@ -37,6 +41,26 @@ function createMacOSBackend(options = {}) {
     if(!resolved.ok)throw new ComputerControlError(resolved.error||"TEXT_TARGET_PID_UNAVAILABLE",resolved.detail||"native process id unavailable","NONE",{state:"FAILED",method:resolved.method});
     return resolved;
   }
+  function validateTextTarget(described,target,operation){
+    const role=described?.target?.role||target?.role||"";
+    const name=String(described?.target?.name||target?.name||"").trim();
+    if(!TEXT_SELECTION_ROLES.has(role))throw new ComputerControlError("UNSUPPORTED_CONTROL_ROLE",`${operation} does not support role "${role}"`,"NONE",{state:"FAILED",role});
+    if(!name)throw new ComputerControlError("TEXT_TARGET_UNNAMED",`${operation} requires an accessible name for safe native re-resolution`,"NONE",{state:"FAILED",role});
+    return{role,name,target:{ref:described.target.ref,role,name}};
+  }
+  function observeTextSelection({application,target,operation}){
+    return base.describe({application,target}).then(described=>{
+      const resolvedTarget=validateTextTarget(described,target,operation);
+      const process=resolveTextProcess(application);
+      const observed=textSelection.observe({pid:process.pid,role:resolvedTarget.role,name:resolvedTarget.name});
+      if(!observed?.ok)throw new ComputerControlError(observed?.error||"TEXT_SELECTION_OBSERVATION_FAILED",observed?.detail||"native text-selection observation failed","NONE",{state:observed?.state||"FAILED",method:observed?.method||"macos-ax-selected-text-range"});
+      const range=observed.range;
+      if(!range||!Number.isInteger(range.start)||!Number.isInteger(range.end)||!Number.isInteger(range.length)||range.start<0||range.end<range.start||range.length!==range.end-range.start||range.unit!=="utf16-code-unit")throw new ComputerControlError("TEXT_SELECTION_INVALID","Native backend returned an invalid canonical text range","NONE",{state:"FAILED"});
+      if(observed.selectedText!=null&&String(observed.selectedText).length!==range.length)throw new ComputerControlError("TEXT_SELECTION_INCONSISTENT","Selected text UTF-16 length does not match observed range length","NONE",{state:"FAILED"});
+      if(observed.textLength!=null&&(!Number.isInteger(observed.textLength)||observed.textLength<range.end))throw new ComputerControlError("TEXT_SELECTION_INVALID","Observed text length is inconsistent with selection range","NONE",{state:"FAILED"});
+      return{described,...resolvedTarget,process,observed,range};
+    });
+  }
 
   return {
     ...base,
@@ -47,23 +71,25 @@ function createMacOSBackend(options = {}) {
         {name:"ui.scroll", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["target-aware-wheel", "native-scroll-tree-postcondition"]},
         {name:"ui.scrollIntoView", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["ax-scroll-to-visible", "scroll-area-geometry-postcondition"]},
         {name:"ui.getTextSelection", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["native-ax-selected-text-range", "semantic-descriptor-rebind"]},
+        {name:"ui.selectTextRange", available:true, validationState:"IMPLEMENTED", strategies:["native-ax-selected-text-range-write", "exact-range-postcondition"]},
       ].filter(x => !names.has(x.name));
       return {...info, capabilities:[...info.capabilities, ...additions]};
     },
     async getTextSelection({application,target}) {
-      const described = await base.describe({application,target});
-      const role = described?.target?.role || target?.role || "";
-      const name = String(described?.target?.name || target?.name || "").trim();
-      if (!TEXT_SELECTION_ROLES.has(role)) throw new ComputerControlError("UNSUPPORTED_CONTROL_ROLE",`ui.getTextSelection does not support role "${role}"`,"NONE",{state:"FAILED",role});
-      if (!name) throw new ComputerControlError("TEXT_TARGET_UNNAMED","ui.getTextSelection requires an accessible name for safe native re-resolution","NONE",{state:"FAILED",role});
-      const process = resolveTextProcess(application);
-      const observed = textSelection.observe({pid:process.pid,role,name});
-      if (!observed?.ok) throw new ComputerControlError(observed?.error||"TEXT_SELECTION_OBSERVATION_FAILED",observed?.detail||"native text-selection observation failed","NONE",{state:observed?.state||"FAILED",method:observed?.method||"macos-ax-selected-text-range"});
-      const range = observed.range;
-      if (!range || !Number.isInteger(range.start) || !Number.isInteger(range.end) || !Number.isInteger(range.length) || range.start < 0 || range.end < range.start || range.length !== range.end-range.start || range.unit !== "utf16-code-unit") throw new ComputerControlError("TEXT_SELECTION_INVALID","Native backend returned an invalid canonical text range","NONE",{state:"FAILED"});
-      if (observed.selectedText != null && String(observed.selectedText).length !== range.length) throw new ComputerControlError("TEXT_SELECTION_INCONSISTENT","Selected text UTF-16 length does not match observed range length","NONE",{state:"FAILED"});
-      if (observed.textLength != null && (!Number.isInteger(observed.textLength) || observed.textLength < range.end)) throw new ComputerControlError("TEXT_SELECTION_INVALID","Observed text length is inconsistent with selection range","NONE",{state:"FAILED"});
-      return {state:"OBSERVED",target:{ref:described.target.ref,role,name},selection:range,caret:range.collapsed?range.start:null,selectedText:observed.selectedText,textLength:observed.textLength,observation:{method:observed.method||"macos-ax-selected-text-range",reboundBy:"role-and-accessible-name",indexUnit:"utf16-code-unit"},backend:{name:"macos-ax",strategy:"native-ax-selected-text-range"},diagnostics:{observeSeconds:(process.seconds||0)+(observed.seconds||0),helperCompiled:observed.compiled===true}};
+      const current=await observeTextSelection({application,target,operation:"ui.getTextSelection"});
+      return {state:"OBSERVED",target:current.target,selection:current.range,caret:current.range.collapsed?current.range.start:null,selectedText:current.observed.selectedText,textLength:current.observed.textLength,observation:{method:current.observed.method||"macos-ax-selected-text-range",reboundBy:"role-and-accessible-name",indexUnit:"utf16-code-unit"},backend:{name:"macos-ax",strategy:"native-ax-selected-text-range"},diagnostics:{observeSeconds:(current.process.seconds||0)+(current.observed.seconds||0),helperCompiled:current.observed.compiled===true}};
+    },
+    async selectTextRange({application,target,range}) {
+      const requested=canonicalTextRange(range.start,range.end);
+      const before=await observeTextSelection({application,target,operation:"ui.selectTextRange"});
+      if(before.observed.textLength!=null&&requested.end>before.observed.textLength)throw new ComputerControlError("TEXT_RANGE_OUT_OF_BOUNDS",`Requested end ${requested.end} exceeds observed UTF-16 text length ${before.observed.textLength}`,"NONE",{state:"FAILED",requestedRange:requested,textLength:before.observed.textLength});
+      if(sameTextRange(before.range,requested))return{ok:true,state:"TEXT_RANGE_SELECTED",verified:true,target:before.target,requestedRange:requested,previousRange:before.range,observedRange:before.range,caret:requested.collapsed?requested.start:null,selectedText:before.observed.selectedText,changed:false,idempotent:true,verification:{method:"native-ax-selected-text-range-postcondition",evidence:{matches:true,idempotent:true}},backend:{name:"macos-ax",strategy:"idempotent-native-text-range",fallback:false},diagnostics:{actionSeconds:0,observeSeconds:(before.process.seconds||0)+(before.observed.seconds||0)}};
+      const mutation=textRangeSelection.setRange({pid:before.process.pid,role:before.role,name:before.name,start:requested.start,end:requested.end});
+      if(!mutation?.ok)throw new ComputerControlError(mutation?.error||"TEXT_RANGE_SELECTION_FAILED",mutation?.detail||"native text range selection failed","NONE",{state:mutation?.state||"FAILED",method:mutation?.method||"macos-ax-set-selected-text-range",requestedRange:requested});
+      if(!sameTextRange(mutation.range,requested))throw new ComputerControlError("TEXT_RANGE_WRITE_UNVERIFIED","Native helper did not report the exact requested range after write","NONE",{state:"UNVERIFIED",requestedRange:requested,observedRange:mutation.range||null});
+      const after=await observeTextSelection({application,target:before.target,operation:"ui.selectTextRange"});
+      if(!sameTextRange(after.range,requested))throw new ComputerControlError("TEXT_RANGE_SELECTION_UNVERIFIED","Independent AX observation did not match requested text range","NONE",{state:"UNVERIFIED",requestedRange:requested,observedRange:after.range});
+      return{ok:true,state:"TEXT_RANGE_SELECTED",verified:true,target:after.target,requestedRange:requested,previousRange:before.range,observedRange:after.range,caret:after.range.collapsed?after.range.start:null,selectedText:after.observed.selectedText,changed:true,idempotent:false,verification:{method:"native-ax-selected-text-range-postcondition",evidence:{matches:true,helperVerified:true,independentObservation:true}},backend:{name:"macos-ax",strategy:mutation.method||"macos-ax-set-selected-text-range",fallback:false},diagnostics:{actionSeconds:mutation.seconds||0,observeSeconds:(before.process.seconds||0)+(before.observed.seconds||0)+(after.process.seconds||0)+(after.observed.seconds||0),helperCompiled:mutation.compiled===true||after.observed.compiled===true}};
     },
     async scroll({application, target, direction, amount = 1, settle = true}) {
       const beforeTree = freshTree(application, false);
@@ -122,4 +148,4 @@ function createMacOSBackend(options = {}) {
     },
   };
 }
-module.exports = {...prior, createMacOSBackend, SCROLL_UNIT_POINTS, TEXT_SELECTION_ROLES};
+module.exports = {...prior, createMacOSBackend, SCROLL_UNIT_POINTS, TEXT_SELECTION_ROLES, canonicalTextRange, sameTextRange};
