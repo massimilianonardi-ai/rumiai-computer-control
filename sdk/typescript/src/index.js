@@ -11,5 +11,7 @@ class ComputerControlClient extends core.ComputerControlClient {
   increment({application, target, settle = true}) { return this.call("ui.increment", {application, target, settle}); }
   decrement({application, target, settle = true}) { return this.call("ui.decrement", {application, target, settle}); }
   children({application, target, offset = 0, limit = 50}) { return this.call("ui.children", {application, target, offset, limit}); }
+  scroll({application, target, direction, amount = 1, settle = true}) { return this.call("ui.scroll", {application, target, direction, amount, settle}); }
+  scrollIntoView({application, target}) { return this.call("ui.scrollIntoView", {application, target}); }
 }
 module.exports={...core,ComputerControlClient};
