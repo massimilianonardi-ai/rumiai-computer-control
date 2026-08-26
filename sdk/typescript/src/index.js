@@ -10,5 +10,6 @@ class ComputerControlClient extends core.ComputerControlClient {
   setValue({application, target, value, settle = true}) { return this.call("ui.setValue", {application, target, value, settle}); }
   increment({application, target, settle = true}) { return this.call("ui.increment", {application, target, settle}); }
   decrement({application, target, settle = true}) { return this.call("ui.decrement", {application, target, settle}); }
+  children({application, target, offset = 0, limit = 50}) { return this.call("ui.children", {application, target, offset, limit}); }
 }
 module.exports={...core,ComputerControlClient};

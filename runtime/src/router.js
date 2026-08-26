@@ -8,5 +8,6 @@ case "ui.collapse":core.validateElementParams(params,"ui.collapse");return backe
 case "ui.setValue":core.validateElementParams(params,"ui.setValue");if(params.value===undefined||params.value===null||!(typeof params.value==="string"||typeof params.value==="number"))throw new ComputerControlError("CONTROL_VALUE_REQUIRED","ui.setValue requires a string or number value","NONE");return backend.setValue(params);
 case "ui.increment":core.validateElementParams(params,"ui.increment");return backend.increment(params);
 case "ui.decrement":core.validateElementParams(params,"ui.decrement");return backend.decrement(params);
+case "ui.children":core.validateElementParams(params,"ui.children");if(params.offset!=null&&(!Number.isInteger(params.offset)||params.offset<0))throw new ComputerControlError("INVALID_PAGINATION","ui.children offset must be a non-negative integer","NONE");if(params.limit!=null&&(!Number.isInteger(params.limit)||params.limit<1||params.limit>200))throw new ComputerControlError("INVALID_PAGINATION","ui.children limit must be between 1 and 200","NONE");return backend.children(params);
 default:return routeCore(method,params);}};}
 module.exports={...core,createRouter};
