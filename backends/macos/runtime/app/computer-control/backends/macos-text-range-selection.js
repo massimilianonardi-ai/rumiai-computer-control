@@ -1,0 +1,19 @@
+"use strict";
+
+const cp=require("node:child_process");
+const fs=require("node:fs");
+const os=require("node:os");
+const path=require("node:path");
+const textSelection=require("./macos-text-selection");
+
+const SOURCE=path.resolve(__dirname,"..","..","..","tools","macos-text-range-selection.swift");
+const BINARY=path.join(os.tmpdir(),"rumiai-computer-control","rumiai-macos-text-range-selection");
+
+function run(cmd,args){const started=performance.now();const result=cp.spawnSync(cmd,args,{encoding:"utf8",maxBuffer:8*1024*1024});return{ok:(result.status??1)===0,code:result.status??1,stdout:result.stdout||"",stderr:result.stderr||"",seconds:(performance.now()-started)/1000};}
+function needsCompile(){if(!fs.existsSync(BINARY))return true;try{return fs.statSync(SOURCE).mtimeMs>fs.statSync(BINARY).mtimeMs;}catch{return true;}}
+function ensureHelper(){if(!fs.existsSync(SOURCE))return{ok:false,error:"TEXT_RANGE_HELPER_SOURCE_MISSING",detail:`missing helper source: ${SOURCE}`,seconds:0};if(!needsCompile())return{ok:true,path:BINARY,compiled:false,seconds:0};const which=run("/usr/bin/xcrun",["--find","swiftc"]);if(!which.ok)return{ok:false,error:"TEXT_RANGE_HELPER_UNAVAILABLE",detail:(which.stderr||which.stdout||"swiftc unavailable").trim(),seconds:which.seconds};fs.mkdirSync(path.dirname(BINARY),{recursive:true});const compiled=run("/usr/bin/xcrun",["swiftc",SOURCE,"-o",BINARY]);if(!compiled.ok)return{ok:false,error:"TEXT_RANGE_HELPER_COMPILE_FAILED",detail:(compiled.stderr||compiled.stdout||"helper compilation failed").trim(),seconds:which.seconds+compiled.seconds};try{fs.chmodSync(BINARY,0o755);}catch{}return{ok:true,path:BINARY,compiled:true,seconds:which.seconds+compiled.seconds};}
+function parse(executed){try{return{ok:true,data:JSON.parse(String(executed.stdout||"").trim())};}catch(error){return{ok:false,detail:`invalid native text-range JSON: ${error.message}; stderr=${String(executed.stderr||"").trim()}`};}}
+function execute(helper,{pid,role,name,start,end}){const executed=run(helper,[String(pid),String(role||""),String(name||""),String(start),String(end)]);const parsed=parse(executed);return{executed,parsed};}
+function setRange({pid,role,name,start,end}){const helper=ensureHelper();if(!helper.ok)return{...helper,state:"FAILED",method:"macos-ax-set-selected-text-range"};const requestedRole=String(role||"");let attempt=execute(helper.path,{pid,role:requestedRole,name,start,end});let seconds=(helper.seconds||0)+(attempt.executed.seconds||0);if(!attempt.parsed.ok)return{ok:false,state:"FAILED",error:"TEXT_RANGE_INVALID_JSON",detail:attempt.parsed.detail,seconds,method:"macos-ax-set-selected-text-range"};let data=attempt.parsed.data;let reboundRole=requestedRole;const alternate=textSelection.alternateNativeTextRole(requestedRole);if((!attempt.executed.ok||data?.ok!==true)&&data?.error==="TEXT_TARGET_STALE"&&alternate){attempt=execute(helper.path,{pid,role:alternate,name,start,end});seconds+=attempt.executed.seconds||0;if(!attempt.parsed.ok)return{ok:false,state:"FAILED",error:"TEXT_RANGE_INVALID_JSON",detail:attempt.parsed.detail,seconds,method:"macos-ax-set-selected-text-range"};data=attempt.parsed.data;reboundRole=alternate;}if(!attempt.executed.ok||data?.ok!==true)return{ok:false,state:data?.state||"FAILED",error:data?.error||"TEXT_RANGE_SELECTION_FAILED",detail:data?.detail||String(attempt.executed.stderr||attempt.executed.stdout||"native text range selection failed").trim(),data,seconds,method:data?.method||"macos-ax-set-selected-text-range",compiled:helper.compiled===true,reboundRole};return{ok:true,state:"MUTATED",pid:Number(data.pid||pid),role:data.role==null?null:String(data.role),name:data.name==null?null:String(data.name),range:data.range||null,textLength:data.textLength==null?null:Number(data.textLength),seconds,method:data.method||"macos-ax-set-selected-text-range",compiled:helper.compiled===true,reboundRole};}
+
+module.exports={SOURCE,BINARY,ensureHelper,setRange};
