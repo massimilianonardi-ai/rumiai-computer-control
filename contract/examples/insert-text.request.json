@@ -1,0 +1,10 @@
+{
+  "jsonrpc": "2.0",
+  "id": 802,
+  "method": "ui.insertText",
+  "params": {
+    "application": "TextEdit",
+    "target": {"ref": "@e12"},
+    "text": "inserted text"
+  }
+}
