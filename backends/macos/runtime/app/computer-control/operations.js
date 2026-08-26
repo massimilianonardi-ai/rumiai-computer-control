@@ -1001,7 +1001,8 @@ function find({
 
   // Backend semantic locator remains useful when the caller has no suitable
   // snapshot or when the snapshot does not contain the target.
-  const found = agentCtrl.findElement(wanted, role, first);
+  const backendRole = normalizeControlRole(role) === "radio-button" ? "radio" : role;
+  const found = agentCtrl.findElement(wanted, backendRole, first);
   if (!found.ok) {
     return {
       ok:false,
