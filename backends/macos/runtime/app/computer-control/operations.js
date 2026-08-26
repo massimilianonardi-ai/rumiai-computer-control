@@ -724,7 +724,14 @@ function observedStateValue(state, ...keys) {
   if (!state || typeof state !== "object" || Array.isArray(state)) return null;
   for (const key of keys) {
     if (Object.prototype.hasOwnProperty.call(state, key)) {
-      return typeof state[key] === "boolean" ? state[key] : null;
+      const value = state[key];
+      if (typeof value === "boolean") return value;
+      if (typeof value === "string") {
+        const normalized = value.trim().toLowerCase();
+        if (normalized === "true") return true;
+        if (normalized === "false") return false;
+      }
+      return null;
     }
   }
   return null;
@@ -787,6 +794,10 @@ function describe({app, element}) {
   const role = normalizeControlRole(roleResult.value);
   const normalizedValue = normalizeControlValue(role, valueResult.ok ? valueResult.value : null);
   const state = stateResult.ok ? stateResult.value : null;
+  const checked = observedStateValue(state, "checked");
+  const selected = role === "radio-button" && checked !== null
+    ? checked
+    : observedStateValue(state, "selected");
   const bounds = boundsResult.ok && boundsResult.bounds
     ? {
         x:Number(boundsResult.bounds.x),
@@ -807,8 +818,8 @@ function describe({app, element}) {
     visible:observedStateValue(state, "visible"),
     enabled:observedStateValue(state, "enabled"),
     focused:observedStateValue(state, "focused"),
-    selected:observedStateValue(state, "selected"),
-    checked:observedStateValue(state, "checked"),
+    selected,
+    checked,
     mixed:observedStateValue(state, "mixed", "indeterminate"),
     expanded:observedStateValue(state, "expanded"),
     readOnly:observedStateValue(state, "readOnly", "read_only", "readonly"),
