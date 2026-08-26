@@ -21,6 +21,7 @@ module.exports = {
   treeRectangle:nativeTree.rectangle,
   nearestTreeAncestor:nativeTree.nearestAncestor,
   nearestScrollTreeAncestor:nativeTree.nearestScrollAncestor,
+  scrollTreePivotRef:nativeTree.scrollPivotRef,
   treeIntersects:nativeTree.intersects,
   stableTreeSignature:nativeTree.stableNodeSignature,
   scrollElement:agentCtrl.scrollElement,

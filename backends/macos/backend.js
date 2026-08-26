@@ -65,14 +65,34 @@ function createMacOSBackend(options = {}) {
         return {ok:true,state:"VISIBLE",verified:true,target:{ref:before.ref,role:before.role,name:before.name},idempotent:true,changed:false,verification:{method:"native-scroll-area-geometry",evidence:{intersects:true}},backend:{name:"macos-ax",strategy:"idempotent-native-geometry",fallback:false}};
       }
       const action = control().scrollIntoViewElement(before.ref);
-      if (!action?.ok) throw new ComputerControlError("SCROLL_INTO_VIEW_ACTION_FAILED", (action?.stderr || action?.stdout || "AXScrollToVisible delivery failed").trim(), "NONE", {state:"FAILED", method:action?.method || "none"});
-      const afterTree = freshTree(application, true);
-      const after = resolveInTree(afterTree, {ref:before.ref, role:before.role, name:before.name});
-      const afterContext = scrollContext(after);
-      const targetBounds = control().treeRectangle(after.node);
-      const contextBounds = control().treeRectangle(afterContext);
-      if (!targetBounds || !contextBounds || !control().treeIntersects(targetBounds, contextBounds)) throw new ComputerControlError("SCROLL_INTO_VIEW_UNVERIFIED", "AXScrollToVisible completed but target geometry was not observed inside the native scroll-area viewport", "NONE", {state:"UNVERIFIED"});
-      return {ok:true,state:"VISIBLE",verified:true,target:{ref:after.ref,role:after.role,name:after.name},idempotent:false,changed:true,verification:{method:"ax-scroll-to-visible-plus-native-geometry",evidence:{intersects:true}},backend:{name:"macos-ax",strategy:action.method||"ax-scroll-to-visible",fallback:false},diagnostics:{actionSeconds:action.seconds||0}};
+      let actionSeconds=action?.seconds||0;
+      let current=before;
+      let currentContext=beforeContext;
+      if (action?.ok) {
+        const afterTree = freshTree(application, true);
+        current = resolveInTree(afterTree, {ref:before.ref, role:before.role, name:before.name});
+        currentContext = scrollContext(current);
+        const targetBounds = control().treeRectangle(current.node);
+        const contextBounds = control().treeRectangle(currentContext);
+        if (targetBounds && contextBounds && control().treeIntersects(targetBounds, contextBounds)) return {ok:true,state:"VISIBLE",verified:true,target:{ref:current.ref,role:current.role,name:current.name},idempotent:false,changed:true,verification:{method:"ax-scroll-to-visible-plus-native-geometry",evidence:{intersects:true}},backend:{name:"macos-ax",strategy:action.method||"ax-scroll-to-visible",fallback:false},diagnostics:{actionSeconds}};
+      }
+      for (let attempt=1; attempt<=12; attempt+=1) {
+        const targetBounds=control().treeRectangle(current.node);
+        const contextBounds=control().treeRectangle(currentContext);
+        const pivot=control().scrollTreePivotRef(currentContext,current);
+        if(!targetBounds||!contextBounds||!pivot)break;
+        const dy=targetBounds.y<contextBounds.y?SCROLL_UNIT_POINTS:-SCROLL_UNIT_POINTS;
+        const wheel=control().scrollElement(pivot,0,dy);
+        actionSeconds+=wheel?.seconds||0;
+        if(!wheel?.ok)throw new ComputerControlError("SCROLL_INTO_VIEW_ACTION_FAILED",(wheel?.stderr||wheel?.stdout||"wheel fallback failed").trim(),"NONE",{state:"FAILED",method:wheel?.method||"none"});
+        const nextTree=freshTree(application,true);
+        current=resolveInTree(nextTree,{ref:before.ref,role:before.role,name:before.name});
+        currentContext=scrollContext(current);
+        const observedTarget=control().treeRectangle(current.node);
+        const observedContext=control().treeRectangle(currentContext);
+        if(observedTarget&&observedContext&&control().treeIntersects(observedTarget,observedContext))return{ok:true,state:"VISIBLE",verified:true,target:{ref:current.ref,role:current.role,name:current.name},idempotent:false,changed:true,verification:{method:"native-wheel-plus-geometry",evidence:{intersects:true,attempts:attempt}},backend:{name:"macos-ax",strategy:wheel.method||"target-aware-wheel",fallback:true},diagnostics:{actionSeconds}};
+      }
+      throw new ComputerControlError("SCROLL_INTO_VIEW_UNVERIFIED",`Native scroll did not bring the target into the observed viewport; AX action: ${(action?.stderr||action?.stdout||"unsupported").trim()}`,"NONE",{state:"UNVERIFIED"});
     },
   };
 }
