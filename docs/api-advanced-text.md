@@ -1,9 +1,8 @@
-# Advanced text controls — Phase 8A
+# Advanced text controls — Phase 8
 
-## `ui.getTextSelection`
+## Phase 8A — `ui.getTextSelection`
 
-Phase 8A introduces read-only observation of the native text selection before
-Computer Control exposes range mutation APIs.
+Phase 8A exposes read-only observation of native caret and text selection.
 
 ```js
 client.getTextSelection({application, target})
@@ -15,10 +14,14 @@ Supported macOS reference roles:
 - `text-area`;
 - `search-box`.
 
-The operation is currently `IMPLEMENTED` and awaits physical Cocoa/AppKit
-validation.
+Phase 8A is `PHYSICALLY_VALIDATED` on Cocoa/AppKit. The authoritative physical
+evidence is test-repository commit
+`faf24053aa8b9b31abc7f3ac730941921c3625f9`, produced against product revision
+`4166cab8c6b535d627c0f93fe0015ad3c69fcc6a` with 14 PASS, 0 FAIL and 0 BLOCKED.
+The checkpoint covers a non-empty selection containing a non-BMP character and
+a collapsed caret.
 
-## Canonical range
+## Canonical text indexing
 
 Computer Control exposes text positions as UTF-16 code-unit offsets:
 
@@ -44,64 +47,103 @@ Rules:
 - raw `NSRange`, `AXTextMarkerRange`, UIA TextRange or AT-SPI objects never cross
   the canonical boundary.
 
-UTF-16 is explicit rather than implicit. A character outside the BMP therefore
-occupies two canonical units. Later range-selection and mutation APIs must use
-exactly the same index unit.
+A character outside the BMP occupies two canonical units. Every Phase 8 range
+operation uses this same explicit unit.
 
-## macOS backend
+## Phase 8B — `ui.selectTextRange`
 
-`agent-ctrl 0.1.4` does not expose `AXSelectedTextRange` through its public CLI.
-The macOS backend therefore uses a backend-private Swift helper that reads the
-real Accessibility attributes from the target process:
+Phase 8B selects or collapses a native text range without using keyboard,
+clipboard or coordinates.
 
-- `AXSelectedTextRange`;
-- `AXSelectedText`;
-- `AXValue` when available for text-length validation.
+```js
+client.selectTextRange({
+  application,
+  target,
+  range: {start: 3, end: 5, unit: "utf16-code-unit"}
+})
+```
 
-The helper re-resolves the observed target by canonical role plus accessible
-name inside the pinned application process. Zero matches fail stale; multiple
-matches fail ambiguous. It never selects a target by coordinates.
+The request intentionally contains only the independent fields `start`, `end`
+and `unit`. `length` and `collapsed` are derived by Computer Control and cannot
+contradict the request.
 
-The backend validates the native observation before returning it:
+Phase 8B is currently `IMPLEMENTED` and requires its physical Cocoa/AppKit
+checkpoint before promotion.
 
-- range bounds must be non-negative and internally consistent;
-- selected-text UTF-16 length must match the range length when both are
-  observable;
-- selection end cannot exceed observed text length;
-- unsupported roles and unavailable selection state fail explicitly.
+### macOS strategy
 
-## Example result
+The macOS backend:
+
+1. describes the current ephemeral target;
+2. safely re-resolves the native text element inside the pinned application
+   process by role plus accessible name;
+3. observes the current selection and full UTF-16 text length;
+4. returns idempotently if the requested range is already selected;
+5. rejects an observed out-of-bounds request before mutation;
+6. checks that `AXSelectedTextRange` is settable;
+7. writes a real `CFRange` through `AXUIElementSetAttributeValue`;
+8. immediately verifies the native value in the helper;
+9. performs a second, independent `ui.getTextSelection`-equivalent AX
+   observation and requires an exact range match.
+
+The backend-private role compatibility retry is limited to `text-field` ↔
+`text-area` and only occurs after `TEXT_TARGET_STALE`. Permission, ambiguity,
+mutation and verification errors never trigger a looser fallback.
+
+### Example result
 
 ```json
 {
-  "state": "OBSERVED",
+  "ok": true,
+  "state": "TEXT_RANGE_SELECTED",
+  "verified": true,
   "target": {"ref": "@e12", "role": "text-area", "name": "Document"},
-  "selection": {
+  "requestedRange": {
+    "start": 3,
+    "end": 5,
+    "length": 2,
+    "collapsed": false,
+    "unit": "utf16-code-unit"
+  },
+  "previousRange": {
     "start": 1,
     "end": 3,
     "length": 2,
     "collapsed": false,
     "unit": "utf16-code-unit"
   },
-  "caret": null,
-  "selectedText": "😀",
-  "textLength": 7,
-  "observation": {
-    "method": "macos-ax-selected-text-range",
-    "reboundBy": "role-and-accessible-name",
-    "indexUnit": "utf16-code-unit"
+  "observedRange": {
+    "start": 3,
+    "end": 5,
+    "length": 2,
+    "collapsed": false,
+    "unit": "utf16-code-unit"
   },
-  "backend": {"name": "macos-ax", "strategy": "native-ax-selected-text-range"}
+  "caret": null,
+  "selectedText": "BC",
+  "changed": true,
+  "idempotent": false,
+  "verification": {
+    "method": "native-ax-selected-text-range-postcondition"
+  },
+  "backend": {
+    "name": "macos-ax",
+    "strategy": "macos-ax-set-selected-text-range",
+    "fallback": false
+  }
 }
 ```
 
-## Validation checkpoint
+## Phase 8B physical checkpoint
 
-The Phase 8A physical checkpoint must prove at least:
+The physical checkpoint must prove at least:
 
-1. a non-empty native AppKit selection;
-2. a collapsed caret;
-3. selected-text observation;
-4. UTF-16 indexing using a non-BMP character;
-5. the capability remains `IMPLEMENTED` until that physical evidence is
-   committed and reviewed.
+1. selection of a non-empty range on a real `NSTextView`;
+2. exact selected-text observation after the write;
+3. idempotent re-selection of the same range;
+4. collapse to a caret by requesting `start == end`;
+5. UTF-16 behavior remains correct around the existing non-BMP fixture;
+6. the capability remains `IMPLEMENTED` until the evidence commit is reviewed.
+
+Phase 8C range mutation, insertion and append must not be promoted on assumptions
+from 8B; it starts only after this checkpoint is physically validated.
