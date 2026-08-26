@@ -1,18 +1,5 @@
 export * from "./index-stateful";
 import type {ObservedTarget, VerifiedOperationResult} from "./index-stateful";
-
-export interface DisclosureResult extends VerifiedOperationResult {
-  state: "EXPANDED" | "COLLAPSED";
-  target: ObservedTarget;
-  previousValue: boolean;
-  observedValue: boolean;
-  changed: boolean;
-  idempotent: boolean;
-}
-
-declare module "./index-stateful" {
-  interface ComputerControlClient {
-    expand(params: {application: string; target: ObservedTarget; settle?: boolean}): Promise<DisclosureResult>;
-    collapse(params: {application: string; target: ObservedTarget; settle?: boolean}): Promise<DisclosureResult>;
-  }
-}
+export interface DisclosureResult extends VerifiedOperationResult { state:"EXPANDED"|"COLLAPSED"; target:ObservedTarget; previousValue:boolean; observedValue:boolean; changed:boolean; idempotent:boolean; }
+export interface ValueMutationResult extends VerifiedOperationResult { state:"VALUE_SET"|"INCREMENTED"|"DECREMENTED"; target:ObservedTarget; previousValue:string|number; observedValue:string|number; changed:boolean; idempotent:boolean; requestedValue?:string|number; }
+declare module "./index-stateful" { interface ComputerControlClient { expand(params:{application:string;target:ObservedTarget;settle?:boolean}):Promise<DisclosureResult>; collapse(params:{application:string;target:ObservedTarget;settle?:boolean}):Promise<DisclosureResult>; setValue(params:{application:string;target:ObservedTarget;value:string|number;settle?:boolean}):Promise<ValueMutationResult>; increment(params:{application:string;target:ObservedTarget;settle?:boolean}):Promise<ValueMutationResult>; decrement(params:{application:string;target:ObservedTarget;settle?:boolean}):Promise<ValueMutationResult>; } }
