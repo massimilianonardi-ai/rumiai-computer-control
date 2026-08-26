@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/v0.9/text-selection-result.schema.json",
+  "title": "Canonical text selection observation",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["state", "target", "selection", "caret", "selectedText", "textLength", "observation", "backend"],
+  "properties": {
+    "state": {"const": "OBSERVED"},
+    "target": {
+      "type": "object",
+      "required": ["ref", "role", "name"],
+      "properties": {
+        "ref": {"type": "string", "pattern": "^@e[0-9]+$"},
+        "role": {"enum": ["text-field", "text-area", "search-box"]},
+        "name": {"type": "string", "minLength": 1}
+      },
+      "additionalProperties": false
+    },
+    "selection": {
+      "type": "object",
+      "required": ["start", "end", "length", "collapsed", "unit"],
+      "properties": {
+        "start": {"type": "integer", "minimum": 0},
+        "end": {"type": "integer", "minimum": 0},
+        "length": {"type": "integer", "minimum": 0},
+        "collapsed": {"type": "boolean"},
+        "unit": {"const": "utf16-code-unit"}
+      },
+      "additionalProperties": false
+    },
+    "caret": {"type": ["integer", "null"], "minimum": 0},
+    "selectedText": {"type": ["string", "null"]},
+    "textLength": {"type": ["integer", "null"], "minimum": 0},
+    "observation": {
+      "type": "object",
+      "required": ["method", "reboundBy", "indexUnit"],
+      "properties": {
+        "method": {"type": "string"},
+        "reboundBy": {"const": "role-and-accessible-name"},
+        "indexUnit": {"const": "utf16-code-unit"}
+      },
+      "additionalProperties": false
+    },
+    "backend": {
+      "type": "object",
+      "required": ["name", "strategy"],
+      "properties": {"name": {"type": "string"}, "strategy": {"type": "string"}},
+      "additionalProperties": true
+    },
+    "diagnostics": {"type": "object"}
+  }
+}

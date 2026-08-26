@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/v0.9/get-text-selection.params.schema.json",
+  "title": "Text selection observation parameters",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["application", "target"],
+  "properties": {
+    "application": {"type": "string", "minLength": 1},
+    "target": {
+      "type": "object",
+      "required": ["ref"],
+      "properties": {"ref": {"type": "string", "pattern": "^@e[0-9]+$"}},
+      "additionalProperties": true
+    }
+  }
+}

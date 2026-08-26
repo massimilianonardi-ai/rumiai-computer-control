@@ -1,0 +1,9 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "ui.getTextSelection",
+  "params": {
+    "application": "TextEdit",
+    "target": {"ref": "@e12", "role": "text-area", "name": "Document"}
+  }
+}
