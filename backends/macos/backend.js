@@ -34,8 +34,8 @@ function createMacOSBackend(options = {}) {
       const info = await base.info();
       const names = new Set(info.capabilities.map(x => x.name));
       const additions = [
-        {name:"ui.scroll", available:true, validationState:"IMPLEMENTED", strategies:["target-aware-wheel", "native-scroll-tree-postcondition"]},
-        {name:"ui.scrollIntoView", available:true, validationState:"IMPLEMENTED", strategies:["ax-scroll-to-visible", "scroll-area-geometry-postcondition"]},
+        {name:"ui.scroll", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["target-aware-wheel", "native-scroll-tree-postcondition"]},
+        {name:"ui.scrollIntoView", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["ax-scroll-to-visible", "scroll-area-geometry-postcondition"]},
       ].filter(x => !names.has(x.name));
       return {...info, capabilities:[...info.capabilities, ...additions]};
     },
