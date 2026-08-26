@@ -1,9 +1,15 @@
-# Structure and collection API
+# Native semantic structure
 
-Status: **IMPLEMENTED, awaiting external physical validation**.
+`ui.children` observes bounded structure from the backend's native Accessibility tree.
 
-`ui.children({application,target,offset,limit})` returns only direct actionable descendants observed in a fresh non-compact Accessibility snapshot. Parentage is derived from the tree serialization's indentation: traversal stops at the next node at or above the target indentation, and only descendants at the minimum deeper indentation are returned as direct children.
+```js
+client.children({application,target,role?,depth?,offset?,limit?})
+```
 
-The result is bounded and paginated (`limit` 1..200, default 50). It reports the total direct-child count and `hasMore`. If the ephemeral target is absent from the fresh snapshot the call fails closed with `CONTROL_TARGET_STALE`.
+The target may be an actionable `@eN` reference or a structural scope `@sN` reference. Accepting a scope reference here does **not** make structural nodes actionable; it only permits observation of their subtree.
 
-This API does not create stable identities, infer inaccessible children, or recursively return an unbounded tree.
+Defaults: `depth=1`, `offset=0`, `limit=50`. `depth` is bounded to 12 and `limit` to 200. `role` filters returned nodes while traversal still follows the true native hierarchy.
+
+On macOS the backend consumes the JSON AX tree produced by `agent-ctrl`, which is built from `AXChildren`. It does not reconstruct hierarchy from indentation in a pretty-printed snapshot. Each returned child includes its relative `depth`; pagination is applied after depth and role filtering.
+
+References remain snapshot-scoped. If the original ref changed, a unique role+accessible-name descriptor may be rebound from the fresh tree; zero matches fail stale and multiple matches fail ambiguous.
