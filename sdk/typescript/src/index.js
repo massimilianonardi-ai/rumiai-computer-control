@@ -3,6 +3,7 @@ const core=require("./index-core");
 class ComputerControlClient extends core.ComputerControlClient {
   describe({application, target}) { return this.call("ui.describe", {application, target}); }
   getTextSelection({application, target}) { return this.call("ui.getTextSelection", {application, target}); }
+  selectTextRange({application, target, range}) { return this.call("ui.selectTextRange", {application, target, range}); }
   invoke({application, target, settle = true}) { return this.call("ui.invoke", {application, target, settle}); }
   toggle({application, target, value, settle = true}) { return this.call("ui.toggle", {application, target, value, settle}); }
   select({application, target, settle = true}) { return this.call("ui.select", {application, target, settle}); }
