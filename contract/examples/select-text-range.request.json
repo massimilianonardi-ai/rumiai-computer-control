@@ -1,0 +1,10 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "ui.selectTextRange",
+  "params": {
+    "application": "TextEdit",
+    "target": {"ref": "@e12"},
+    "range": {"start": 3, "end": 5, "unit": "utf16-code-unit"}
+  }
+}
