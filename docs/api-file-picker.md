@@ -90,7 +90,11 @@ const result = await client.openFilePickerDirectory({
 });
 ```
 
-The target must be a currently visible item already observed as `kind:"directory"`. Computer Control selects/rebinds that native row, inspects the actions actually advertised by the row and its descendants, and invokes only an advertised semantic open action. The macOS backend prefers `AXOpen` when exposed and may use `AXConfirm` only when the target explicitly advertises it. Success is not delivery: a fresh picker observation must report a changed visible location while the picker remains open.
+The target must be a currently visible item already observed as `kind:"directory"`. Physical action discovery on the reference `NSOpenPanel` showed that the row itself does not expose a navigation action. Instead, the row contains an `AXTextField` whose native value is the exact visible directory name. That element explicitly advertises `AXConfirm` with the native action description `confirm`.
+
+The macOS backend therefore rebinds the exact visible directory row, requires exactly one descendant `AXTextField` whose native value equals the requested name and whose advertised action names include `AXConfirm`, and invokes `AXConfirm` only on that element. It does not use `AXOpen`: on the reference surface that action is described as `Open Finder item` and a previous physical attempt did not provide picker navigation semantics.
+
+Success is not delivery: a fresh picker observation must report a changed visible location while the picker remains open.
 
 ```json
 {
@@ -112,12 +116,14 @@ The target must be a currently visible item already observed as `kind:"directory
 - disabled items fail before mutation;
 - selection uses native Accessibility pick/selection semantics and requires an observed selected-state postcondition;
 - directory opening rejects non-directory items before mutation;
-- directory opening queries the target subtree's advertised Accessibility actions and uses only an advertised open semantic (`AXOpen`, or `AXConfirm` when explicitly supported);
-- absence of a supported semantic open action fails explicitly rather than falling back to input synthesis;
+- directory opening requires exactly one descendant native text field whose value equals the requested directory name and which explicitly advertises `AXConfirm`;
+- `AXConfirm` is invoked only on that exact discovered semantic target;
+- `AXOpen` is not used for picker navigation on the reference backend because its observed native description is `Open Finder item`;
+- missing or ambiguous confirm targets fail explicitly rather than falling back to input synthesis;
 - directory opening requires an independently observed location change;
 - if navigation dismisses the picker instead of changing location, the operation fails;
 - neither operation accepts/cancels the picker or mutates the filesystem;
-- no keyboard, clipboard, mouse coordinates or filesystem enumeration are fallback mechanisms;
+- no keyboard, clipboard, mouse coordinates, synthetic double click or filesystem enumeration are fallback mechanisms;
 - all AX identifiers and native element handles remain backend-private.
 
 Phase 9B3B validation state: `IMPLEMENTED`; deterministic Cocoa/AppKit physical checkpoint pending.
@@ -128,7 +134,11 @@ Physical discovery with a real `NSOpenPanel` on macOS 26.5.2 showed that the acc
 
 The AppKit reference surface is recognized through backend-private native structure including an `AXSheet`, native list view and current-location control. Global focused-application information may be unavailable while the picker remains fully observable, so focus is diagnostic evidence only and is not a targeting prerequisite.
 
-Historical Phase 9B3B physical evidence is preserved. Session `cc-phase9b3b-file-picker-navigation-selection-s01` proved native selection and its postcondition, but returned `kAXErrorActionUnsupported` (`-25206`) when `AXConfirm` was attempted for directory navigation. The product therefore no longer assumes `AXConfirm` support and instead selects from the actions advertised by the rebound target subtree.
+Historical Phase 9B3B physical evidence is preserved:
+
+- `cc-phase9b3b-file-picker-navigation-selection-s01`: selection passed, but directory navigation attempted `AXConfirm` on row/list/sheet and returned `kAXErrorActionUnsupported` (`-25206`);
+- `cc-phase9b3b-file-picker-navigation-selection-s02`: selection again passed; support-driven subtree scanning found `AXOpen` on a descendant, but invoking that action returned `kAXErrorAttributeUnsupported` (`-25205`);
+- `cc-phase9b3b-directory-actions-discovery-s01`: read-only discovery proved that the exact `FolderA` `AXTextField` advertises `AXConfirm` (`confirm`), `AXOpen` (`Open Finder item`) and `AXShowMenu`, while the row/list/sheet do not expose a picker-navigation action.
 
 Discovery evidence:
 
@@ -136,6 +146,11 @@ Discovery evidence:
 session: cc-phase9b3a-file-picker-discovery-s02
 evidence commit: 326f3283da91ee4c32a7d67bd8bb6e55b414d9ce
 result: 22 PASS / 0 FAIL / 0 BLOCKED
+
+session: cc-phase9b3b-directory-actions-discovery-s01
+evidence commit: cedecaecd29846c7dacef4b24e5fe1d226b4ef5b
+validated discovery product: 6533489586ce51f03296a4191dc0806a88f4c66b
+result: 25 PASS / 0 FAIL / 0 BLOCKED
 ```
 
 Observation evidence:
