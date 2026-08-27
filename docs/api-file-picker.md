@@ -90,7 +90,7 @@ const result = await client.openFilePickerDirectory({
 });
 ```
 
-The target must be a currently visible item already observed as `kind:"directory"`. Computer Control selects/rebinds that native row and performs the native confirm semantic action. Success is not delivery: a fresh picker observation must report a changed visible location while the picker remains open.
+The target must be a currently visible item already observed as `kind:"directory"`. Computer Control selects/rebinds that native row, inspects the actions actually advertised by the row and its descendants, and invokes only an advertised semantic open action. The macOS backend prefers `AXOpen` when exposed and may use `AXConfirm` only when the target explicitly advertises it. Success is not delivery: a fresh picker observation must report a changed visible location while the picker remains open.
 
 ```json
 {
@@ -112,7 +112,9 @@ The target must be a currently visible item already observed as `kind:"directory
 - disabled items fail before mutation;
 - selection uses native Accessibility pick/selection semantics and requires an observed selected-state postcondition;
 - directory opening rejects non-directory items before mutation;
-- directory opening uses native Accessibility confirm semantics and requires an independently observed location change;
+- directory opening queries the target subtree's advertised Accessibility actions and uses only an advertised open semantic (`AXOpen`, or `AXConfirm` when explicitly supported);
+- absence of a supported semantic open action fails explicitly rather than falling back to input synthesis;
+- directory opening requires an independently observed location change;
 - if navigation dismisses the picker instead of changing location, the operation fails;
 - neither operation accepts/cancels the picker or mutates the filesystem;
 - no keyboard, clipboard, mouse coordinates or filesystem enumeration are fallback mechanisms;
@@ -125,6 +127,8 @@ Phase 9B3B validation state: `IMPLEMENTED`; deterministic Cocoa/AppKit physical 
 Physical discovery with a real `NSOpenPanel` on macOS 26.5.2 showed that the accessible picker surface is visible in the Provider application's AX tree. The backend therefore resolves the registered Provider to one running process and performs fresh native Accessibility observation/rebinding for every operation.
 
 The AppKit reference surface is recognized through backend-private native structure including an `AXSheet`, native list view and current-location control. Global focused-application information may be unavailable while the picker remains fully observable, so focus is diagnostic evidence only and is not a targeting prerequisite.
+
+Historical Phase 9B3B physical evidence is preserved. Session `cc-phase9b3b-file-picker-navigation-selection-s01` proved native selection and its postcondition, but returned `kAXErrorActionUnsupported` (`-25206`) when `AXConfirm` was attempted for directory navigation. The product therefore no longer assumes `AXConfirm` support and instead selects from the actions advertised by the rebound target subtree.
 
 Discovery evidence:
 
