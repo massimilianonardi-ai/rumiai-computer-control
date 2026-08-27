@@ -34,8 +34,8 @@ Phase 9A2 application terminate                PHYSICALLY_VALIDATED on AppKit li
 Phase 9B1 dialog/alert observation             PHYSICALLY_VALIDATED on AppKit NSAlert sheet fixture
 Phase 9B2 dialog semantic default/cancel       PHYSICALLY_VALIDATED on AppKit NSAlert sheet fixture
 Phase 9B3A file picker observation             PHYSICALLY_VALIDATED on AppKit NSOpenPanel fixture
-Phase 9B3B file picker selection/expansion     IMPLEMENTED; physical checkpoint pending
-Phase 9B3C file picker accept/cancel           PENDING
+Phase 9B3B file picker selection/expansion     PHYSICALLY_VALIDATED on AppKit NSOpenPanel fixture
+Phase 9B3C file picker accept/cancel           IMPLEMENTED; physical checkpoint pending
 Phase 9C  system chrome                        PENDING
 Phase 9D  displays/richer clipboard            PENDING
 Phase 10  low-level fallbacks                  PENDING
@@ -115,9 +115,16 @@ File-picker checkpoints:
     evidence: 48ead70cf79cf05827cc5dcde9e7d7fda31363b3
     validated discovery product: 16e4f1b427170b0e5c729a10629990d48ee71daf
     result: 26 PASS / 0 FAIL / 0 BLOCKED
+
+9B3B public validation: cc-phase9b3b-file-picker-selection-expansion-s01
+    evidence: 36ca5eb400954457f44467d9028e6f26a21e70cd
+    validated product: 805ec5126f991bd6a19945bfda5d0fc2778ae221
+    test source: 5e9fb88809af10c07bcf9f109d8d1e51ff92994a
+    poc SHA tested: 8db375a5b23103f834d04721639400c6d61cbdc5
+    result: 26 PASS / 0 FAIL / 0 BLOCKED
 ```
 
-Historical FAIL evidence remains preserved; later PASS evidence does not rewrite earlier sessions. Phase 9B3B sessions `s01`, `s02` and `s03` disproved the earlier assumption that directory navigation should be modeled as `filePicker.openDirectory` plus a current-location change. The final discovery proved the actual AppKit outline semantics before public promotion.
+Historical FAIL evidence remains preserved; later PASS evidence does not rewrite earlier sessions. Phase 9B3B sessions `s01`, `s02` and `s03` disproved the earlier assumption that directory navigation should be modeled as `filePicker.openDirectory` plus a current-location change. The final disclosure discovery established the real AppKit outline semantics and the public selection/expansion checkpoint physically validated the corrected contract.
 
 ## Phase 3-7 residual backlog
 
@@ -309,9 +316,9 @@ Contract decisions:
 
 Status: `PHYSICALLY_VALIDATED` on the deterministic Cocoa/AppKit `NSOpenPanel` fixture.
 
-#### Phase 9B3B — selection and hierarchical directory expansion
+#### Phase 9B3B — selection and hierarchical directory expansion — COMPLETE on AppKit reference surface
 
-Public APIs implemented:
+Public APIs:
 
 ```js
 client.selectFilePickerItem({application, name, timeoutMs})
@@ -336,16 +343,32 @@ Contract decisions:
 
 The earlier unvalidated `filePicker.openDirectory` contract was removed before promotion because physical evidence showed that neither `AXConfirm` nor `AXOpen` represented the required location-change semantics on the reference `NSOpenPanel`.
 
-Status: `IMPLEMENTED`; public product physical checkpoint pending.
+Status: `PHYSICALLY_VALIDATED` on the deterministic Cocoa/AppKit `NSOpenPanel` fixture.
 
 #### Phase 9B3C — accept and cancel
 
-After selection/expansion are validated:
+Public APIs implemented:
 
-- explicit native accept semantic action;
-- explicit native cancel semantic action;
-- independent postconditions on picker dismissal and result state;
-- no inference of authorization from button labels.
+```js
+client.acceptFilePicker({application, timeoutMs})
+client.cancelFilePicker({application, timeoutMs})
+```
+
+Contract decisions:
+
+- both require one already-open supported picker in exactly one registered Provider process;
+- neither launches nor activates the application implicitly;
+- accept is an explicit caller semantic intent and resolves only through native `AXDefaultButton`;
+- cancel resolves only through native `AXCancelButton`;
+- visible button labels never choose or authorize an action;
+- disabled or unavailable semantic buttons fail explicitly;
+- only an advertised `AXPress` action is delivered;
+- success requires the Provider application to remain running and a fresh independent picker observation to report no picker;
+- application exit is not silently treated as success;
+- no coordinates, mouse, keyboard, clipboard, synthetic keypress, filesystem operation or label-matching fallback is allowed;
+- native AX objects and internal identifiers remain backend-private.
+
+Status: `IMPLEMENTED`; physical checkpoint pending.
 
 ### Phase 9C — system chrome
 
