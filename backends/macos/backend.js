@@ -3,6 +3,7 @@ const controls = require("./backend-controls");
 const lifecycle = require("./application-lifecycle");
 const dialogObservation = require("./runtime/app/computer-control/backends/macos-dialog-observation");
 const dialogAction = require("./runtime/app/computer-control/backends/macos-dialog-semantic-action");
+const filePickerObservation = require("./runtime/app/computer-control/backends/macos-file-picker-observation");
 const {ComputerControlError} = require("../../runtime/src/errors");
 
 const PHASE8C = new Set([
@@ -30,6 +31,10 @@ const PHASE9B2 = [
   {name:"dialog.invokeCancel", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["provider-scoped-native-AX-cancel-button","dialog-absence-postcondition"]},
 ];
 
+const PHASE9B3A = [
+  {name:"filePicker.observe", available:true, validationState:"IMPLEMENTED", strategies:["provider-scoped-native-AX-file-picker-observation"]},
+];
+
 function canonicalDialog(value={}) {
   return {
     kind:value.kind === "sheet" ? "sheet" : "dialog",
@@ -43,6 +48,23 @@ function canonicalDialog(value={}) {
   };
 }
 
+function canonicalFilePickerItem(value={}) {
+  return {
+    name:String(value.name||""),
+    kind:value.kind === "directory" ? "directory" : value.kind === "file" ? "file" : "unknown",
+    selected:typeof value.selected === "boolean" ? value.selected : null,
+    enabled:typeof value.enabled === "boolean" ? value.enabled : null,
+  };
+}
+
+function canonicalFilePicker(value={}) {
+  return {
+    kind:"open",
+    location:value.location == null ? null : String(value.location),
+    items:Array.isArray(value.items) ? value.items.map(canonicalFilePickerItem).filter(item=>item.name.length>0) : [],
+  };
+}
+
 function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 function dialogContext(application,method){
   const entry=lifecycle.resolveProvider(application);
@@ -51,9 +73,22 @@ function dialogContext(application,method){
   if(observed.processes.length!==1) throw new ComputerControlError("DIALOG_TARGET_PID_AMBIGUOUS",`${method} requires exactly one running process for "${entry.provider.name}"; observed ${observed.processes.length}`,"NONE",{state:"FAILED"});
   return {entry,observed,pid:observed.processes[0].pid};
 }
+function filePickerContext(application,method){
+  const entry=lifecycle.resolveProvider(application);
+  const observed=lifecycle.observeResolved(entry);
+  if(!observed.running) throw new ComputerControlError("APP_NOT_RUNNING",`Application "${entry.provider.name}" is not running; ${method} does not launch implicitly`,"NONE",{state:"FAILED"});
+  if(observed.processes.length!==1) throw new ComputerControlError("FILE_PICKER_TARGET_PID_AMBIGUOUS",`${method} requires exactly one running process for "${entry.provider.name}"; observed ${observed.processes.length}`,"NONE",{state:"FAILED"});
+  return {entry,observed,pid:observed.processes[0].pid};
+}
 function observeDialogs(pid){
   const native=dialogObservation.observe({pid});
   if(!native?.ok) throw new ComputerControlError(native?.error||"DIALOG_OBSERVATION_FAILED",native?.detail||"Could not observe native dialogs","NONE",{state:native?.state||"FAILED",method:native?.method});
+  return native;
+}
+function observeFilePicker(pid){
+  const native=filePickerObservation.observe({pid});
+  if(!native?.ok) throw new ComputerControlError(native?.error||"FILE_PICKER_OBSERVATION_FAILED",native?.detail||"Could not observe native file picker","NONE",{state:native?.state||"FAILED",method:native?.method});
+  if(native.pickers.length>1) throw new ComputerControlError("FILE_PICKER_AMBIGUOUS",`filePicker.observe requires at most one native file picker; observed ${native.pickers.length}`,"NONE",{state:"FAILED",method:native.method});
   return native;
 }
 
@@ -69,7 +104,7 @@ function createMacOSBackend(options = {}) {
           : capability
       );
       const names = new Set(promoted.map(capability => capability.name));
-      return {...info, capabilities:[...promoted, ...PHASE9A1.filter(capability => !names.has(capability.name)), ...PHASE9A2.filter(capability => !names.has(capability.name)), ...PHASE9B1.filter(capability => !names.has(capability.name)), ...PHASE9B2.filter(capability => !names.has(capability.name))]};
+      return {...info, capabilities:[...promoted, ...PHASE9A1.filter(capability => !names.has(capability.name)), ...PHASE9A2.filter(capability => !names.has(capability.name)), ...PHASE9B1.filter(capability => !names.has(capability.name)), ...PHASE9B2.filter(capability => !names.has(capability.name)), ...PHASE9B3A.filter(capability => !names.has(capability.name))]};
     },
     async listApplications({availableOnly=false}={}) { return lifecycle.list({availableOnly}); },
     async launchApplication({application,timeoutMs}) { return lifecycle.launch({application,timeoutMs}); },
@@ -84,6 +119,18 @@ function createMacOSBackend(options = {}) {
         dialogs:native.dialogs.map(canonicalDialog),
         observation:{method:native.method},
         backend:{name:"macos-ax",strategy:"provider-scoped-native-AX-dialog-observation"},
+        diagnostics:{observeSeconds:native.seconds||0,helperCompiled:native.compiled===true},
+      };
+    },
+    async observeFilePicker({application}) {
+      const {entry,observed,pid}=filePickerContext(application,"filePicker.observe");
+      const native=observeFilePicker(pid);
+      return {
+        state:"OBSERVED",
+        application:lifecycle.publicDescriptor(entry,observed),
+        picker:native.pickers.length===1 ? canonicalFilePicker(native.pickers[0]) : null,
+        observation:{method:native.method},
+        backend:{name:"macos-ax",strategy:"provider-scoped-native-AX-file-picker-observation"},
         diagnostics:{observeSeconds:native.seconds||0,helperCompiled:native.compiled===true},
       };
     },
@@ -121,4 +168,4 @@ function createMacOSBackend(options = {}) {
   };
 }
 
-module.exports = {...controls, createMacOSBackend, canonicalDialog, dialogContext, observeDialogs};
+module.exports = {...controls, createMacOSBackend, canonicalDialog, canonicalFilePickerItem, canonicalFilePicker, dialogContext, filePickerContext, observeDialogs, observeFilePicker};
