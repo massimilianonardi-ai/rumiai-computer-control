@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/dialog-list-result.schema.json",
+  "$defs": {
+    "application": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "providerId", "available", "running", "active", "bundle"],
+      "properties": {
+        "name": {"type": "string"},
+        "providerId": {"type": "string"},
+        "available": {"type": "boolean"},
+        "running": {"type": "boolean"},
+        "active": {"type": "boolean"},
+        "bundle": {"type": ["string", "null"]}
+      }
+    },
+    "button": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["label", "enabled"],
+      "properties": {
+        "label": {"type": ["string", "null"]},
+        "enabled": {"type": ["boolean", "null"]}
+      }
+    },
+    "dialog": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "title", "texts", "modal", "buttons"],
+      "properties": {
+        "kind": {"enum": ["dialog", "sheet"]},
+        "title": {"type": ["string", "null"]},
+        "texts": {"type": "array", "items": {"type": "string"}},
+        "modal": {"type": ["boolean", "null"]},
+        "buttons": {"type": "array", "items": {"$ref": "#/$defs/button"}}
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["state", "application", "dialogs", "observation", "backend"],
+  "properties": {
+    "state": {"const": "OBSERVED"},
+    "application": {"$ref": "#/$defs/application"},
+    "dialogs": {"type": "array", "items": {"$ref": "#/$defs/dialog"}},
+    "observation": {"type": "object"},
+    "backend": {"type": "object"}
+  }
+}
