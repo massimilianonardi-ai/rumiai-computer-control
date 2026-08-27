@@ -86,20 +86,25 @@ Observation performs no Dock action, no Accessibility attribute mutation, no mou
 
 ### Validation state
 
-Phase 9C2A validation state: `IMPLEMENTED`.
+Phase 9C2A validation state: `PHYSICALLY_VALIDATED` on the tested macOS Dock Accessibility surface.
 
-The implementation is derived from the authoritative combined read-only topology discovery:
+Authoritative physical checkpoint:
 
 ```text
-session: cc-phase9c23-system-chrome-discovery-s01
-evidence: f68f5bc4bc3e2fec2aa1219b402b7016107a6e6f
-product observed: 979ecb74dd486da832a96f02486dec7e71b42236
-test source: 35ba8c86cbfa3c23ef513410e658e000af8b1a2e
-poc SHA tested: 037d6b40d5eb342607e686637931d458be0d20b9
-result: 32 PASS / 0 FAIL / 0 BLOCKED
+session: cc-phase9c2a-dock-observation-s02
+evidence: 5662b659a3b80c236db323dfe09125b56b48eca6
+validated product: b9d04f5213c5dcb00ca8dc0363f8248caa9a8916
+test source: c928f3dacd3c3456072d21baaef2742e042e5b0d
+poc SHA tested: 670cc9bd80d5d7f9fb315669a0f3e30e9f20b758
+result: 33 PASS / 0 FAIL / 0 BLOCKED
+reference host: macOS 26.5.2 build 25F84, arm64
 ```
 
-That discovery proves the native topology used to design this contract; it does **not** physically validate the new public `dock.observe` implementation. Promotion to `PHYSICALLY_VALIDATED` requires a separate end-to-end physical checkpoint through the real runtime and SDK.
+The dedicated physical test resolved the real Dock through an independent native Accessibility oracle, observed 45 Dock items on the reference host, and verified that the public `(kind,title)` sequence matched the independently observed native topology exactly after canonicalization. It also verified repeated read-only observation and that public serialization exposed no native roles, action names, process identity, coordinates or native references.
+
+The earlier s01 overall `FAIL` remains preserved as historical evidence. Its dedicated Dock physical test passed; the session failed because a discovery-era contract test still forbade the newly introduced `dock.observe` API. The s02 checkpoint corrected only that stale lifecycle guard while keeping the same product SHA under test.
+
+See `docs/evidence/phase9c2a-dock-observation-physical.md` for the promotion record.
 
 ## Dock mutation remains separate
 
