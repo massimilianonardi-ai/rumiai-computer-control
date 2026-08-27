@@ -21,7 +21,7 @@ const PHASE9A2 = [
 ];
 
 const PHASE9B1 = [
-  {name:"dialog.list", available:true, validationState:"IMPLEMENTED", strategies:["provider-scoped-native-AX-dialog-observation"]},
+  {name:"dialog.list", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["provider-scoped-native-AX-dialog-observation"]},
 ];
 
 function canonicalDialog(value={}) {
