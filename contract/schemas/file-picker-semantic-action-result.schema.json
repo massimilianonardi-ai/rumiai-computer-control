@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "file-picker-semantic-action-result.schema.json",
+  "title": "File picker semantic action result",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["state", "action", "application", "changed", "idempotent", "verified", "verification", "backend"],
+  "properties": {
+    "state": {"enum": ["FILE_PICKER_ACCEPTED", "FILE_PICKER_CANCELLED"]},
+    "action": {"enum": ["accept", "cancel"]},
+    "application": {"type": "object"},
+    "changed": {"const": true},
+    "idempotent": {"const": false},
+    "verified": {"const": true},
+    "verification": {"type": "object"},
+    "backend": {"type": "object"}
+  }
+}
