@@ -9,6 +9,8 @@ struct Output: Codable {
     let kind: String?
     let previousSelected: Bool?
     let observedSelected: Bool?
+    let previousExpanded: Bool?
+    let observedExpanded: Bool?
     let idempotent: Bool
     let method: String
     let error: String?
@@ -82,15 +84,6 @@ func setSelected(_ row: AXUIElement) -> AXError {
     }
     return picked
 }
-func directoryConfirmTargets(_ row: AXUIElement, name: String) -> [AXUIElement] {
-    var candidates: [AXUIElement] = []
-    collect(row, depth: 5, predicate: { element in
-        role(element) == (kAXTextFieldRole as String) &&
-        trimmedValue(element) == name &&
-        actionNames(element).contains(kAXConfirmAction as String)
-    }, into: &candidates)
-    return candidates
-}
 
 let pid: pid_t = CommandLine.arguments.count > 1 ? pid_t(CommandLine.arguments[1]) ?? 0 : 0
 let action = CommandLine.arguments.count > 2 ? CommandLine.arguments[2] : ""
@@ -101,12 +94,12 @@ func emit(_ output: Output, _ code: Int32) -> Never {
     if let data = try? encoder.encode(output) { FileHandle.standardOutput.write(data); FileHandle.standardOutput.write(Data("\n".utf8)) }
     exit(code)
 }
-func fail(_ error: String, _ detail: String, kind: String? = nil, previous: Bool? = nil) -> Never {
-    emit(Output(ok:false,state:"FAILED",action:action,name:requestedName,kind:kind,previousSelected:previous,observedSelected:previous,idempotent:false,method:method,error:error,detail:detail),1)
+func fail(_ error: String, _ detail: String, kind: String? = nil, previousSelected: Bool? = nil, previousExpanded: Bool? = nil) -> Never {
+    emit(Output(ok:false,state:"FAILED",action:action,name:requestedName,kind:kind,previousSelected:previousSelected,observedSelected:previousSelected,previousExpanded:previousExpanded,observedExpanded:previousExpanded,idempotent:false,method:method,error:error,detail:detail),1)
 }
 
 guard pid > 0 else { fail("FILE_PICKER_TARGET_PID_UNAVAILABLE", "positive application pid required") }
-guard action == "select" || action == "open-directory" else { fail("FILE_PICKER_ACTION_INVALID", "action must be select or open-directory") }
+guard action == "select" || action == "expand-directory" else { fail("FILE_PICKER_ACTION_INVALID", "action must be select or expand-directory") }
 guard !requestedName.isEmpty else { fail("FILE_PICKER_ITEM_NAME_REQUIRED", "non-empty item name required") }
 
 let application = AXUIElementCreateApplication(pid)
@@ -117,33 +110,37 @@ guard sheets.count == 1 else { fail(sheets.isEmpty ? "FILE_PICKER_NOT_FOUND" : "
 let sheet = sheets[0]
 guard let list = findFirst(sheet, predicate: { identifier($0) == "ListView" }) else { fail("FILE_PICKER_LIST_UNAVAILABLE", "native picker list view unavailable") }
 var rows: [AXUIElement] = []
-collect(list, depth: 3, predicate: { role($0) == (kAXRowRole as String) }, into: &rows)
+collect(list, depth: 5, predicate: { role($0) == (kAXRowRole as String) }, into: &rows)
 let matches = rows.filter { itemName($0) == requestedName }
 guard matches.count == 1 else { fail(matches.isEmpty ? "FILE_PICKER_ITEM_NOT_FOUND" : "FILE_PICKER_ITEM_AMBIGUOUS", "expected exactly one visible item named \(requestedName); observed \(matches.count)") }
 let row = matches[0]
 let kind = itemKind(row)
 let enabled = boolAttribute(row, kAXEnabledAttribute as CFString)
-guard enabled != false else { fail("FILE_PICKER_ITEM_DISABLED", "item is disabled", kind:kind, previous:boolAttribute(row,kAXSelectedAttribute as CFString)) }
-let previous = boolAttribute(row, kAXSelectedAttribute as CFString)
+let previousSelected = boolAttribute(row, kAXSelectedAttribute as CFString)
+guard enabled != false else { fail("FILE_PICKER_ITEM_DISABLED", "item is disabled", kind:kind, previousSelected:previousSelected) }
 
 if action == "select" {
-    if previous == true { emit(Output(ok:true,state:"DELIVERED",action:action,name:requestedName,kind:kind,previousSelected:previous,observedSelected:true,idempotent:true,method:method,error:nil,detail:nil),0) }
+    if previousSelected == true { emit(Output(ok:true,state:"DELIVERED",action:action,name:requestedName,kind:kind,previousSelected:previousSelected,observedSelected:true,previousExpanded:nil,observedExpanded:nil,idempotent:true,method:method,error:nil,detail:nil),0) }
     let delivered = setSelected(row)
-    guard delivered == .success else { fail("FILE_PICKER_ITEM_SELECTION_FAILED", "native AX selection failed with code \(delivered.rawValue)", kind:kind, previous:previous) }
+    guard delivered == .success else { fail("FILE_PICKER_ITEM_SELECTION_FAILED", "native AX selection failed with code \(delivered.rawValue)", kind:kind, previousSelected:previousSelected) }
     let observed = boolAttribute(row, kAXSelectedAttribute as CFString)
-    guard observed == true else { fail("FILE_PICKER_ITEM_SELECTION_UNVERIFIED", "native row did not report selected=true after delivery", kind:kind, previous:previous) }
-    emit(Output(ok:true,state:"DELIVERED",action:action,name:requestedName,kind:kind,previousSelected:previous,observedSelected:observed,idempotent:false,method:method,error:nil,detail:nil),0)
+    guard observed == true else { fail("FILE_PICKER_ITEM_SELECTION_UNVERIFIED", "native row did not report selected=true after delivery", kind:kind, previousSelected:previousSelected) }
+    emit(Output(ok:true,state:"DELIVERED",action:action,name:requestedName,kind:kind,previousSelected:previousSelected,observedSelected:observed,previousExpanded:nil,observedExpanded:nil,idempotent:false,method:method,error:nil,detail:nil),0)
 }
 
-guard kind == "directory" else { fail("FILE_PICKER_ITEM_NOT_DIRECTORY", "open-directory requires an observed directory item", kind:kind, previous:previous) }
-if previous != true {
-    let selected = setSelected(row)
-    guard selected == .success && boolAttribute(row, kAXSelectedAttribute as CFString) == true else { fail("FILE_PICKER_DIRECTORY_SELECTION_FAILED", "directory could not be selected before confirmation", kind:kind, previous:previous) }
+guard kind == "directory" else { fail("FILE_PICKER_ITEM_NOT_DIRECTORY", "expand-directory requires an observed directory item", kind:kind, previousSelected:previousSelected) }
+let previousExpanded = boolAttribute(row, kAXDisclosingAttribute as CFString)
+if previousExpanded == true {
+    emit(Output(ok:true,state:"DELIVERED",action:action,name:requestedName,kind:kind,previousSelected:previousSelected,observedSelected:previousSelected,previousExpanded:true,observedExpanded:true,idempotent:true,method:method,error:nil,detail:nil),0)
 }
-let confirmTargets = directoryConfirmTargets(row, name: requestedName)
-guard confirmTargets.count == 1 else {
-    fail(confirmTargets.isEmpty ? "FILE_PICKER_DIRECTORY_CONFIRM_TARGET_UNAVAILABLE" : "FILE_PICKER_DIRECTORY_CONFIRM_TARGET_AMBIGUOUS", "expected exactly one AXTextField descendant named \(requestedName) advertising AXConfirm; observed \(confirmTargets.count)", kind:kind, previous:previous)
+guard let triangle = findFirst(row, depth: 5, predicate: { role($0) == (kAXDisclosureTriangleRole as String) }) else {
+    fail("FILE_PICKER_DIRECTORY_DISCLOSURE_UNAVAILABLE", "directory row has no AXDisclosureTriangle", kind:kind, previousSelected:previousSelected, previousExpanded:previousExpanded)
 }
-let confirmed = AXUIElementPerformAction(confirmTargets[0], kAXConfirmAction as CFString)
-guard confirmed == .success else { fail("FILE_PICKER_DIRECTORY_OPEN_FAILED", "native AXConfirm on exact directory-name element failed with code \(confirmed.rawValue)", kind:kind, previous:previous) }
-emit(Output(ok:true,state:"DELIVERED",action:action,name:requestedName,kind:kind,previousSelected:previous,observedSelected:true,idempotent:false,method:method,error:nil,detail:nil),0)
+guard actionNames(triangle).contains(kAXPressAction as String) else {
+    fail("FILE_PICKER_DIRECTORY_EXPAND_ACTION_UNAVAILABLE", "directory disclosure triangle does not advertise AXPress", kind:kind, previousSelected:previousSelected, previousExpanded:previousExpanded)
+}
+let pressed = AXUIElementPerformAction(triangle, kAXPressAction as CFString)
+guard pressed == .success else {
+    fail("FILE_PICKER_DIRECTORY_EXPAND_FAILED", "native AXPress on directory disclosure triangle failed with code \(pressed.rawValue)", kind:kind, previousSelected:previousSelected, previousExpanded:previousExpanded)
+}
+emit(Output(ok:true,state:"DELIVERED",action:action,name:requestedName,kind:kind,previousSelected:previousSelected,observedSelected:previousSelected,previousExpanded:previousExpanded,observedExpanded:nil,idempotent:false,method:method,error:nil,detail:nil),0)
