@@ -15,7 +15,7 @@ const PHASE9A1 = [
 ];
 
 const PHASE9A2 = [
-  {name:"application.terminate", available:true, validationState:"IMPLEMENTED", strategies:["provider-scoped-graceful-termination","process-not-running-postcondition"]},
+  {name:"application.terminate", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["provider-scoped-graceful-termination","process-not-running-postcondition"]},
 ];
 
 function createMacOSBackend(options = {}) {
