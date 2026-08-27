@@ -1,618 +1,250 @@
 # Native controls implementation roadmap
 
-## Objective
+## Scope
 
-Extend the canonical Computer Control contract from text, generic interaction
-and window management to the semantic operation of native UI controls.
-
-The implementation must support equivalent intent across macOS Accessibility,
-Windows UI Automation and Linux AT-SPI without exposing OS-specific attributes
-or creating a separate public API for every widget class.
-
-Browser document automation is deliberately outside this native-controls
-milestone. Cocoa/AppKit controls exposed through macOS Accessibility are the
-reference physical surface for the current macOS implementation.
-
-## Design decision
-
-Computer Control models common control semantics, not platform widgets.
-For example, a checkbox and a switch both expose a boolean state and use
-`ui.toggle`; buttons, links and menu items use `ui.invoke`; sliders and steppers
-share range/value operations.
-
-The public layer therefore grows through a small set of explicit verbs:
-
-```text
-observe  -> describe, children
-act      -> invoke, toggle, select, setValue
-state    -> expand, collapse, increment, decrement
-navigate -> scroll, scrollIntoView
-text     -> observe selection/caret, select range, mutate range
-```
-
-Widget roles remain observation data used to validate whether an operation is
-supported by the target.
+Computer Control models semantic native UI operations across platform backends. macOS Cocoa/AppKit exposed through Accessibility is the current physical reference surface. Browser document automation remains a separate future backend/surface and must not drive native-control workarounds.
 
 ## Invariants
 
-Every milestone must preserve these rules:
+1. Computer Use decides intent and semantic target; Computer Control owns mechanics and postconditions.
+2. OS-specific Accessibility objects and native handles remain backend-private.
+3. Element references are observation-scoped and must be freshly resolved after relevant state changes.
+4. Delivery is not success: every mutating semantic operation requires an observed postcondition.
+5. Unsupported, unavailable, stale, ambiguous and unverified are distinct failures.
+6. SDKs/adapters are thin projections of the canonical contract.
+7. Physical validation is scoped to the tested backend/control surface, not every canonical role.
+8. Browser/WebKit document behavior is out of scope for this native-controls roadmap.
 
-1. Computer Use decides what to do and which semantic target is relevant.
-2. Computer Control owns normalized mechanics and postcondition verification.
-3. The OS backend chooses the strongest native strategy.
-4. Native identifiers and accessibility objects remain backend-private.
-5. Element references are observation-scoped and must be freshly resolved.
-6. A backend accepting a command is not sufficient proof of semantic success.
-7. Requested state is explicit whenever idempotence is possible.
-8. Unsupported, unavailable, stale, ambiguous and unverified remain distinct.
-9. Capability discovery reports support per backend and operation.
-10. SDKs and adapters remain thin projections of the canonical contract.
-11. A physical PASS is scoped to the tested OS/backend/control surface; it is
-    not universal proof for every role listed by the canonical contract.
-12. Browser/WebKit behavior must not drive Cocoa/AppKit-specific workarounds in
-    the generic native-controls contract.
+## Current lifecycle state
 
-## Target control model
-
-`ui.describe` is the foundation for all later operations. Its normalized result
-contains only fields that have cross-platform meaning:
-
-```json
-{
-  "target": {"ref": "@e12", "role": "checkbox", "name": "Wi-Fi"},
-  "enabled": true,
-  "focused": false,
-  "selected": false,
-  "expanded": null,
-  "checked": false,
-  "readOnly": false,
-  "value": null,
-  "range": null,
-  "actions": ["toggle", "focus"],
-  "childCount": 0
-}
+```text
+Phase 0  contract foundation            IMPLEMENTED
+Phase 1  ui.describe                    PHYSICALLY_VALIDATED
+Phase 2  ui.invoke                      PHYSICALLY_VALIDATED
+Phase 3  ui.toggle/select               PHYSICALLY_VALIDATED on AppKit reference controls
+Phase 4  ui.expand/collapse             PHYSICALLY_VALIDATED on AppKit reference controls
+Phase 5  value mutations                PHYSICALLY_VALIDATED on AppKit numeric controls
+Phase 6  ui.children                    PHYSICALLY_VALIDATED on AppKit hierarchy fixture
+Phase 7  scrolling                      PHYSICALLY_VALIDATED on AppKit scroll fixture
+Phase 8A text observation               PHYSICALLY_VALIDATED on AppKit NSTextView
+Phase 8B text range selection           PHYSICALLY_VALIDATED on AppKit NSTextView
+Phase 8C text mutation                  PHYSICALLY_VALIDATED on AppKit NSTextView
+Phase 9A1 application list/launch/activate IMPLEMENTED; physical checkpoint pending
+Phase 9A2 application terminate         PENDING security/consent review
+Phase 9B dialogs/file pickers           PENDING
+Phase 9C system chrome                  PENDING
+Phase 9D displays/richer clipboard      PENDING
+Phase 10 low-level fallbacks            PENDING
 ```
 
-Fields that the backend cannot observe are `null` or absent according to the
-schema; they are never guessed. Raw AX attributes, UIA pattern objects and
-AT-SPI interfaces do not cross the canonical boundary.
+## Physical evidence
 
-## Current progress on `main`
-
-Authoritative macOS Cocoa/AppKit evidence for the generic native-control core:
+Generic native-control core, Phase 3-7:
 
 ```text
 rumiai-computer-use-PoCs
-  tests/products/computer-control/results/2026-08-26-native-appkit-physical-PASS.md
-  evidence commit: 2334690a069d65ebd5546508f447c39f10d3cd8f
+tests/products/computer-control/results/2026-08-26-native-appkit-physical-PASS.md
 ```
 
-Authoritative Phase 8A text-selection evidence:
+Advanced text checkpoints:
 
 ```text
-rumiai-computer-use-PoCs
-  session: cc-phase8a-text-selection-s04
-  evidence commit: faf24053aa8b9b31abc7f3ac730941921c3625f9
-  result: 14 PASS / 0 FAIL / 0 BLOCKED
+8A session: cc-phase8a-text-selection-s04
+   evidence: faf24053aa8b9b31abc7f3ac730941921c3625f9
+   result: 14 PASS / 0 FAIL / 0 BLOCKED
+
+8B session: cc-phase8b-text-range-selection-s01
+   evidence: c1cbab943cd2885ee9f62098cc23f1b903dc4dee
+   result: 15 PASS / 0 FAIL / 0 BLOCKED
+
+8C session: cc-phase8c-text-mutation-s03
+   evidence: 451ea2f7b70dc740216792a1634abe337992b23b
+   validated product: d679a89a88977a70c450eec9e1aece6c7b2a6506
+   result: 17 PASS / 0 FAIL / 0 BLOCKED
 ```
 
-Phase 8A was physically validated against product revision:
+## Phase 3-7 residual backlog
 
-```text
-4166cab8c6b535d627c0f93fe0015ad3c69fcc6a
-```
+The validated core semantics stay validated; these items are additional conformance/development coverage and do not reopen the existing APIs.
 
-Current lifecycle state:
-
-```text
-Phase 0 contract foundation   IMPLEMENTED
-Phase 1 ui.describe           PHYSICALLY_VALIDATED
-Phase 2 ui.invoke             PHYSICALLY_VALIDATED
-Phase 3 ui.toggle/select      PHYSICALLY_VALIDATED on AppKit reference controls
-Phase 4 ui.expand/collapse    PHYSICALLY_VALIDATED on AppKit reference controls
-Phase 5 value mutations       PHYSICALLY_VALIDATED on AppKit numeric controls
-Phase 6 ui.children           PHYSICALLY_VALIDATED on AppKit hierarchy fixture
-Phase 7 scrolling             PHYSICALLY_VALIDATED on AppKit scroll fixture
-Phase 8A text observation     PHYSICALLY_VALIDATED on AppKit NSTextView
-Phase 8B text range selection IMPLEMENTED; physical checkpoint pending
-Phase 8C text mutation        PENDING
-Phase 9 app/system surfaces   PENDING
-Phase 10 low-level fallback   PENDING
-```
-
-The Phase 3-7 promotion is evidence-scoped. Remaining role coverage is tracked
-below and does not invalidate the validated core semantics.
-
-## Phase 0 — Contract foundation
-
-Purpose: establish the shared vocabulary before adding actions.
-
-Deliverables:
-
-- normalized control roles and state names;
-- typed value union for string, number, boolean, date, time and date-time;
-- normalized range `{min, max, step, value}`;
-- normalized action names;
-- schemas for control description and operation results;
-- canonical errors for unsupported role/action and unobservable state;
-- capability naming convention for the new operations.
-
-## Phase 1 — `ui.describe`
-
-Purpose: make supported state and actions discoverable before attempting them.
-
-Public API:
-
-```js
-client.describe({application, target})
-```
-
-Status: `PHYSICALLY_VALIDATED` on native macOS controls.
-
-## Phase 2 — `ui.invoke`
-
-Purpose: activate controls through their native primary action.
-
-Primary roles:
-
-- button;
-- link;
-- menu item;
-- toolbar item;
-- default dialog action.
-
-Strategy order:
-
-1. native invoke/press action;
-2. accessibility element action;
-3. observed-bounds pointer fallback.
-
-Status: `PHYSICALLY_VALIDATED` on native macOS controls.
-
-## Phase 3 — `ui.toggle` and `ui.select`
-
-Purpose: support stateful boolean and selection controls idempotently.
-
-Public APIs:
-
-```js
-client.toggle({application, target, value:true})
-client.select({application, target})
-```
-
-Canonical target roles:
-
-- checkbox and switch through `toggle`;
-- radio button, tab, option, list item and row through `select`.
-
-Required verification:
-
-- `toggle` succeeds only when observed checked state equals the requested value;
-- `select` succeeds only when the target is observed selected;
-- mixed/indeterminate checkbox state is represented explicitly;
-- unsupported deselection semantics fail rather than being simulated.
-
-Validated AppKit reference coverage:
-
-- checkbox toggle, idempotence and restore;
-- radio selection and idempotence.
-
-### Remaining Phase 3 conformance coverage
-
-These are coverage gaps, not new API design:
+### Phase 3 — toggle/select coverage
 
 - native switch semantics;
 - tab selection;
 - option/list-item selection;
-- selectable table/list row behavior;
-- mixed/indeterminate native checkbox where an AppKit fixture can expose it
-  deterministically.
+- selectable table/list rows;
+- deterministic mixed/indeterminate checkbox coverage.
 
-## Phase 4 — `ui.expand` and `ui.collapse`
-
-Purpose: operate containers and disclosure controls without clicking arbitrary
-geometry.
-
-Canonical target roles:
-
-- combo box;
-- disclosure group;
-- menu and submenu;
-- tree item;
-- expandable list or outline row.
-
-Both operations are idempotent and verify final expanded state.
-
-Validated AppKit reference coverage:
-
-- native outline/disclosure row expand/collapse and idempotence.
-
-### Remaining Phase 4 conformance coverage
+### Phase 4 — expand/collapse coverage
 
 - expandable combo box;
-- menu/submenu disclosure where AX exposes a meaningful expanded state;
+- menu/submenu expanded state where Accessibility exposes meaningful semantics;
 - additional tree-item mappings beyond the reference `NSOutlineView` fixture.
 
-## Phase 5 — `ui.setValue`, `ui.increment` and `ui.decrement`
+### Phase 5 — value coverage/development
 
-Purpose: cover range-based and structured-value controls.
+- numeric text fields;
+- editable combo boxes;
+- date, time and date-time canonical mapping;
+- timezone rules for date-time;
+- explicit `{min,max,step,value}` metadata;
+- native step-normalization behavior.
 
-Canonical target roles:
+Structured date/time work may require contract refinement and therefore remains residual development, not only physical coverage.
 
-- slider;
-- stepper/spin button;
-- numeric field;
-- date, time and date-time control;
-- editable combo box.
-
-Rules:
-
-- `setValue` accepts a typed canonical value, not localized display text;
-- dates use ISO values and explicit timezone semantics where relevant;
-- a numeric backend may normalize to the declared step;
-- success reports requested and observed normalized values;
-- increment/decrement report previous and resulting values;
-- progress indicators remain read-only.
-
-Validated AppKit reference coverage:
-
-- numeric `NSSlider` observation and setValue;
-- increment/decrement over native numeric controls including stepper behavior.
-
-### Remaining Phase 5 development and conformance coverage
-
-The numeric core is validated, but structured values remain deliberately open:
-
-- numeric text field semantics;
-- editable combo box value semantics;
-- date control canonical mapping;
-- time control canonical mapping;
-- date-time control canonical mapping;
-- timezone rules for date-time values;
-- explicit range `{min,max,step,value}` coverage where AppKit exposes metadata;
-- normalization behavior when a requested numeric value is rounded to a native
-  step.
-
-Date/time work may require contract refinement, so it is classified as residual
-Phase 5 development rather than only additional physical coverage.
-
-## Phase 6 — Structure and collections
-
-Public API:
-
-```js
-client.children({application, target, role?, depth?})
-```
-
-Purpose: expose bounded semantic structure for:
-
-- combo box options;
-- menus and submenus;
-- trees and outlines;
-- lists;
-- tables and grids;
-- tab groups.
-
-The response preserves semantic parent/child relationships without exporting raw
-Accessibility paths. Pagination and maximum-depth limits prevent unbounded trees.
-
-Validated AppKit reference coverage:
-
-- native AX JSON hierarchy;
-- direct children;
-- bounded depth;
-- structural scope targets.
-
-### Remaining Phase 6 conformance coverage
+### Phase 6 — collections
 
 - combo-box option trees;
-- native menus/submenus;
-- native list collections;
-- tables/grids;
-- tab groups;
-- table header preservation.
+- menus/submenus;
+- native lists;
+- tables/grids and header preservation;
+- tab groups.
 
-### Phase 6 follow-up APIs
+Backlog candidate APIs, introduced only for concrete Computer Use needs:
 
-These are intentionally not part of the current `children` contract and remain
-backlog candidates:
+- multi-selection;
+- table cell addressing by row/column headers;
+- selected row/cell observation;
+- native cell action.
 
-- select multiple list items;
-- identify table cells by row/column headers;
-- observe selected rows/cells;
-- activate a cell's native action.
+### Phase 7 — scrolling
 
-They should be introduced only when a concrete Computer Use requirement needs
-them; do not expand the public API for completeness alone.
+- horizontal scrolling;
+- nested scroll containers;
+- deterministic nearest-container choice with multiple ancestors;
+- top/bottom idempotent boundary behavior;
+- additional AppKit scroll surfaces.
 
-## Phase 7 — Scrolling and visibility
+Residual Phase 3-7 work is opportunistic or release-hardening work unless evidence exposes a contract defect.
+
+## Phase 8 — advanced text controls — COMPLETE on AppKit reference surface
+
+Canonical offsets are zero-based UTF-16 code units with exclusive `end`. `NSRange`, AX text marker objects, UIA TextRange and AT-SPI objects never cross the public boundary.
+
+Validated APIs:
+
+```text
+ui.getTextSelection
+ui.selectTextRange
+ui.replaceTextRange
+ui.insertText
+ui.appendText
+```
+
+The physical evidence proves non-BMP/emoji indexing, selected text, caret observation and placement, exact range selection, idempotence, out-of-bounds rejection, exact native range mutation, insertion, append, deletion, surrogate-pair boundary rejection and independent fresh AX postconditions.
+
+## Phase 9 — application and system surfaces
+
+Phase 9 changes or observes system-wide state and therefore requires explicit security boundaries per sub-phase.
+
+### Phase 9A1 — provider-scoped application inventory, launch and activation
 
 Public APIs:
 
 ```js
-client.scroll({application, target, direction, amount})
-client.scrollIntoView({application, target})
+client.listApplications({availableOnly:false})
+client.launchApplication({application})
+client.activateApplication({application})
 ```
 
-Rules:
+Contract decisions:
 
-- prefer native Accessibility scrolling;
-- distinguish container scrolling from page/application navigation;
-- verify changed scroll position or target visibility;
-- expose wheel/gesture delivery only as backend strategy, not semantic success.
+- `application.list` lists registered application Providers that Computer Control can address; it is not a generic process list;
+- no arbitrary executable path or shell command is accepted from callers;
+- `application.launch` resolves the exact Provider application and verifies it becomes observed as running;
+- launch is idempotent for an already-running Provider and does not intentionally create a second instance;
+- `application.activate` requires an already-running application and never launches implicitly;
+- activation success requires the Provider identity to match the observed foreground application;
+- public descriptors contain semantic/provider identity only; process IDs are not durable application identity.
 
-Validated AppKit reference coverage:
+Status: `IMPLEMENTED`; deterministic macOS physical checkpoint pending.
 
-- native scroll container recognition;
-- semantic direction mapping;
-- observable scroll postcondition;
-- `scrollIntoView` native-action attempt plus bounded wheel/geometry fallback;
-- deep offscreen target visibility verification.
+Required physical evidence:
 
-### Remaining Phase 7 conformance coverage
+1. fixture Provider appears in `application.list` before launch as available and not running;
+2. `application.activate` before launch fails `APP_NOT_RUNNING` and does not launch;
+3. `application.launch` starts the exact fixture bundle and reports running;
+4. repeated launch is idempotent;
+5. activation brings the fixture to foreground;
+6. repeated activation is idempotent;
+7. `application.list` reflects running/active state transitions;
+8. unavailable/unregistered Provider failures remain distinct.
 
-- horizontal native scrolling;
-- nested scroll containers;
-- multiple scrollable ancestors and deterministic nearest-container choice;
-- edge/idempotent behavior at top/bottom boundaries;
-- additional AppKit scroll surfaces where AX exposes native scroll actions.
+### Phase 9A2 — graceful application termination
 
-These are conformance hardening tasks unless evidence exposes a contract defect.
-
-## Residual Phase 3-7 backlog policy
-
-Residual role coverage should be executed opportunistically or before the first
-release that claims those roles. It must not block Phase 8 unless a missing
-behavior is foundational to the new text model.
-
-Every residual coverage checkpoint follows the same evidence rules as new work:
-individual tests, deterministic session runner, complete stdout/stderr and a
-committed physical evidence set.
-
-## Phase 8 — Advanced text controls
-
-The generic control-state prerequisite is satisfied for the AppKit reference
-surface. Phase 8 is split into three physical checkpoints so later mutation work
-does not build on an unverified text-position or text-selection model.
-
-All Phase 8 canonical offsets use one explicit unit:
+Candidate API:
 
 ```text
-utf16-code-unit
+application.terminate
 ```
 
-Offsets are zero-based and `end` is exclusive. Backend-native `NSRange`,
-`AXTextMarkerRange`, UIA TextRange and AT-SPI objects never cross the public
-boundary.
+This is intentionally separated from 9A1. Before implementation define consent expectations, unsaved-document behavior, graceful termination semantics, refusal/timeout handling and whether any force-termination capability should exist at all. Force-kill is not implied by this roadmap.
 
-### Phase 8A — text selection observation
+### Phase 9B — dialogs and file pickers
 
-Purpose: define and physically prove the canonical text-position model.
-
-Public API:
-
-```js
-client.getTextSelection({application, target})
-```
-
-Canonical range model:
-
-```json
-{
-  "start": 1,
-  "end": 3,
-  "length": 2,
-  "collapsed": false,
-  "unit": "utf16-code-unit"
-}
-```
-
-Required result semantics:
-
-- target descriptor;
-- canonical selection range;
-- caret position when selection is collapsed;
-- selected text when observable;
-- text length when observable and useful for validation;
-- explicit `null`/unavailable values rather than inference.
-
-Rules:
-
-- `length == end - start`;
-- a caret is a collapsed range where `start == end` and `length == 0`;
-- a non-BMP character occupies two canonical UTF-16 units;
-- native target re-resolution remains inside the pinned application process;
-- target ambiguity, unavailable selection and inconsistent native observations
-  fail closed.
-
-Status: `PHYSICALLY_VALIDATED` on deterministic AppKit `NSTextView` controls.
-The reference checkpoint proves a non-empty selection containing `😀` at
-`[1,3)` and a collapsed caret at offset `3`.
-
-Evidence:
-
-```text
-session: cc-phase8a-text-selection-s04
-test evidence: faf24053aa8b9b31abc7f3ac730941921c3625f9
-validated product: 4166cab8c6b535d627c0f93fe0015ad3c69fcc6a
-result: 14 PASS / 0 FAIL / 0 BLOCKED
-```
-
-### Phase 8B — range selection
-
-Purpose: select a native text range or place a caret without keyboard,
-clipboard or coordinate delivery.
-
-Public API:
-
-```js
-client.selectTextRange({
-  application,
-  target,
-  range:{start:3, end:5, unit:"utf16-code-unit"}
-})
-```
-
-The request contains only independent fields. `length` and `collapsed` are
-derived by Computer Control.
-
-Required behavior:
-
-- validate `0 <= start <= end` and the explicit index unit before dispatch;
-- observe full UTF-16 text length when available and reject out-of-bounds ranges
-  before mutation;
-- return idempotently when the exact range is already selected;
-- set selection through the strongest native Accessibility primitive;
-- on macOS, require `AXSelectedTextRange` to be settable and write a real
-  `CFRange` with `AXUIElementSetAttributeValue`;
-- verify the exact native range immediately after the write;
-- independently re-observe the selection through the Phase 8A observation path;
-- succeed only when the independent observed canonical range equals the request;
-- preserve collapsed selection as explicit caret placement;
-- never loosen target matching after permission, ambiguity, mutation or
-  verification failures.
-
-Status: `IMPLEMENTED`; deterministic Cocoa/AppKit physical checkpoint pending.
-
-The physical checkpoint must prove:
-
-1. non-empty range selection;
-2. exact selected text after the write;
-3. idempotent re-selection;
-4. collapsed range/caret placement;
-5. UTF-16 consistency around the existing non-BMP fixture;
-6. out-of-bounds rejection without changing the current range.
-
-### Phase 8C — range mutation and insertion
-
-Candidate public APIs:
-
-```js
-client.replaceTextRange({application, target, range, text})
-client.insertText({application, target, text})
-client.appendText({application, target, text})
-```
-
-Required behavior:
-
-- replace only the requested range;
-- insert at the observed caret without replacing unrelated text;
-- append at the canonical text end;
-- preserve literal payload exactly;
-- verify resulting text/range state;
-- fail closed if precise mutation cannot be proved.
-
-Clipboard-assisted or keyboard-assisted delivery may be backend strategies, but
-must not change canonical semantics or weaken verification.
-
-Phase 8C must not start from an assumption that 8B works physically; its
-implementation checkpoint begins only after committed Phase 8B physical PASS.
-
-## Phase 9 — Application and system surfaces
-
-Candidate APIs:
-
-- `application.list`;
-- `application.launch`;
-- `application.activate`;
-- `application.terminate`;
-- modal dialog and alert observation;
+- modal dialog/alert observation;
+- default/cancel semantic actions;
 - file picker navigation and selection;
-- menu bar, Dock/taskbar and system tray/menu extras;
+- explicit handling of destructive/security-sensitive dialogs.
+
+### Phase 9C — system chrome
+
+- menu bar;
+- Dock/taskbar;
+- system tray/menu extras.
+
+### Phase 9D — displays and richer clipboard
+
 - display and multi-monitor observation;
-- richer clipboard formats.
+- richer clipboard formats with explicit type metadata.
 
-These operations require separate security and consent review because they can
-change system-wide state.
+## Phase 10 — explicit low-level fallbacks
 
-Recommended internal subdivision:
-
-```text
-9A application lifecycle
-9B dialogs and file pickers
-9C system chrome / menu extras / Dock/taskbar
-9D displays and richer clipboard
-```
-
-## Phase 10 — Explicit low-level fallbacks
-
-Candidate APIs:
+Candidate capabilities:
 
 - pointer move and button delivery;
 - drag and drop;
 - wheel/gesture delivery;
-- screenshot of display, window or element;
+- screenshot of display/window/element;
 - OCR/vision adapter input.
 
-These are fallback capabilities. They do not replace a working semantic
-operation, and coordinates generated directly by an LLM are not accepted as
-verified target identity.
+These are fallbacks. A working semantic operation always takes precedence, and coordinate delivery is not itself semantic success.
 
-Low-level action delivery and semantic success remain separate concepts.
+## Browser surface — deferred
 
-## Browser surface — deliberately deferred
-
-Browser document automation remains outside this roadmap's native-control
-implementation phases.
-
-If/when browser control is introduced, it should be designed as a separate
-surface/backend (for example browser automation/CDP where appropriate) rather
-than treating HTML/ARIA controls exposed through Safari/WebKit as Cocoa/AppKit
-controls.
-
-Browser UI chrome that is genuinely exposed as native macOS controls may be
-considered separately from webpage content, but must be validated and labeled by
-its actual surface.
+Browser document automation should be implemented as a separate surface/backend, for example browser automation/CDP where appropriate. Browser chrome that is genuinely a native OS surface may be treated separately, but webpage HTML/ARIA is not Cocoa/AppKit validation.
 
 ## Repository workflow
 
-Changes are split across the existing repositories:
-
 ```text
 rumiai-computer-control
-  canonical schemas, runtime routing, backend, SDK, adapter and API docs
+  canonical schemas, runtime, backends, SDK, adapters, API docs
 
 rumiai-computer-use-PoCs
-  boundary checks, physical harnesses, exact evidence and experimental work
+  contract/boundary tests, physical fixtures, session runners, committed evidence
 
 rumiai-computer-use
-  consumer integration only after a Computer Control capability is released
-
-rumiai-portable-runtime
-  portable installation/start support only when dependencies change
+  consumer integration after Computer Control capability release
 ```
 
-Computer Control and Computer Use remain free of experimental source,
-validation harnesses and result archives.
-
-The canonical operational development/physical-validation workflow is maintained
-in the laboratory repository at:
+Canonical execution workflow:
 
 ```text
 docs/workflows/computer-control-development-validation-workflow.md
 ```
 
-## Per-operation implementation cycle
+Every checkpoint follows:
 
-Each operation is delivered independently or in a semantically coherent
-checkpoint:
+```text
+implement product -> commit
+individual tests -> commit
+boundary CI -> PASS
+immutable session runner -> commit
+physical Mac execution
+unified log + JSON -> evidence commit/push
+chat diagnosis
+fix/retest if needed
+separate physical-validation promotion commit
+```
 
-1. define semantic question and observable postcondition;
-2. add/refine language-neutral schema;
-3. add router validation and canonical error mapping;
-4. add macOS implementation using the strongest Accessibility primitive;
-5. expose SDK and RumiAI adapter methods when applicable;
-6. update `runtime.info` capability discovery;
-7. update API reference;
-8. commit product changes;
-9. add matching contract/boundary/physical micro-tests in the PoC repository;
-10. create an immutable physical session runner;
-11. execute the runner on the target Mac and commit exact evidence;
-12. diagnose evidence in the development chat;
-13. fix product/test code and create a new session if necessary;
-14. promote only physically proven capability metadata in a distinct reviewed
-    product commit.
-
-Windows and Linux implementations follow the same contract when there is a
-concrete target environment. They do not delay macOS progress, but macOS-only
-details cannot become canonical semantics.
+The previous long-form roadmap is retained in the repository as historical reference rather than deleted.
