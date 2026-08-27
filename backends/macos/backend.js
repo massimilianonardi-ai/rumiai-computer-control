@@ -50,7 +50,7 @@ const PHASE9B3C = [
 ];
 
 const PHASE9C1A = [
-  {name:"menuBar.observe", available:true, validationState:"IMPLEMENTED", strategies:["provider-scoped-native-AX-menu-bar-observation"]},
+  {name:"menuBar.observe", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["provider-scoped-native-AX-menu-bar-observation"]},
 ];
 
 function canonicalDialog(value={}) {
