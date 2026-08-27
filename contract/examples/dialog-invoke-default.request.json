@@ -1,0 +1,7 @@
+{
+  "method": "dialog.invokeDefault",
+  "params": {
+    "application": "Example App",
+    "timeoutMs": 3000
+  }
+}
