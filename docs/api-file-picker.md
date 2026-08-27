@@ -87,19 +87,6 @@ The macOS backend therefore:
 5. invokes `AXPress`;
 6. uses a separate fresh read-only helper to verify `AXDisclosing=true`.
 
-Example result:
-
-```json
-{
-  "state": "FILE_PICKER_DIRECTORY_EXPANDED",
-  "directory": {"name": "FolderA", "kind": "directory"},
-  "location": "PickerRoot",
-  "changed": true,
-  "idempotent": false,
-  "verified": true
-}
-```
-
 Repeated expansion of an already expanded directory succeeds with `changed:false` and `idempotent:true`.
 
 ## Phase 9B3B contract decisions
@@ -118,7 +105,7 @@ Repeated expansion of an already expanded directory succeeds with `changed:false
 - no `AXConfirm`, `AXOpen`, keyboard, clipboard, mouse coordinates, synthetic double click or filesystem enumeration are fallback mechanisms;
 - all AX identifiers and native element handles remain backend-private.
 
-The earlier unvalidated `filePicker.openDirectory` model was removed before promotion because three physical sessions disproved its assumed location-change semantics.
+The earlier unvalidated `filePicker.openDirectory` model was removed before promotion because physical sessions disproved its assumed location-change semantics.
 
 Phase 9B3B validation state: `PHYSICALLY_VALIDATED` on the deterministic Cocoa/AppKit `NSOpenPanel` reference fixture.
 
@@ -132,21 +119,11 @@ const result = await client.acceptFilePicker({
 
 `accept` is an explicit semantic authorization by the caller to accept the current native picker state. The backend does not choose this action automatically and does not infer authorization from button labels.
 
-On macOS the backend resolves the one supported native `NSOpenPanel`, reads its native `AXDefaultButton` relationship, requires the resulting button to be enabled and to advertise `AXPress`, and presses only that semantic target.
+The first Phase 9B3C physical checkpoint disproved the initial assumption that the `NSOpenPanel` sheet itself exposes `AXDefaultButton`. Earlier Phase 9B3A topology evidence had already shown the actual native AppKit surface: the picker contains an `AXButton` whose backend-private Accessibility identifier is `OKButton`. The corrected macOS backend therefore resolves exactly one button with identifier `OKButton`, requires role `AXButton`, enabled state, and advertised `AXPress`, then presses only that target.
+
+The identifier is a platform-backend implementation detail. It is never accepted from callers and never appears in the public schema, SDK result, or RumiAI adapter.
 
 Success requires the Provider application to remain running and a fresh independent picker observation to report `picker:null`.
-
-Example result:
-
-```json
-{
-  "state": "FILE_PICKER_ACCEPTED",
-  "action": "accept",
-  "changed": true,
-  "idempotent": false,
-  "verified": true
-}
-```
 
 ## `filePicker.cancel`
 
@@ -156,29 +133,18 @@ const result = await client.cancelFilePicker({
 });
 ```
 
-On macOS the backend resolves the native `AXCancelButton` relationship rather than matching a visible label. It requires an enabled button that advertises `AXPress` and verifies dismissal independently.
-
-Example result:
-
-```json
-{
-  "state": "FILE_PICKER_CANCELLED",
-  "action": "cancel",
-  "changed": true,
-  "idempotent": false,
-  "verified": true
-}
-```
+The corrected macOS backend resolves exactly one `AXButton` with the previously observed backend-private Accessibility identifier `CancelButton`. It does not match the visible title `Cancel`. The button must be enabled and advertise `AXPress`; success still requires an independent picker-absence postcondition.
 
 ## Phase 9B3C contract decisions
 
 - actions are explicit: `filePicker.accept` and `filePicker.cancel`;
 - both require one already-open supported picker in exactly one registered Provider process;
 - neither launches or activates an application implicitly;
-- accept resolves only through native `AXDefaultButton`;
-- cancel resolves only through native `AXCancelButton`;
+- on the validated AppKit surface, accept maps to the exact backend-private native identifier `OKButton` and cancel maps to `CancelButton`;
+- both targets must be `AXButton` elements and must be unique within the one supported picker;
 - visible button labels are not used for action selection or authorization;
-- disabled or unavailable semantic buttons fail explicitly;
+- the public API never accepts or exposes the native identifiers;
+- disabled, unavailable, ambiguous, or non-pressable semantic buttons fail explicitly;
 - only an advertised native `AXPress` is delivered;
 - delivery alone is not success;
 - success requires the Provider application to remain running and fresh `filePicker.observe` to report no picker;
@@ -186,11 +152,11 @@ Example result:
 - no coordinate, mouse, keyboard, clipboard, synthetic keypress, filesystem or dialog-label fallback is permitted;
 - all native handles and internal identifiers remain backend-private.
 
-Phase 9B3C validation state: `IMPLEMENTED`; deterministic Cocoa/AppKit physical checkpoint pending.
+Phase 9B3C validation state: `IMPLEMENTED`; corrected deterministic Cocoa/AppKit physical checkpoint pending.
 
 ## macOS reference backend and evidence
 
-Physical discovery with a real `NSOpenPanel` on macOS 26.5.2 showed that the accessible picker surface is visible in the Provider application's AX tree. Global focused-application information may be unavailable while the picker remains fully observable, so focus is diagnostic evidence only.
+Physical discovery with a real `NSOpenPanel` on macOS 26.5.2 showed that the accessible picker surface is visible in the Provider application's AX tree. That topology included `ListView`, `OKButton`, `CancelButton`, the visible current-location control, and the file rows. Global focused-application information may be unavailable while the picker remains fully observable, so focus is diagnostic evidence only.
 
 Historical Phase 9B3B evidence is preserved:
 
@@ -211,3 +177,17 @@ test source: 5e9fb88809af10c07bcf9f109d8d1e51ff92994a
 poc SHA tested: 8db375a5b23103f834d04721639400c6d61cbdc5
 result: 26 PASS / 0 FAIL / 0 BLOCKED
 ```
+
+Phase 9B3C historical blocked checkpoint:
+
+```text
+session: cc-phase9b3c-file-picker-semantic-actions-s01
+evidence commit: 53239bbb4b1da389e65e24f7dc484bd119b1a31f
+validated product candidate: 3cedb57d35663f74d0598b6c83645c973cdc6810
+test source: f3e0a6960ac46b7c554fae73d9849245311fcea6
+poc SHA tested: b740096ea5d792e201981e620e3eeec4e403448b
+result: 26 PASS / 0 FAIL / 1 BLOCKED
+cause: selected-state preparation passed, then the native NSOpenPanel did not expose AXDefaultButton on the picker sheet
+```
+
+This evidence is preserved and is not rewritten by the corrected checkpoint.
