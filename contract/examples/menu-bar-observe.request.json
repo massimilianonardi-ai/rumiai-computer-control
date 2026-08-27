@@ -1,0 +1,6 @@
+{
+  "method": "menuBar.observe",
+  "params": {
+    "application": "Example App"
+  }
+}
