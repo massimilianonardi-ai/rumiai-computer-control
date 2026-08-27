@@ -5,6 +5,7 @@ const dialogObservation = require("./runtime/app/computer-control/backends/macos
 const dialogAction = require("./runtime/app/computer-control/backends/macos-dialog-semantic-action");
 const filePickerObservation = require("./runtime/app/computer-control/backends/macos-file-picker-observation");
 const filePickerItemAction = require("./runtime/app/computer-control/backends/macos-file-picker-item-action");
+const filePickerDirectoryState = require("./runtime/app/computer-control/backends/macos-file-picker-directory-state");
 const {ComputerControlError} = require("../../runtime/src/errors");
 
 const PHASE8C = new Set([
@@ -38,7 +39,7 @@ const PHASE9B3A = [
 
 const PHASE9B3B = [
   {name:"filePicker.selectItem", available:true, validationState:"IMPLEMENTED", strategies:["provider-scoped-native-AX-pick","selected-item-postcondition"]},
-  {name:"filePicker.openDirectory", available:true, validationState:"IMPLEMENTED", strategies:["provider-scoped-native-AX-confirm","location-change-postcondition"]},
+  {name:"filePicker.expandDirectory", available:true, validationState:"IMPLEMENTED", strategies:["provider-scoped-native-AX-disclosure-press","directory-disclosing-postcondition"]},
 ];
 
 function canonicalDialog(value={}) {
@@ -95,6 +96,11 @@ function observeFilePicker(pid,method="filePicker.observe"){
   const native=filePickerObservation.observe({pid});
   if(!native?.ok) throw new ComputerControlError(native?.error||"FILE_PICKER_OBSERVATION_FAILED",native?.detail||"Could not observe native file picker","NONE",{state:native?.state||"FAILED",method:native?.method});
   if(native.pickers.length>1) throw new ComputerControlError("FILE_PICKER_AMBIGUOUS",`${method} requires at most one native file picker; observed ${native.pickers.length}`,"NONE",{state:"FAILED",method:native.method});
+  return native;
+}
+function observeFilePickerDirectoryState(pid,name,method){
+  const native=filePickerDirectoryState.observe({pid,name});
+  if(!native?.ok) throw new ComputerControlError(native?.error||"FILE_PICKER_DIRECTORY_STATE_FAILED",native?.detail||`${method} could not observe directory disclosure state`,"NONE",{state:native?.state||"FAILED",method:native?.method});
   return native;
 }
 function requireFilePicker(native,method){
@@ -178,27 +184,33 @@ function createMacOSBackend(options = {}) {
       }
       throw new ComputerControlError("FILE_PICKER_SELECTION_POSTCONDITION_UNVERIFIED",`${method} was delivered but item "${name}" was not observed selected`,"NONE",{state:"FAILED",method:delivered.method});
     },
-    async openFilePickerDirectory({application,name,timeoutMs=3000}) {
-      const method="filePicker.openDirectory";
+    async expandFilePickerDirectory({application,name,timeoutMs=3000}) {
+      const method="filePicker.expandDirectory";
       const {entry,pid}=filePickerContext(application,method);
       const beforeNative=observeFilePicker(pid,method);
       const before=requireFilePicker(beforeNative,method);
       const target=exactFilePickerItem(before,name,method);
-      if(target.enabled===false) throw new ComputerControlError("FILE_PICKER_ITEM_DISABLED",`${method} cannot open disabled item "${name}"`,"NONE",{state:"FAILED"});
+      if(target.enabled===false) throw new ComputerControlError("FILE_PICKER_ITEM_DISABLED",`${method} cannot expand disabled item "${name}"`,"NONE",{state:"FAILED"});
       if(target.kind!=="directory") throw new ComputerControlError("FILE_PICKER_ITEM_NOT_DIRECTORY",`${method} requires a visible directory; "${name}" is ${target.kind}`,"NONE",{state:"FAILED"});
-      if(before.location==null) throw new ComputerControlError("FILE_PICKER_LOCATION_UNAVAILABLE",`${method} requires an observed current location to verify navigation`,"NONE",{state:"FAILED"});
-      const delivered=deliverFilePickerItemAction(pid,"open-directory",name,method);
+      const beforeState=observeFilePickerDirectoryState(pid,name,method);
+      if(beforeState.expanded===true){
+        return {state:"FILE_PICKER_DIRECTORY_EXPANDED",application:lifecycle.publicDescriptor(entry,lifecycle.observeResolved(entry)),directory:{name,kind:"directory"},location:before.location,changed:false,idempotent:true,verified:true,verification:{method:"native-file-picker-directory-disclosing-observation",evidence:{name,expanded:true}},backend:{name:"macos-ax",strategy:"provider-scoped-native-AX-disclosure-press",fallback:false},diagnostics:{actionSeconds:0,observeSeconds:(beforeNative.seconds||0)+(beforeState.seconds||0),helperCompiled:beforeNative.compiled===true||beforeState.compiled===true}};
+      }
+      const delivered=deliverFilePickerItemAction(pid,"expand-directory",name,method);
       const deadline=Date.now()+timeoutMs;
       while(Date.now()<=deadline){
-        const afterNative=observeFilePicker(pid,method);
-        if(afterNative.pickers.length===0) throw new ComputerControlError("FILE_PICKER_NAVIGATION_PICKER_DISMISSED",`${method} dismissed the picker instead of navigating`,"NONE",{state:"FAILED",method:delivered.method});
-        const after=requireFilePicker(afterNative,method);
-        if(after.location!=null&&after.location!==before.location){
-          return {state:"FILE_PICKER_DIRECTORY_OPENED",application:lifecycle.publicDescriptor(entry,lifecycle.observeResolved(entry)),directory:{name,kind:"directory"},previousLocation:before.location,observedLocation:after.location,picker:after,changed:true,idempotent:false,verified:true,verification:{method:"native-file-picker-location-change-observation",evidence:{previousLocation:before.location,observedLocation:after.location}},backend:{name:"macos-ax",strategy:"provider-scoped-native-AX-confirm",fallback:false},diagnostics:{actionSeconds:delivered.seconds||0,observeSeconds:(beforeNative.seconds||0)+(afterNative.seconds||0),helperCompiled:delivered.compiled===true||afterNative.compiled===true}};
+        const running=lifecycle.observeResolved(entry);
+        if(!running.running) throw new ComputerControlError("FILE_PICKER_EXPANSION_APP_EXITED",`${method} caused or coincided with application exit`,"NONE",{state:"FAILED"});
+        const pickerNative=observeFilePicker(pid,method);
+        if(pickerNative.pickers.length===0) throw new ComputerControlError("FILE_PICKER_EXPANSION_PICKER_DISMISSED",`${method} dismissed the picker instead of expanding the directory`,"NONE",{state:"FAILED",method:delivered.method});
+        const after=requireFilePicker(pickerNative,method);
+        const afterState=observeFilePickerDirectoryState(pid,name,method);
+        if(afterState.expanded===true){
+          return {state:"FILE_PICKER_DIRECTORY_EXPANDED",application:lifecycle.publicDescriptor(entry,running),directory:{name,kind:"directory"},location:after.location,picker:after,changed:true,idempotent:false,verified:true,verification:{method:"native-file-picker-directory-disclosing-observation",evidence:{name,previousExpanded:beforeState.expanded??null,observedExpanded:true}},backend:{name:"macos-ax",strategy:"provider-scoped-native-AX-disclosure-press",fallback:false},diagnostics:{actionSeconds:delivered.seconds||0,observeSeconds:(beforeNative.seconds||0)+(beforeState.seconds||0)+(pickerNative.seconds||0)+(afterState.seconds||0),helperCompiled:delivered.compiled===true||pickerNative.compiled===true||afterState.compiled===true}};
         }
         await sleep(50);
       }
-      throw new ComputerControlError("FILE_PICKER_NAVIGATION_POSTCONDITION_UNVERIFIED",`${method} was delivered but the picker location did not change`,"NONE",{state:"FAILED",method:delivered.method});
+      throw new ComputerControlError("FILE_PICKER_EXPANSION_POSTCONDITION_UNVERIFIED",`${method} was delivered but directory "${name}" was not observed expanded`,"NONE",{state:"FAILED",method:delivered.method});
     },
     async performDialogAction({application,action,timeoutMs=3000}) {
       const method=action==="cancel"?"dialog.invokeCancel":"dialog.invokeDefault";
@@ -234,4 +246,4 @@ function createMacOSBackend(options = {}) {
   };
 }
 
-module.exports = {...controls, createMacOSBackend, canonicalDialog, canonicalFilePickerItem, canonicalFilePicker, dialogContext, filePickerContext, observeDialogs, observeFilePicker, requireFilePicker, exactFilePickerItem};
+module.exports = {...controls, createMacOSBackend, canonicalDialog, canonicalFilePickerItem, canonicalFilePicker, dialogContext, filePickerContext, observeDialogs, observeFilePicker, observeFilePickerDirectoryState, requireFilePicker, exactFilePickerItem};
