@@ -26,8 +26,8 @@ const PHASE9B1 = [
 ];
 
 const PHASE9B2 = [
-  {name:"dialog.invokeDefault", available:true, validationState:"IMPLEMENTED", strategies:["provider-scoped-native-AX-default-button","dialog-absence-postcondition"]},
-  {name:"dialog.invokeCancel", available:true, validationState:"IMPLEMENTED", strategies:["provider-scoped-native-AX-cancel-button","dialog-absence-postcondition"]},
+  {name:"dialog.invokeDefault", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["provider-scoped-native-AX-default-button","dialog-absence-postcondition"]},
+  {name:"dialog.invokeCancel", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["provider-scoped-native-AX-cancel-button","dialog-absence-postcondition"]},
 ];
 
 function canonicalDialog(value={}) {
