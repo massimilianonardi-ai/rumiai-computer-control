@@ -76,7 +76,7 @@ Observation performs no Accessibility action, no Accessibility attribute mutatio
 
 ### Validation state
 
-Phase 9C3A validation state: `IMPLEMENTED` on this branch.
+Phase 9C3A validation state: `IMPLEMENTED`.
 
 The contract is derived from the authoritative combined read-only topology discovery:
 
