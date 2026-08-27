@@ -1,6 +1,6 @@
 # Native file-picker API
 
-Phase 9B3A provides read-only observation of a native file picker. Phase 9B3B adds native item selection and directory navigation while keeping picker dismissal separate for Phase 9B3C.
+Phase 9B3A provides read-only observation of a native file picker. Phase 9B3B adds native item selection and hierarchical directory expansion while keeping picker dismissal separate for Phase 9B3C.
 
 ## `filePicker.observe`
 
@@ -46,7 +46,8 @@ Observation contract:
 - `location` is the visible native location label, not a reconstructed or inferred absolute filesystem path;
 - visible entries expose only semantic `name`, `kind`, `selected` and `enabled` state;
 - unavailable boolean state remains `null` rather than guessed;
-- no filesystem enumeration is used to supplement or replace the Accessibility observation;
+- expanded outline descendants may appear as additional visible items while `location` remains unchanged;
+- no filesystem enumeration is used to supplement or replace Accessibility observation;
 - PIDs, AX objects, native identifiers, coordinates and process topology never cross the public contract.
 
 Phase 9B3A validation state: `PHYSICALLY_VALIDATED` on the deterministic Cocoa/AppKit `NSOpenPanel` reference fixture.
@@ -62,51 +63,44 @@ const result = await client.selectFilePickerItem({
 
 `name` is matched exactly against the currently observed visible picker items. It is not interpreted as a path.
 
-Success requires a fresh postcondition with the exact item reporting `selected:true`:
+Success requires a fresh postcondition with the exact item reporting `selected:true`. An already-selected item succeeds idempotently without another native mutation.
 
-```json
-{
-  "state": "FILE_PICKER_ITEM_SELECTED",
-  "item": {
-    "name": "Example.txt",
-    "kind": "file",
-    "selected": true,
-    "enabled": true
-  },
-  "changed": true,
-  "idempotent": false,
-  "verified": true
-}
-```
-
-An already-selected item succeeds idempotently without another native mutation.
-
-## `filePicker.openDirectory`
+## `filePicker.expandDirectory`
 
 ```js
-const result = await client.openFilePickerDirectory({
+const result = await client.expandFilePickerDirectory({
   application: "Example App",
   name: "FolderA"
 });
 ```
 
-The target must be a currently visible item already observed as `kind:"directory"`. Physical action discovery on the reference `NSOpenPanel` showed that the row itself does not expose a navigation action. Instead, the row contains an `AXTextField` whose native value is the exact visible directory name. That element explicitly advertises `AXConfirm` with the native action description `confirm`.
+The target must be one exact currently visible item observed as `kind:"directory"`.
 
-The macOS backend therefore rebinds the exact visible directory row, requires exactly one descendant `AXTextField` whose native value equals the requested name and whose advertised action names include `AXConfirm`, and invokes `AXConfirm` only on that element. It does not use `AXOpen`: on the reference surface that action is described as `Open Finder item` and a previous physical attempt did not provide picker navigation semantics.
+Physical discovery on the reference `NSOpenPanel` proved that hierarchical navigation in the native outline is represented by disclosure, not by a change of the picker current-location control. A directory row exposes an `AXDisclosureTriangle`; pressing its advertised `AXPress` action changed the row from `AXDisclosing=false` to `AXDisclosing=true`, made `Nested.txt` visible, preserved the picker, and left `location="PickerRoot"` unchanged.
 
-Success is not delivery: a fresh picker observation must report a changed visible location while the picker remains open.
+The macOS backend therefore:
+
+1. rebinds the exact visible directory row;
+2. if already `AXDisclosing=true`, succeeds idempotently;
+3. otherwise resolves its `AXDisclosureTriangle`;
+4. requires that triangle to advertise `AXPress`;
+5. invokes `AXPress`;
+6. uses a separate fresh read-only helper to verify `AXDisclosing=true`.
+
+Example result:
 
 ```json
 {
-  "state": "FILE_PICKER_DIRECTORY_OPENED",
+  "state": "FILE_PICKER_DIRECTORY_EXPANDED",
   "directory": {"name": "FolderA", "kind": "directory"},
-  "previousLocation": "Documents",
-  "observedLocation": "FolderA",
+  "location": "PickerRoot",
   "changed": true,
   "idempotent": false,
   "verified": true
 }
 ```
+
+Repeated expansion of an already expanded directory succeeds with `changed:false` and `idempotent:true`.
 
 ## Phase 9B3B contract decisions
 
@@ -115,51 +109,38 @@ Success is not delivery: a fresh picker observation must report a changed visibl
 - duplicate visible names fail as ambiguous;
 - disabled items fail before mutation;
 - selection uses native Accessibility pick/selection semantics and requires an observed selected-state postcondition;
-- directory opening rejects non-directory items before mutation;
-- directory opening requires exactly one descendant native text field whose value equals the requested directory name and which explicitly advertises `AXConfirm`;
-- `AXConfirm` is invoked only on that exact discovered semantic target;
-- `AXOpen` is not used for picker navigation on the reference backend because its observed native description is `Open Finder item`;
-- missing or ambiguous confirm targets fail explicitly rather than falling back to input synthesis;
-- directory opening requires an independently observed location change;
-- if navigation dismisses the picker instead of changing location, the operation fails;
+- directory expansion rejects non-directory items before mutation;
+- expansion uses only the row's native `AXDisclosureTriangle` and advertised `AXPress`;
+- expansion success requires an independent fresh `AXDisclosing=true` observation;
+- the picker must remain open;
+- expansion does not imply or require a current-location change;
 - neither operation accepts/cancels the picker or mutates the filesystem;
-- no keyboard, clipboard, mouse coordinates, synthetic double click or filesystem enumeration are fallback mechanisms;
+- no `AXConfirm`, `AXOpen`, keyboard, clipboard, mouse coordinates, synthetic double click or filesystem enumeration are fallback mechanisms;
 - all AX identifiers and native element handles remain backend-private.
 
-Phase 9B3B validation state: `IMPLEMENTED`; deterministic Cocoa/AppKit physical checkpoint pending.
+The earlier unvalidated `filePicker.openDirectory` model was removed before promotion because three physical sessions disproved its assumed location-change semantics.
 
-## macOS reference backend
+Phase 9B3B validation state: `IMPLEMENTED`; deterministic Cocoa/AppKit public-API checkpoint pending.
 
-Physical discovery with a real `NSOpenPanel` on macOS 26.5.2 showed that the accessible picker surface is visible in the Provider application's AX tree. The backend therefore resolves the registered Provider to one running process and performs fresh native Accessibility observation/rebinding for every operation.
+## macOS reference backend and evidence
 
-The AppKit reference surface is recognized through backend-private native structure including an `AXSheet`, native list view and current-location control. Global focused-application information may be unavailable while the picker remains fully observable, so focus is diagnostic evidence only and is not a targeting prerequisite.
+Physical discovery with a real `NSOpenPanel` on macOS 26.5.2 showed that the accessible picker surface is visible in the Provider application's AX tree. Global focused-application information may be unavailable while the picker remains fully observable, so focus is diagnostic evidence only.
 
-Historical Phase 9B3B physical evidence is preserved:
+Historical Phase 9B3B evidence is preserved:
 
-- `cc-phase9b3b-file-picker-navigation-selection-s01`: selection passed, but directory navigation attempted `AXConfirm` on row/list/sheet and returned `kAXErrorActionUnsupported` (`-25206`);
-- `cc-phase9b3b-file-picker-navigation-selection-s02`: selection again passed; support-driven subtree scanning found `AXOpen` on a descendant, but invoking that action returned `kAXErrorAttributeUnsupported` (`-25205`);
-- `cc-phase9b3b-directory-actions-discovery-s01`: read-only discovery proved that the exact `FolderA` `AXTextField` advertises `AXConfirm` (`confirm`), `AXOpen` (`Open Finder item`) and `AXShowMenu`, while the row/list/sheet do not expose a picker-navigation action.
+- `cc-phase9b3b-file-picker-navigation-selection-s01`: selection passed; generic `AXConfirm` navigation returned `kAXErrorActionUnsupported`;
+- `cc-phase9b3b-file-picker-navigation-selection-s02`: selection passed; descendant `AXOpen` returned `kAXErrorAttributeUnsupported`;
+- `cc-phase9b3b-directory-actions-discovery-s01`: showed `AXOpen` means `Open Finder item` and `AXConfirm` means `confirm` on the name field;
+- `cc-phase9b3b-file-picker-navigation-selection-s03`: exact `AXConfirm` delivery succeeded but `location` did not change;
+- `cc-phase9b3b-directory-disclosure-discovery-s01`: proved `AXPress` on the disclosure triangle changes `AXDisclosing:false→true` and exposes `Nested.txt` while location remains unchanged.
 
-Discovery evidence:
-
-```text
-session: cc-phase9b3a-file-picker-discovery-s02
-evidence commit: 326f3283da91ee4c32a7d67bd8bb6e55b414d9ce
-result: 22 PASS / 0 FAIL / 0 BLOCKED
-
-session: cc-phase9b3b-directory-actions-discovery-s01
-evidence commit: cedecaecd29846c7dacef4b24e5fe1d226b4ef5b
-validated discovery product: 6533489586ce51f03296a4191dc0806a88f4c66b
-result: 25 PASS / 0 FAIL / 0 BLOCKED
-```
-
-Observation evidence:
+Canonical disclosure discovery:
 
 ```text
-session: cc-phase9b3a-file-picker-observation-s01
-evidence commit: 63a2b850a2c1dcf8509a27e7f8292a1f09f811ba
-validated product: c26552046ae0cc18b76ab33d6a24af98b0e68cde
-result: 23 PASS / 0 FAIL / 0 BLOCKED
+session: cc-phase9b3b-directory-disclosure-discovery-s01
+evidence commit: 48ead70cf79cf05827cc5dcde9e7d7fda31363b3
+validated discovery product: 16e4f1b427170b0e5c729a10629990d48ee71daf
+result: 26 PASS / 0 FAIL / 0 BLOCKED
 ```
 
 Phase 9B3C will add explicit accept/cancel semantics only after Phase 9B3B is physically validated.
