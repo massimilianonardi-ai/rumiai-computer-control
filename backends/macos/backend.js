@@ -8,6 +8,7 @@ const filePickerItemAction = require("./runtime/app/computer-control/backends/ma
 const filePickerDirectoryState = require("./runtime/app/computer-control/backends/macos-file-picker-directory-state");
 const filePickerSemanticAction = require("./runtime/app/computer-control/backends/macos-file-picker-semantic-action");
 const menuBarObservation = require("./runtime/app/computer-control/backends/macos-menu-bar-observation");
+const dockObservation = require("./runtime/app/computer-control/backends/macos-dock-observation");
 const {ComputerControlError} = require("../../runtime/src/errors");
 
 const PHASE8C = new Set([
@@ -53,6 +54,10 @@ const PHASE9C1A = [
   {name:"menuBar.observe", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["provider-scoped-native-AX-menu-bar-observation"]},
 ];
 
+const PHASE9C2A = [
+  {name:"dock.observe", available:true, validationState:"IMPLEMENTED", strategies:["os-owned-native-AX-dock-observation"]},
+];
+
 function canonicalDialog(value={}) {
   return {
     kind:value.kind === "sheet" ? "sheet" : "dialog",
@@ -88,6 +93,16 @@ function canonicalMenuBarItem(value={}) {
     title:String(value.title||""),
     enabled:typeof value.enabled === "boolean" ? value.enabled : null,
     children:Array.isArray(value.children) ? value.children.map(canonicalMenuBarItem).filter(item=>item.title.length>0) : [],
+  };
+}
+
+function canonicalDockItem(value={}) {
+  const kind=["application","folder","trash","separator"].includes(value.kind)?value.kind:"other";
+  return {
+    kind,
+    title:value.title == null || String(value.title).length===0 ? null : String(value.title),
+    running:typeof value.running === "boolean" ? value.running : null,
+    status:value.status == null || String(value.status).length===0 ? null : String(value.status),
   };
 }
 
@@ -134,6 +149,11 @@ function observeMenuBarNative(pid){
   if(!native?.ok) throw new ComputerControlError(native?.error||"MENU_BAR_OBSERVATION_FAILED",native?.detail||"Could not observe native menu bar","NONE",{state:native?.state||"FAILED",method:native?.method});
   return native;
 }
+function observeDockNative(){
+  const native=dockObservation.observe();
+  if(!native?.ok) throw new ComputerControlError(native?.error||"DOCK_OBSERVATION_FAILED",native?.detail||"Could not observe native Dock","NONE",{state:native?.state||"FAILED",method:native?.method});
+  return native;
+}
 function requireFilePicker(native,method){
   if(native.pickers.length===0) throw new ComputerControlError("FILE_PICKER_NOT_FOUND",`${method} requires one open native file picker`,"NONE",{state:"FAILED",method:native.method});
   return canonicalFilePicker(native.pickers[0]);
@@ -162,7 +182,7 @@ function createMacOSBackend(options = {}) {
           : capability
       );
       const names = new Set(promoted.map(capability => capability.name));
-      return {...info, capabilities:[...promoted, ...PHASE9A1.filter(capability => !names.has(capability.name)), ...PHASE9A2.filter(capability => !names.has(capability.name)), ...PHASE9B1.filter(capability => !names.has(capability.name)), ...PHASE9B2.filter(capability => !names.has(capability.name)), ...PHASE9B3A.filter(capability => !names.has(capability.name)), ...PHASE9B3B.filter(capability => !names.has(capability.name)), ...PHASE9B3C.filter(capability => !names.has(capability.name)), ...PHASE9C1A.filter(capability => !names.has(capability.name))]};
+      return {...info, capabilities:[...promoted, ...PHASE9A1.filter(capability => !names.has(capability.name)), ...PHASE9A2.filter(capability => !names.has(capability.name)), ...PHASE9B1.filter(capability => !names.has(capability.name)), ...PHASE9B2.filter(capability => !names.has(capability.name)), ...PHASE9B3A.filter(capability => !names.has(capability.name)), ...PHASE9B3B.filter(capability => !names.has(capability.name)), ...PHASE9B3C.filter(capability => !names.has(capability.name)), ...PHASE9C1A.filter(capability => !names.has(capability.name)), ...PHASE9C2A.filter(capability => !names.has(capability.name))]};
     },
     async listApplications({availableOnly=false}={}) { return lifecycle.list({availableOnly}); },
     async launchApplication({application,timeoutMs}) { return lifecycle.launch({application,timeoutMs}); },
@@ -189,6 +209,16 @@ function createMacOSBackend(options = {}) {
         menuBar:native.menuBarPresent===true ? {items:native.items.map(canonicalMenuBarItem).filter(item=>item.title.length>0)} : null,
         observation:{method:native.method},
         backend:{name:"macos-ax",strategy:"provider-scoped-native-AX-menu-bar-observation"},
+        diagnostics:{observeSeconds:native.seconds||0,helperCompiled:native.compiled===true},
+      };
+    },
+    async observeDock() {
+      const native=observeDockNative();
+      return {
+        state:"OBSERVED",
+        dock:native.dockPresent===true ? {items:native.items.map(canonicalDockItem)} : null,
+        observation:{method:native.method},
+        backend:{name:"macos-ax",strategy:"os-owned-native-AX-dock-observation"},
         diagnostics:{observeSeconds:native.seconds||0,helperCompiled:native.compiled===true},
       };
     },
@@ -318,4 +348,4 @@ function createMacOSBackend(options = {}) {
   };
 }
 
-module.exports = {...controls, createMacOSBackend, canonicalDialog, canonicalFilePickerItem, canonicalFilePicker, canonicalMenuBarItem, dialogContext, filePickerContext, menuBarContext, observeDialogs, observeFilePicker, observeFilePickerDirectoryState, observeMenuBarNative, requireFilePicker, exactFilePickerItem};
+module.exports = {...controls, createMacOSBackend, canonicalDialog, canonicalFilePickerItem, canonicalFilePicker, canonicalMenuBarItem, canonicalDockItem, dialogContext, filePickerContext, menuBarContext, observeDialogs, observeFilePicker, observeFilePickerDirectoryState, observeMenuBarNative, observeDockNative, requireFilePicker, exactFilePickerItem};
