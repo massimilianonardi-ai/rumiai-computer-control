@@ -33,7 +33,7 @@ Phase 9A1 application list/launch/activate     PHYSICALLY_VALIDATED on AppKit li
 Phase 9A2 application terminate                PHYSICALLY_VALIDATED on AppKit lifecycle fixture
 Phase 9B1 dialog/alert observation             PHYSICALLY_VALIDATED on AppKit NSAlert sheet fixture
 Phase 9B2 dialog semantic default/cancel       PHYSICALLY_VALIDATED on AppKit NSAlert sheet fixture
-Phase 9B3A file picker observation/topology    DISCOVERY checkpoint next
+Phase 9B3A file picker observation             PHYSICALLY_VALIDATED on AppKit NSOpenPanel fixture
 Phase 9B3B file picker navigation/selection    PENDING
 Phase 9B3C file picker accept/cancel           PENDING
 Phase 9C  system chrome                        PENDING
@@ -95,7 +95,20 @@ Dialog checkpoints:
     result: 21 PASS / 0 FAIL / 0 BLOCKED
 ```
 
-Historical FAIL evidence remains preserved, including `cc-phase9b1-dialog-observation-s01`; later PASS evidence does not rewrite earlier sessions.
+File-picker checkpoints:
+
+```text
+9B3A discovery session: cc-phase9b3a-file-picker-discovery-s02
+    evidence: 326f3283da91ee4c32a7d67bd8bb6e55b414d9ce
+    result: 22 PASS / 0 FAIL / 0 BLOCKED
+
+9B3A observation session: cc-phase9b3a-file-picker-observation-s01
+    evidence: 63a2b850a2c1dcf8509a27e7f8292a1f09f811ba
+    validated product: c26552046ae0cc18b76ab33d6a24af98b0e68cde
+    result: 23 PASS / 0 FAIL / 0 BLOCKED
+```
+
+Historical FAIL evidence remains preserved; later PASS evidence does not rewrite earlier sessions.
 
 ## Phase 3-7 residual backlog
 
@@ -236,8 +249,6 @@ Contract decisions:
 
 Status: `PHYSICALLY_VALIDATED` on the deterministic Cocoa/AppKit `NSAlert` sheet fixture.
 
-Evidence proves an empty observed state, native sheet discovery, exact alert text, button labels/enabled state, explicit preservation of unavailable `AXModal` as `null`, and repeated observation without dismissing or mutating the sheet.
-
 ### Phase 9B2 — dialog semantic actions — COMPLETE on AppKit reference surface
 
 Public APIs:
@@ -262,36 +273,52 @@ Contract decisions:
 
 Status: `PHYSICALLY_VALIDATED` on the deterministic Cocoa/AppKit `NSAlert` sheet fixture.
 
-Evidence proves the no-dialog fail-closed path, native default and cancel execution, and independent one-dialog-to-zero postconditions for both actions with no label-based targeting.
-
 ### Phase 9B3 — native file picker
 
-Apple documents that, on macOS 10.15 and later, the system draws `NSOpenPanel` in a separate process even when the calling application is not sandboxed. Therefore file-picker ownership and targeting must not assume that the picker belongs to the Provider process used for ordinary application dialogs.
+9B3 is split deliberately so observation is validated before mutation and picker dismissal is validated after navigation/selection.
 
-9B3 is split deliberately:
+#### Phase 9B3A — observation — COMPLETE on AppKit reference surface
 
-#### Phase 9B3A — observation and native topology discovery
+Public API:
 
-Before freezing a public API, physically inspect a real `NSOpenPanel` on the reference macOS environment and record:
+```js
+client.observeFilePicker({application})
+```
 
-- Provider application process identity;
-- process owning the accessible picker surface;
-- focused application/window relationships;
-- native AX roles/subroles and hierarchy for the panel;
-- how current location, visible items, selected items and accept/cancel semantics are exposed;
-- which relationships are stable enough for a platform-neutral contract.
+The physical discovery established that, on the tested macOS 26.5.2 AppKit surface, the `NSOpenPanel` is Accessibility-visible inside the Provider application's AX tree even though AppKit may use separate implementation services internally. Global focused-application data may be unavailable and is not required for targeting.
 
-This is a discovery checkpoint, not a product capability validation. No public 9B3 API is declared before the topology is observed.
+Contract decisions:
+
+- Provider-scoped, fresh native AX observation;
+- no implicit launch or activation;
+- `picker:null` is normal when no picker is open;
+- current location is the visible native location label, not an inferred absolute path;
+- visible items expose only semantic name/kind/selected/enabled state;
+- PIDs, AX identifiers, handles and coordinates stay backend-private;
+- repeated observation is non-invasive.
+
+Status: `PHYSICALLY_VALIDATED` on the deterministic Cocoa/AppKit `NSOpenPanel` fixture.
 
 #### Phase 9B3B — navigation and selection
 
-After 9B3A evidence stabilizes the model:
+Next public semantics:
 
-- native file-picker observation;
-- directory navigation;
-- file/directory selection;
-- explicit selection postconditions;
-- no filesystem mutation implied by navigation or selection.
+```js
+client.selectFilePickerItem({application, name, timeoutMs})
+client.openFilePickerDirectory({application, name, timeoutMs})
+```
+
+Planned contract:
+
+- both require one already-open supported picker;
+- `name` addresses one currently visible item by exact observed name, never an arbitrary filesystem path;
+- duplicate visible names fail as ambiguous;
+- selection only targets an enabled observed item and succeeds only after a fresh observation reports exactly that item selected;
+- opening a directory requires the observed item kind to be `directory` and succeeds only after a fresh observation reports a changed location;
+- neither operation accepts/cancels the picker or mutates the filesystem;
+- native AX item identity is rebound on every operation and remains backend-private.
+
+Status: `PENDING` until implementation and boundary tests are complete.
 
 #### Phase 9B3C — accept and cancel
 
