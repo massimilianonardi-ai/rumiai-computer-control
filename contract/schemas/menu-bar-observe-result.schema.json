@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.dev/schemas/computer-control/menu-bar-observe-result.schema.json",
+  "$defs": {
+    "menuItem": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["title", "enabled", "children"],
+      "properties": {
+        "title": {"type": "string", "minLength": 1},
+        "enabled": {"type": ["boolean", "null"]},
+        "children": {
+          "type": "array",
+          "items": {"$ref": "#/$defs/menuItem"}
+        }
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["state", "application", "menuBar", "observation", "backend"],
+  "properties": {
+    "state": {"const": "OBSERVED"},
+    "application": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": ["name", "providerId", "available", "running", "active", "bundle"]
+    },
+    "menuBar": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["items"],
+          "properties": {
+            "items": {"type": "array", "items": {"$ref": "#/$defs/menuItem"}}
+          }
+        }
+      ]
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method"],
+      "properties": {"method": {"type": "string"}}
+    },
+    "backend": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "strategy"],
+      "properties": {"name": {"type": "string"}, "strategy": {"type": "string"}}
+    },
+    "diagnostics": {"type": "object"}
+  }
+}
