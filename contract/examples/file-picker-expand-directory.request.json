@@ -1,0 +1,8 @@
+{
+  "method": "filePicker.expandDirectory",
+  "params": {
+    "application": "Example App",
+    "name": "FolderA",
+    "timeoutMs": 3000
+  }
+}
