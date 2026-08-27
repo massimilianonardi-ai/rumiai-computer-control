@@ -1,7 +1,0 @@
-{
-  "method": "filePicker.openDirectory",
-  "params": {
-    "application": "Example App",
-    "name": "FolderA"
-  }
-}
