@@ -7,6 +7,7 @@ const filePickerObservation = require("./runtime/app/computer-control/backends/m
 const filePickerItemAction = require("./runtime/app/computer-control/backends/macos-file-picker-item-action");
 const filePickerDirectoryState = require("./runtime/app/computer-control/backends/macos-file-picker-directory-state");
 const filePickerSemanticAction = require("./runtime/app/computer-control/backends/macos-file-picker-semantic-action");
+const menuBarObservation = require("./runtime/app/computer-control/backends/macos-menu-bar-observation");
 const {ComputerControlError} = require("../../runtime/src/errors");
 
 const PHASE8C = new Set([
@@ -48,6 +49,10 @@ const PHASE9B3C = [
   {name:"filePicker.cancel", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["provider-scoped-native-AX-picker-cancel-button","picker-absence-postcondition"]},
 ];
 
+const PHASE9C1A = [
+  {name:"menuBar.observe", available:true, validationState:"IMPLEMENTED", strategies:["provider-scoped-native-AX-menu-bar-observation"]},
+];
+
 function canonicalDialog(value={}) {
   return {
     kind:value.kind === "sheet" ? "sheet" : "dialog",
@@ -78,6 +83,14 @@ function canonicalFilePicker(value={}) {
   };
 }
 
+function canonicalMenuBarItem(value={}) {
+  return {
+    title:String(value.title||""),
+    enabled:typeof value.enabled === "boolean" ? value.enabled : null,
+    children:Array.isArray(value.children) ? value.children.map(canonicalMenuBarItem).filter(item=>item.title.length>0) : [],
+  };
+}
+
 function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 function dialogContext(application,method){
   const entry=lifecycle.resolveProvider(application);
@@ -91,6 +104,13 @@ function filePickerContext(application,method){
   const observed=lifecycle.observeResolved(entry);
   if(!observed.running) throw new ComputerControlError("APP_NOT_RUNNING",`Application "${entry.provider.name}" is not running; ${method} does not launch implicitly`,"NONE",{state:"FAILED"});
   if(observed.processes.length!==1) throw new ComputerControlError("FILE_PICKER_TARGET_PID_AMBIGUOUS",`${method} requires exactly one running process for "${entry.provider.name}"; observed ${observed.processes.length}`,"NONE",{state:"FAILED"});
+  return {entry,observed,pid:observed.processes[0].pid};
+}
+function menuBarContext(application,method){
+  const entry=lifecycle.resolveProvider(application);
+  const observed=lifecycle.observeResolved(entry);
+  if(!observed.running) throw new ComputerControlError("APP_NOT_RUNNING",`Application "${entry.provider.name}" is not running; ${method} does not launch implicitly`,"NONE",{state:"FAILED"});
+  if(observed.processes.length!==1) throw new ComputerControlError("MENU_BAR_TARGET_PID_AMBIGUOUS",`${method} requires exactly one running process for "${entry.provider.name}"; observed ${observed.processes.length}`,"NONE",{state:"FAILED"});
   return {entry,observed,pid:observed.processes[0].pid};
 }
 function observeDialogs(pid){
@@ -107,6 +127,11 @@ function observeFilePicker(pid,method="filePicker.observe"){
 function observeFilePickerDirectoryState(pid,name,method){
   const native=filePickerDirectoryState.observe({pid,name});
   if(!native?.ok) throw new ComputerControlError(native?.error||"FILE_PICKER_DIRECTORY_STATE_FAILED",native?.detail||`${method} could not observe directory disclosure state`,"NONE",{state:native?.state||"FAILED",method:native?.method});
+  return native;
+}
+function observeMenuBarNative(pid){
+  const native=menuBarObservation.observe({pid});
+  if(!native?.ok) throw new ComputerControlError(native?.error||"MENU_BAR_OBSERVATION_FAILED",native?.detail||"Could not observe native menu bar","NONE",{state:native?.state||"FAILED",method:native?.method});
   return native;
 }
 function requireFilePicker(native,method){
@@ -137,7 +162,7 @@ function createMacOSBackend(options = {}) {
           : capability
       );
       const names = new Set(promoted.map(capability => capability.name));
-      return {...info, capabilities:[...promoted, ...PHASE9A1.filter(capability => !names.has(capability.name)), ...PHASE9A2.filter(capability => !names.has(capability.name)), ...PHASE9B1.filter(capability => !names.has(capability.name)), ...PHASE9B2.filter(capability => !names.has(capability.name)), ...PHASE9B3A.filter(capability => !names.has(capability.name)), ...PHASE9B3B.filter(capability => !names.has(capability.name)), ...PHASE9B3C.filter(capability => !names.has(capability.name))]};
+      return {...info, capabilities:[...promoted, ...PHASE9A1.filter(capability => !names.has(capability.name)), ...PHASE9A2.filter(capability => !names.has(capability.name)), ...PHASE9B1.filter(capability => !names.has(capability.name)), ...PHASE9B2.filter(capability => !names.has(capability.name)), ...PHASE9B3A.filter(capability => !names.has(capability.name)), ...PHASE9B3B.filter(capability => !names.has(capability.name)), ...PHASE9B3C.filter(capability => !names.has(capability.name)), ...PHASE9C1A.filter(capability => !names.has(capability.name))]};
     },
     async listApplications({availableOnly=false}={}) { return lifecycle.list({availableOnly}); },
     async launchApplication({application,timeoutMs}) { return lifecycle.launch({application,timeoutMs}); },
@@ -152,6 +177,18 @@ function createMacOSBackend(options = {}) {
         dialogs:native.dialogs.map(canonicalDialog),
         observation:{method:native.method},
         backend:{name:"macos-ax",strategy:"provider-scoped-native-AX-dialog-observation"},
+        diagnostics:{observeSeconds:native.seconds||0,helperCompiled:native.compiled===true},
+      };
+    },
+    async observeMenuBar({application}) {
+      const {entry,observed,pid}=menuBarContext(application,"menuBar.observe");
+      const native=observeMenuBarNative(pid);
+      return {
+        state:"OBSERVED",
+        application:lifecycle.publicDescriptor(entry,observed),
+        menuBar:native.menuBarPresent===true ? {items:native.items.map(canonicalMenuBarItem).filter(item=>item.title.length>0)} : null,
+        observation:{method:native.method},
+        backend:{name:"macos-ax",strategy:"provider-scoped-native-AX-menu-bar-observation"},
         diagnostics:{observeSeconds:native.seconds||0,helperCompiled:native.compiled===true},
       };
     },
@@ -281,4 +318,4 @@ function createMacOSBackend(options = {}) {
   };
 }
 
-module.exports = {...controls, createMacOSBackend, canonicalDialog, canonicalFilePickerItem, canonicalFilePicker, dialogContext, filePickerContext, observeDialogs, observeFilePicker, observeFilePickerDirectoryState, requireFilePicker, exactFilePickerItem};
+module.exports = {...controls, createMacOSBackend, canonicalDialog, canonicalFilePickerItem, canonicalFilePicker, canonicalMenuBarItem, dialogContext, filePickerContext, menuBarContext, observeDialogs, observeFilePicker, observeFilePickerDirectoryState, observeMenuBarNative, requireFilePicker, exactFilePickerItem};
