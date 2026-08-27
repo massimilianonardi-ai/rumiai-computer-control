@@ -18,27 +18,29 @@ Computer Control models semantic native UI operations across platform backends. 
 ## Current lifecycle state
 
 ```text
-Phase 0   contract foundation                  IMPLEMENTED
-Phase 1   ui.describe                          PHYSICALLY_VALIDATED
-Phase 2   ui.invoke                            PHYSICALLY_VALIDATED
-Phase 3   ui.toggle/select                     PHYSICALLY_VALIDATED on AppKit reference controls
-Phase 4   ui.expand/collapse                   PHYSICALLY_VALIDATED on AppKit reference controls
-Phase 5   value mutations                      PHYSICALLY_VALIDATED on AppKit numeric controls
-Phase 6   ui.children                          PHYSICALLY_VALIDATED on AppKit hierarchy fixture
-Phase 7   scrolling                            PHYSICALLY_VALIDATED on AppKit scroll fixture
-Phase 8A  text observation                     PHYSICALLY_VALIDATED on AppKit NSTextView
-Phase 8B  text range selection                 PHYSICALLY_VALIDATED on AppKit NSTextView
-Phase 8C  text mutation                        PHYSICALLY_VALIDATED on AppKit NSTextView
-Phase 9A1 application list/launch/activate     PHYSICALLY_VALIDATED on AppKit lifecycle fixture
-Phase 9A2 application terminate                PHYSICALLY_VALIDATED on AppKit lifecycle fixture
-Phase 9B1 dialog/alert observation             PHYSICALLY_VALIDATED on AppKit NSAlert sheet fixture
-Phase 9B2 dialog semantic default/cancel       PHYSICALLY_VALIDATED on AppKit NSAlert sheet fixture
-Phase 9B3A file picker observation             PHYSICALLY_VALIDATED on AppKit NSOpenPanel fixture
-Phase 9B3B file picker selection/expansion     PHYSICALLY_VALIDATED on AppKit NSOpenPanel fixture
-Phase 9B3C file picker accept/cancel           IMPLEMENTED; physical checkpoint pending
-Phase 9C  system chrome                        PENDING
-Phase 9D  displays/richer clipboard            PENDING
-Phase 10  low-level fallbacks                  PENDING
+Phase 0    contract foundation                  IMPLEMENTED
+Phase 1    ui.describe                          PHYSICALLY_VALIDATED
+Phase 2    ui.invoke                            PHYSICALLY_VALIDATED
+Phase 3    ui.toggle/select                     PHYSICALLY_VALIDATED on AppKit reference controls
+Phase 4    ui.expand/collapse                   PHYSICALLY_VALIDATED on AppKit reference controls
+Phase 5    value mutations                      PHYSICALLY_VALIDATED on AppKit numeric controls
+Phase 6    ui.children                          PHYSICALLY_VALIDATED on AppKit hierarchy fixture
+Phase 7    scrolling                            PHYSICALLY_VALIDATED on AppKit scroll fixture
+Phase 8A   text observation                     PHYSICALLY_VALIDATED on AppKit NSTextView
+Phase 8B   text range selection                 PHYSICALLY_VALIDATED on AppKit NSTextView
+Phase 8C   text mutation                        PHYSICALLY_VALIDATED on AppKit NSTextView
+Phase 9A1  application list/launch/activate     PHYSICALLY_VALIDATED on AppKit lifecycle fixture
+Phase 9A2  application terminate                PHYSICALLY_VALIDATED on AppKit lifecycle fixture
+Phase 9B1  dialog/alert observation             PHYSICALLY_VALIDATED on AppKit NSAlert sheet fixture
+Phase 9B2  dialog semantic default/cancel       PHYSICALLY_VALIDATED on AppKit NSAlert sheet fixture
+Phase 9B3A file picker observation              PHYSICALLY_VALIDATED on AppKit NSOpenPanel fixture
+Phase 9B3B file picker selection/expansion      PHYSICALLY_VALIDATED on AppKit NSOpenPanel fixture
+Phase 9B3C file picker accept/cancel            PHYSICALLY_VALIDATED on AppKit NSOpenPanel fixture
+Phase 9C1A application menu bar observation     PHYSICALLY_VALIDATED on macOS AppKit/AX surface
+Phase 9C2A Dock observation                     PHYSICALLY_VALIDATED on macOS Dock AX surface
+Phase 9C3A menu extras observation              IMPLEMENTED; physical checkpoint pending
+Phase 9D   displays/richer clipboard            PENDING
+Phase 10   low-level fallbacks                  PENDING
 ```
 
 ## Physical evidence
@@ -122,9 +124,43 @@ File-picker checkpoints:
     test source: 5e9fb88809af10c07bcf9f109d8d1e51ff92994a
     poc SHA tested: 8db375a5b23103f834d04721639400c6d61cbdc5
     result: 26 PASS / 0 FAIL / 0 BLOCKED
+
+9B3C public validation: cc-phase9b3c-file-picker-semantic-actions-s03
+    evidence: 9a47234951d3de5dff9d4b975892a8b0b07e079d
+    validated product: 2be349b1fdf2a6ea08ee893be423942d926a2c0b
+    test source: 2f107d05bdce5650929db8ead670f12da2f59f54
+    poc SHA tested: 5cc8e8f97cc8fa139248ff3e6c28612df31aa8a9
+    result: 29 PASS / 0 FAIL / 0 BLOCKED
 ```
 
-Historical FAIL evidence remains preserved; later PASS evidence does not rewrite earlier sessions. Phase 9B3B sessions `s01`, `s02` and `s03` disproved the earlier assumption that directory navigation should be modeled as `filePicker.openDirectory` plus a current-location change. The final disclosure discovery established the real AppKit outline semantics and the public selection/expansion checkpoint physically validated the corrected contract.
+Historical FAIL/BLOCKED evidence remains preserved; later PASS evidence does not rewrite earlier sessions. Phase 9B3B sessions `s01`, `s02` and `s03` disproved the earlier assumption that directory navigation should be modeled as `filePicker.openDirectory` plus a current-location change. The final disclosure discovery established the real AppKit outline semantics and the public selection/expansion checkpoint physically validated the corrected contract. Phase 9B3C likewise preserves its earlier blocked/failing sessions and promotes only the authoritative s03 checkpoint.
+
+System-chrome checkpoints:
+
+```text
+9C1A menu bar observation: cc-phase9c1a-menu-bar-observation-s02
+    evidence: decc4ccd989c694e624e3c3db69884b6903b0cee
+    validated product: d0d1d23eedb7258d1fc292e3647559cf96d726d5
+    test source: 2018e5ede25b44dc5f68285ce103ec5eb3355bfd
+    poc SHA tested: 0cb4359a18040d0d51c0ab3546375e6d7ac5cf7f
+    result: 31 PASS / 0 FAIL / 0 BLOCKED
+
+9C2+9C3 combined topology discovery: cc-phase9c23-system-chrome-discovery-s01
+    evidence: f68f5bc4bc3e2fec2aa1219b402b7016107a6e6f
+    observed product: 979ecb74dd486da832a96f02486dec7e71b42236
+    test source: 35ba8c86cbfa3c23ef513410e658e000af8b1a2e
+    poc SHA tested: 037d6b40d5eb342607e686637931d458be0d20b9
+    result: 32 PASS / 0 FAIL / 0 BLOCKED
+
+9C2A Dock observation: cc-phase9c2a-dock-observation-s02
+    evidence: 5662b659a3b80c236db323dfe09125b56b48eca6
+    validated product: b9d04f5213c5dcb00ca8dc0363f8248caa9a8916
+    test source: c928f3dacd3c3456072d21baaef2742e042e5b0d
+    poc SHA tested: 670cc9bd80d5d7f9fb315669a0f3e30e9f20b758
+    result: 33 PASS / 0 FAIL / 0 BLOCKED
+```
+
+The earlier Phase 9C2A s01 evidence is preserved with overall `FAIL`: its dedicated physical Dock test passed, but a discovery-era guard still forbade `dock.observe`. The s02 checkpoint corrected only that stale lifecycle assertion while testing the identical product SHA.
 
 ## Phase 3-7 residual backlog
 
@@ -345,9 +381,9 @@ The earlier unvalidated `filePicker.openDirectory` contract was removed before p
 
 Status: `PHYSICALLY_VALIDATED` on the deterministic Cocoa/AppKit `NSOpenPanel` fixture.
 
-#### Phase 9B3C — accept and cancel
+#### Phase 9B3C — accept and cancel — COMPLETE on AppKit reference surface
 
-Public APIs implemented:
+Public APIs:
 
 ```js
 client.acceptFilePicker({application, timeoutMs})
@@ -368,13 +404,69 @@ Contract decisions:
 - no coordinates, mouse, keyboard, clipboard, synthetic keypress, filesystem operation or label-matching fallback is allowed;
 - native AX objects and internal identifiers remain backend-private.
 
-Status: `IMPLEMENTED`; physical checkpoint pending.
+The authoritative s03 physical checkpoint independently proved both accept and cancel paths, including picker dismissal while the Provider remained running and an independent AppKit completion observation.
+
+Status: `PHYSICALLY_VALIDATED` on the deterministic Cocoa/AppKit `NSOpenPanel` fixture.
 
 ### Phase 9C — system chrome
 
-- menu bar;
-- Dock/taskbar;
-- system tray/menu extras.
+Phase 9C is split by surface and by observation versus any future mutation. The application menu bar is Provider-scoped; Dock and menu extras are OS-owned global surfaces. Native Accessibility identifiers and advertised actions remain backend-private.
+
+#### Phase 9C1A — application menu bar observation — COMPLETE on AppKit reference surface
+
+Public API:
+
+```js
+client.observeMenuBar({application})
+```
+
+Contract decisions:
+
+- Provider-scoped read-only native Accessibility observation;
+- no implicit launch or activation;
+- semantic menu item title/enabled/tree state only;
+- native AX objects, identifiers, action names and coordinates stay backend-private;
+- no menu item is invoked as part of observation.
+
+Status: `PHYSICALLY_VALIDATED` on the tested macOS AppKit/Accessibility surface.
+
+#### Phase 9C2A — Dock observation — COMPLETE on macOS reference surface
+
+Public API:
+
+```js
+client.observeDock()
+```
+
+Contract decisions:
+
+- global OS-owned read-only observation;
+- public items expose only semantic `kind`, visible `title`, application `running` state and visible `status` where available;
+- native Dock subroles are used only for backend-private canonicalization;
+- native URLs, bundle/PID identity, AX objects, native action names and coordinates remain private;
+- array order is observed Accessibility child order, not a coordinate contract;
+- no Dock action or mutation is delivered.
+
+Status: `PHYSICALLY_VALIDATED` on the tested macOS Dock Accessibility surface. See `docs/evidence/phase9c2a-dock-observation-physical.md`.
+
+#### Phase 9C3A — menu extras observation
+
+Public API implemented:
+
+```js
+client.observeMenuExtras()
+```
+
+Contract decisions:
+
+- global OS-owned read-only observation across the supported macOS menu-extra owners discovered in the combined Phase 9C2+9C3 topology checkpoint;
+- public items expose only semantic `title`, `description`, `value` and `enabled` state;
+- anonymous disabled native menu-extra nodes remain anonymous rather than receiving guessed identities;
+- internal `com.apple.menuextra.*` identifiers, owner bundle identity, AX roles/subroles, action names, objects, PIDs and coordinates remain backend-private;
+- native advertised `AXPress`/`AXCancel` actions do not define a generic semantic invocation contract;
+- no menu-extra mutation is performed by observation.
+
+Status: `IMPLEMENTED`; dedicated physical validation is the next Phase 9C checkpoint.
 
 ### Phase 9D — displays and richer clipboard
 
