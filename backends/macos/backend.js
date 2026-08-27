@@ -56,7 +56,7 @@ const PHASE9C1A = [
 ];
 
 const PHASE9C2A = [
-  {name:"dock.observe", available:true, validationState:"IMPLEMENTED", strategies:["os-owned-native-AX-dock-observation"]},
+  {name:"dock.observe", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["os-owned-native-AX-dock-observation"]},
 ];
 
 const PHASE9C3A = [
