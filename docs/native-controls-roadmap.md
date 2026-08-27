@@ -34,7 +34,7 @@ Phase 9A2 application terminate                PHYSICALLY_VALIDATED on AppKit li
 Phase 9B1 dialog/alert observation             PHYSICALLY_VALIDATED on AppKit NSAlert sheet fixture
 Phase 9B2 dialog semantic default/cancel       PHYSICALLY_VALIDATED on AppKit NSAlert sheet fixture
 Phase 9B3A file picker observation             PHYSICALLY_VALIDATED on AppKit NSOpenPanel fixture
-Phase 9B3B file picker navigation/selection    PENDING
+Phase 9B3B file picker selection/expansion     IMPLEMENTED; physical checkpoint pending
 Phase 9B3C file picker accept/cancel           PENDING
 Phase 9C  system chrome                        PENDING
 Phase 9D  displays/richer clipboard            PENDING
@@ -106,9 +106,18 @@ File-picker checkpoints:
     evidence: 63a2b850a2c1dcf8509a27e7f8292a1f09f811ba
     validated product: c26552046ae0cc18b76ab33d6a24af98b0e68cde
     result: 23 PASS / 0 FAIL / 0 BLOCKED
+
+9B3B directory-action discovery: cc-phase9b3b-directory-actions-discovery-s01
+    evidence: cedecaecd29846c7dacef4b24e5fe1d226b4ef5b
+    result: 25 PASS / 0 FAIL / 0 BLOCKED
+
+9B3B disclosure discovery: cc-phase9b3b-directory-disclosure-discovery-s01
+    evidence: 48ead70cf79cf05827cc5dcde9e7d7fda31363b3
+    validated discovery product: 16e4f1b427170b0e5c729a10629990d48ee71daf
+    result: 26 PASS / 0 FAIL / 0 BLOCKED
 ```
 
-Historical FAIL evidence remains preserved; later PASS evidence does not rewrite earlier sessions.
+Historical FAIL evidence remains preserved; later PASS evidence does not rewrite earlier sessions. Phase 9B3B sessions `s01`, `s02` and `s03` disproved the earlier assumption that directory navigation should be modeled as `filePicker.openDirectory` plus a current-location change. The final discovery proved the actual AppKit outline semantics before public promotion.
 
 ## Phase 3-7 residual backlog
 
@@ -275,7 +284,7 @@ Status: `PHYSICALLY_VALIDATED` on the deterministic Cocoa/AppKit `NSAlert` sheet
 
 ### Phase 9B3 — native file picker
 
-9B3 is split deliberately so observation is validated before mutation and picker dismissal is validated after navigation/selection.
+9B3 is split deliberately so observation is validated before mutation and picker dismissal is validated after selection/expansion.
 
 #### Phase 9B3A — observation — COMPLETE on AppKit reference surface
 
@@ -294,35 +303,44 @@ Contract decisions:
 - `picker:null` is normal when no picker is open;
 - current location is the visible native location label, not an inferred absolute path;
 - visible items expose only semantic name/kind/selected/enabled state;
+- expanded outline descendants can become visible while current location remains unchanged;
 - PIDs, AX identifiers, handles and coordinates stay backend-private;
 - repeated observation is non-invasive.
 
 Status: `PHYSICALLY_VALIDATED` on the deterministic Cocoa/AppKit `NSOpenPanel` fixture.
 
-#### Phase 9B3B — navigation and selection
+#### Phase 9B3B — selection and hierarchical directory expansion
 
-Next public semantics:
+Public APIs implemented:
 
 ```js
 client.selectFilePickerItem({application, name, timeoutMs})
-client.openFilePickerDirectory({application, name, timeoutMs})
+client.expandFilePickerDirectory({application, name, timeoutMs})
 ```
 
-Planned contract:
+Contract decisions:
 
 - both require one already-open supported picker;
 - `name` addresses one currently visible item by exact observed name, never an arbitrary filesystem path;
 - duplicate visible names fail as ambiguous;
-- selection only targets an enabled observed item and succeeds only after a fresh observation reports exactly that item selected;
-- opening a directory requires the observed item kind to be `directory` and succeeds only after a fresh observation reports a changed location;
+- selection only targets an enabled observed item and succeeds only after fresh observation reports exactly that item selected;
+- directory expansion requires the observed item kind to be `directory`;
+- expansion rebinds the native row, resolves its `AXDisclosureTriangle`, requires advertised `AXPress`, and invokes only that semantic action;
+- success requires a separate fresh native observation of `AXDisclosing=true`;
+- an already expanded directory succeeds idempotently without another press;
+- independent `filePicker.observe` may expose newly visible descendants such as `Nested.txt` while `location` remains unchanged;
+- the picker must remain open;
 - neither operation accepts/cancels the picker or mutates the filesystem;
+- no `AXConfirm`, `AXOpen`, keyboard, clipboard, mouse coordinates, synthetic double-click or filesystem enumeration is a fallback mechanism;
 - native AX item identity is rebound on every operation and remains backend-private.
 
-Status: `PENDING` until implementation and boundary tests are complete.
+The earlier unvalidated `filePicker.openDirectory` contract was removed before promotion because physical evidence showed that neither `AXConfirm` nor `AXOpen` represented the required location-change semantics on the reference `NSOpenPanel`.
+
+Status: `IMPLEMENTED`; public product physical checkpoint pending.
 
 #### Phase 9B3C — accept and cancel
 
-After observation/navigation are validated:
+After selection/expansion are validated:
 
 - explicit native accept semantic action;
 - explicit native cancel semantic action;
