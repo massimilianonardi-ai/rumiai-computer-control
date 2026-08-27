@@ -32,7 +32,7 @@ const PHASE9B2 = [
 ];
 
 const PHASE9B3A = [
-  {name:"filePicker.observe", available:true, validationState:"IMPLEMENTED", strategies:["provider-scoped-native-AX-file-picker-observation"]},
+  {name:"filePicker.observe", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["provider-scoped-native-AX-file-picker-observation"]},
 ];
 
 function canonicalDialog(value={}) {
