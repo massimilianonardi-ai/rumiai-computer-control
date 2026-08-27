@@ -1,0 +1,6 @@
+{
+  "method": "dialog.list",
+  "params": {
+    "application": "Example App"
+  }
+}
