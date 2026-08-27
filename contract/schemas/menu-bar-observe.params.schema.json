@@ -1,0 +1,10 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.dev/schemas/computer-control/menu-bar-observe.params.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["application"],
+  "properties": {
+    "application": {"type": "string", "minLength": 1}
+  }
+}
