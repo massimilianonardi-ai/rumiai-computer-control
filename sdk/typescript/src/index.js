@@ -10,7 +10,7 @@ class ComputerControlClient extends core.ComputerControlClient {
   invokeDialogCancel({application, timeoutMs}) { return this.call("dialog.invokeCancel", {application, timeoutMs}); }
   observeFilePicker({application}) { return this.call("filePicker.observe", {application}); }
   selectFilePickerItem({application, name, timeoutMs}) { return this.call("filePicker.selectItem", {application, name, timeoutMs}); }
-  openFilePickerDirectory({application, name, timeoutMs}) { return this.call("filePicker.openDirectory", {application, name, timeoutMs}); }
+  expandFilePickerDirectory({application, name, timeoutMs}) { return this.call("filePicker.expandDirectory", {application, name, timeoutMs}); }
   describe({application, target}) { return this.call("ui.describe", {application, target}); }
   getTextSelection({application, target}) { return this.call("ui.getTextSelection", {application, target}); }
   selectTextRange({application, target, range}) { return this.call("ui.selectTextRange", {application, target, range}); }
