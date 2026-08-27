@@ -1,6 +1,6 @@
 # Native file-picker API
 
-Phase 9B3A introduces read-only observation of a native file picker after a physical topology discovery checkpoint on macOS AppKit.
+Phase 9B3A provides read-only observation of a native file picker after a physical topology discovery checkpoint on macOS AppKit.
 
 ## `filePicker.observe`
 
@@ -69,7 +69,7 @@ The current AppKit reference surface is recognized through backend-private nativ
 
 The physical discovery also showed that global focused-application information may be unavailable while the picker remains fully observable. Global focus is therefore diagnostic evidence only and is not a targeting prerequisite.
 
-Phase 9B3A validation state: `IMPLEMENTED` until deterministic Cocoa/AppKit physical validation of `filePicker.observe` passes.
+Phase 9B3A validation state: `PHYSICALLY_VALIDATED` on the deterministic Cocoa/AppKit `NSOpenPanel` reference fixture.
 
 Discovery evidence:
 
@@ -79,4 +79,13 @@ evidence commit: 326f3283da91ee4c32a7d67bd8bb6e55b414d9ce
 result: 22 PASS / 0 FAIL / 0 BLOCKED
 ```
 
-Phase 9B3B will add navigation and selection only after this observation contract is physically validated. Phase 9B3C will add explicit accept/cancel semantics later.
+Observation evidence:
+
+```text
+session: cc-phase9b3a-file-picker-observation-s01
+evidence commit: 63a2b850a2c1dcf8509a27e7f8292a1f09f811ba
+validated product: c26552046ae0cc18b76ab33d6a24af98b0e68cde
+result: 23 PASS / 0 FAIL / 0 BLOCKED
+```
+
+Phase 9B3B adds navigation and selection as separate mutating semantics. Phase 9B3C adds explicit accept/cancel semantics later.
