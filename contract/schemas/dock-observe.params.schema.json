@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/schemas/dock-observe.params.schema.json",
+  "title": "dock.observe params",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {}
+}
