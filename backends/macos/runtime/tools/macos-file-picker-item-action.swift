@@ -36,6 +36,11 @@ func elements(_ element: AXUIElement, _ attribute: CFString) -> [AXUIElement] {
 func children(_ element: AXUIElement) -> [AXUIElement] { elements(element, kAXChildrenAttribute as CFString) }
 func role(_ element: AXUIElement) -> String? { stringAttribute(element, kAXRoleAttribute as CFString) }
 func identifier(_ element: AXUIElement) -> String? { stringAttribute(element, kAXIdentifierAttribute as CFString) }
+func actionNames(_ element: AXUIElement) -> [String] {
+    var raw: CFArray?
+    guard AXUIElementCopyActionNames(element, &raw) == .success, let raw else { return [] }
+    return raw as? [String] ?? []
+}
 func findFirst(_ root: AXUIElement, depth: Int = 12, predicate: (AXUIElement) -> Bool) -> AXUIElement? {
     if predicate(root) { return root }
     if depth <= 0 { return nil }
@@ -73,11 +78,16 @@ func setSelected(_ row: AXUIElement) -> AXError {
     }
     return picked
 }
-func confirmDirectory(_ row: AXUIElement, list: AXUIElement, sheet: AXUIElement) -> AXError {
-    for element in [row, list, sheet] {
-        let result = AXUIElementPerformAction(element, kAXConfirmAction as CFString)
-        if result == .success { return result }
-        if result != .actionUnsupported { return result }
+func performAdvertisedDirectoryOpen(_ row: AXUIElement) -> AXError {
+    var candidates: [AXUIElement] = []
+    collect(row, depth: 5, predicate: { _ in true }, into: &candidates)
+    let preferred = ["AXOpen", kAXConfirmAction as String]
+    for actionName in preferred {
+        for element in candidates where actionNames(element).contains(actionName) {
+            let result = AXUIElementPerformAction(element, actionName as CFString)
+            if result == .success { return result }
+            if result != .actionUnsupported { return result }
+        }
     }
     return .actionUnsupported
 }
@@ -128,8 +138,11 @@ if action == "select" {
 guard kind == "directory" else { fail("FILE_PICKER_ITEM_NOT_DIRECTORY", "open-directory requires an observed directory item", kind:kind, previous:previous) }
 if previous != true {
     let selected = setSelected(row)
-    guard selected == .success && boolAttribute(row, kAXSelectedAttribute as CFString) == true else { fail("FILE_PICKER_DIRECTORY_SELECTION_FAILED", "directory could not be selected before confirmation", kind:kind, previous:previous) }
+    guard selected == .success && boolAttribute(row, kAXSelectedAttribute as CFString) == true else { fail("FILE_PICKER_DIRECTORY_SELECTION_FAILED", "directory could not be selected before opening", kind:kind, previous:previous) }
 }
-let confirmed = confirmDirectory(row, list:list, sheet:sheet)
-guard confirmed == .success else { fail("FILE_PICKER_DIRECTORY_OPEN_FAILED", "native AXConfirm failed with code \(confirmed.rawValue)", kind:kind, previous:previous) }
+let opened = performAdvertisedDirectoryOpen(row)
+guard opened == .success else {
+    if opened == .actionUnsupported { fail("FILE_PICKER_DIRECTORY_OPEN_ACTION_UNAVAILABLE", "directory row and descendants advertise neither AXOpen nor AXConfirm", kind:kind, previous:previous) }
+    fail("FILE_PICKER_DIRECTORY_OPEN_FAILED", "advertised native directory-open action failed with code \(opened.rawValue)", kind:kind, previous:previous)
+}
 emit(Output(ok:true,state:"DELIVERED",action:action,name:requestedName,kind:kind,previousSelected:previous,observedSelected:true,idempotent:false,method:method,error:nil,detail:nil),0)
