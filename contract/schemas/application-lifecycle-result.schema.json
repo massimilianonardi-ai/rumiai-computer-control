@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/application-lifecycle-result.schema.json",
+  "$defs": {
+    "application": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "providerId", "available", "running", "active", "bundle"],
+      "properties": {
+        "name": {"type": "string"},
+        "providerId": {"type": "string"},
+        "available": {"type": "boolean"},
+        "running": {"type": "boolean"},
+        "active": {"type": "boolean"},
+        "bundle": {"type": ["string", "null"]}
+      }
+    }
+  },
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["ok", "state", "verified", "application", "changed", "idempotent", "verification", "backend"],
+  "properties": {
+    "ok": {"const": true},
+    "state": {"enum": ["APPLICATION_RUNNING", "APPLICATION_ACTIVE"]},
+    "verified": {"const": true},
+    "application": {"$ref": "#/$defs/application"},
+    "changed": {"type": "boolean"},
+    "idempotent": {"type": "boolean"},
+    "verification": {"type": "object"},
+    "backend": {"type": "object"}
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/application-list-result.schema.json",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["state", "applications", "observation", "backend"],
+  "properties": {
+    "state": {"const": "OBSERVED"},
+    "applications": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["name", "providerId", "available", "running", "active", "bundle"],
+        "properties": {
+          "name": {"type": "string"},
+          "providerId": {"type": "string"},
+          "available": {"type": "boolean"},
+          "running": {"type": "boolean"},
+          "active": {"type": "boolean"},
+          "bundle": {"type": ["string", "null"]}
+        }
+      }
+    },
+    "observation": {"type": "object"},
+    "backend": {"type": "object"}
+  }
+}

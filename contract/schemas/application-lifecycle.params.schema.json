@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/application-lifecycle.params.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["application"],
+  "properties": {
+    "application": {"type": "string", "minLength": 1},
+    "timeoutMs": {"type": "integer", "minimum": 100, "maximum": 60000}
+  }
+}

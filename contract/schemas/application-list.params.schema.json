@@ -1,0 +1,9 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/application-list.params.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {
+    "availableOnly": {"type": "boolean", "default": false}
+  }
+}
