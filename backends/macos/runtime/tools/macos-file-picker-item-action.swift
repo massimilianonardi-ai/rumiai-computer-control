@@ -41,6 +41,11 @@ func actionNames(_ element: AXUIElement) -> [String] {
     guard AXUIElementCopyActionNames(element, &raw) == .success, let raw else { return [] }
     return raw as? [String] ?? []
 }
+func trimmedValue(_ element: AXUIElement) -> String? {
+    guard let raw = stringAttribute(element, kAXValueAttribute as CFString) else { return nil }
+    let value = raw.trimmingCharacters(in: .whitespacesAndNewlines)
+    return value.isEmpty ? nil : value
+}
 func findFirst(_ root: AXUIElement, depth: Int = 12, predicate: (AXUIElement) -> Bool) -> AXUIElement? {
     if predicate(root) { return root }
     if depth <= 0 { return nil }
@@ -61,9 +66,8 @@ func isOpenPanel(_ element: AXUIElement) -> Bool {
     return hasDescendant(element, identifier: "ListView") && hasDescendant(element, identifier: "OKButton") && hasDescendant(element, identifier: "CancelButton")
 }
 func itemName(_ row: AXUIElement) -> String? {
-    guard let field = findFirst(row, depth: 5, predicate: { role($0) == (kAXTextFieldRole as String) && stringAttribute($0, kAXValueAttribute as CFString) != nil }), let raw = stringAttribute(field, kAXValueAttribute as CFString) else { return nil }
-    let name = raw.trimmingCharacters(in: .whitespacesAndNewlines)
-    return name.isEmpty ? nil : name
+    guard let field = findFirst(row, depth: 5, predicate: { role($0) == (kAXTextFieldRole as String) && trimmedValue($0) != nil }) else { return nil }
+    return trimmedValue(field)
 }
 func itemKind(_ row: AXUIElement) -> String {
     findFirst(row, depth: 5, predicate: { role($0) == (kAXDisclosureTriangleRole as String) }) != nil ? "directory" : "file"
@@ -78,18 +82,14 @@ func setSelected(_ row: AXUIElement) -> AXError {
     }
     return picked
 }
-func performAdvertisedDirectoryOpen(_ row: AXUIElement) -> AXError {
+func directoryConfirmTargets(_ row: AXUIElement, name: String) -> [AXUIElement] {
     var candidates: [AXUIElement] = []
-    collect(row, depth: 5, predicate: { _ in true }, into: &candidates)
-    let preferred = ["AXOpen", kAXConfirmAction as String]
-    for actionName in preferred {
-        for element in candidates where actionNames(element).contains(actionName) {
-            let result = AXUIElementPerformAction(element, actionName as CFString)
-            if result == .success { return result }
-            if result != .actionUnsupported { return result }
-        }
-    }
-    return .actionUnsupported
+    collect(row, depth: 5, predicate: { element in
+        role(element) == (kAXTextFieldRole as String) &&
+        trimmedValue(element) == name &&
+        actionNames(element).contains(kAXConfirmAction as String)
+    }, into: &candidates)
+    return candidates
 }
 
 let pid: pid_t = CommandLine.arguments.count > 1 ? pid_t(CommandLine.arguments[1]) ?? 0 : 0
@@ -138,11 +138,12 @@ if action == "select" {
 guard kind == "directory" else { fail("FILE_PICKER_ITEM_NOT_DIRECTORY", "open-directory requires an observed directory item", kind:kind, previous:previous) }
 if previous != true {
     let selected = setSelected(row)
-    guard selected == .success && boolAttribute(row, kAXSelectedAttribute as CFString) == true else { fail("FILE_PICKER_DIRECTORY_SELECTION_FAILED", "directory could not be selected before opening", kind:kind, previous:previous) }
+    guard selected == .success && boolAttribute(row, kAXSelectedAttribute as CFString) == true else { fail("FILE_PICKER_DIRECTORY_SELECTION_FAILED", "directory could not be selected before confirmation", kind:kind, previous:previous) }
 }
-let opened = performAdvertisedDirectoryOpen(row)
-guard opened == .success else {
-    if opened == .actionUnsupported { fail("FILE_PICKER_DIRECTORY_OPEN_ACTION_UNAVAILABLE", "directory row and descendants advertise neither AXOpen nor AXConfirm", kind:kind, previous:previous) }
-    fail("FILE_PICKER_DIRECTORY_OPEN_FAILED", "advertised native directory-open action failed with code \(opened.rawValue)", kind:kind, previous:previous)
+let confirmTargets = directoryConfirmTargets(row, name: requestedName)
+guard confirmTargets.count == 1 else {
+    fail(confirmTargets.isEmpty ? "FILE_PICKER_DIRECTORY_CONFIRM_TARGET_UNAVAILABLE" : "FILE_PICKER_DIRECTORY_CONFIRM_TARGET_AMBIGUOUS", "expected exactly one AXTextField descendant named \(requestedName) advertising AXConfirm; observed \(confirmTargets.count)", kind:kind, previous:previous)
 }
+let confirmed = AXUIElementPerformAction(confirmTargets[0], kAXConfirmAction as CFString)
+guard confirmed == .success else { fail("FILE_PICKER_DIRECTORY_OPEN_FAILED", "native AXConfirm on exact directory-name element failed with code \(confirmed.rawValue)", kind:kind, previous:previous) }
 emit(Output(ok:true,state:"DELIVERED",action:action,name:requestedName,kind:kind,previousSelected:previous,observedSelected:true,idempotent:false,method:method,error:nil,detail:nil),0)
