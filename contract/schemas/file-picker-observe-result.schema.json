@@ -1,0 +1,54 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "file-picker-observe-result.schema.json",
+  "title": "File picker observation result",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["state", "application", "picker", "observation", "backend"],
+  "properties": {
+    "state": {"const": "OBSERVED"},
+    "application": {"type": "object"},
+    "picker": {
+      "oneOf": [
+        {"type": "null"},
+        {"$ref": "#/$defs/picker"}
+      ]
+    },
+    "observation": {
+      "type": "object",
+      "required": ["method"],
+      "properties": {"method": {"type": "string"}}
+    },
+    "backend": {
+      "type": "object",
+      "required": ["name", "strategy"],
+      "properties": {
+        "name": {"type": "string"},
+        "strategy": {"type": "string"}
+      }
+    }
+  },
+  "$defs": {
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "selected", "enabled"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["file", "directory", "unknown"]},
+        "selected": {"type": ["boolean", "null"]},
+        "enabled": {"type": ["boolean", "null"]}
+      }
+    },
+    "picker": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "location", "items"],
+      "properties": {
+        "kind": {"const": "open"},
+        "location": {"type": ["string", "null"]},
+        "items": {"type": "array", "items": {"$ref": "#/$defs/item"}}
+      }
+    }
+  }
+}
