@@ -152,7 +152,7 @@ The corrected macOS backend resolves exactly one `AXButton` with the previously 
 - no coordinate, mouse, keyboard, clipboard, synthetic keypress, filesystem or dialog-label fallback is permitted;
 - all native handles and internal identifiers remain backend-private.
 
-Phase 9B3C validation state: `IMPLEMENTED`; corrected deterministic Cocoa/AppKit physical checkpoint pending.
+Phase 9B3C validation state: `PHYSICALLY_VALIDATED` on the deterministic Cocoa/AppKit `NSOpenPanel` reference fixture.
 
 ## macOS reference backend and evidence
 
@@ -178,16 +178,37 @@ poc SHA tested: 8db375a5b23103f834d04721639400c6d61cbdc5
 result: 26 PASS / 0 FAIL / 0 BLOCKED
 ```
 
-Phase 9B3C historical blocked checkpoint:
+Phase 9B3C history is preserved rather than rewritten:
 
 ```text
-session: cc-phase9b3c-file-picker-semantic-actions-s01
-evidence commit: 53239bbb4b1da389e65e24f7dc484bd119b1a31f
-validated product candidate: 3cedb57d35663f74d0598b6c83645c973cdc6810
-test source: f3e0a6960ac46b7c554fae73d9849245311fcea6
-poc SHA tested: b740096ea5d792e201981e620e3eeec4e403448b
-result: 26 PASS / 0 FAIL / 1 BLOCKED
-cause: selected-state preparation passed, then the native NSOpenPanel did not expose AXDefaultButton on the picker sheet
+s01: cc-phase9b3c-file-picker-semantic-actions-s01
+     evidence: 53239bbb4b1da389e65e24f7dc484bd119b1a31f
+     product: 3cedb57d35663f74d0598b6c83645c973cdc6810
+     result: 26 PASS / 0 FAIL / 1 BLOCKED
+     finding: the NSOpenPanel did not expose AXDefaultButton on the picker sheet
+
+s02: cc-phase9b3c-file-picker-semantic-actions-s02
+     evidence: bc593924b065975dc52227ae6e4f81395c92e35b
+     product: 2be349b1fdf2a6ea08ee893be423942d926a2c0b
+     result: 26 PASS / 1 FAIL / 0 BLOCKED
+     finding: native OKButton targeting dismissed the picker correctly, but the test's client.find completion observer was unreliable
+
+diagnostic: cc-phase9b3c-file-picker-accept-result-diagnostic-s01
+     evidence: d37b848c8abdb6d27da7c453627b2edcfbf2a518
+     product: 2be349b1fdf2a6ea08ee893be423942d926a2c0b
+     result: PASS
+     finding: independent read-only AX observation captured exactly "Picker Result: accepted Alpha.txt"
 ```
 
-This evidence is preserved and is not rewritten by the corrected checkpoint.
+Canonical Phase 9B3C physical validation:
+
+```text
+session: cc-phase9b3c-file-picker-semantic-actions-s03
+evidence commit: 9a47234951d3de5dff9d4b975892a8b0b07e079d
+validated product: 2be349b1fdf2a6ea08ee893be423942d926a2c0b
+test source: 2f107d05bdce5650929db8ead670f12da2f59f54
+poc SHA tested: 5cc8e8f97cc8fa139248ff3e6c28612df31aa8a9
+result: 29 PASS / 0 FAIL / 0 BLOCKED
+```
+
+The final checkpoint independently proved both paths: accept selected `Alpha.txt`, dismissed the picker, left the Provider running, and produced AppKit `.OK` / `Picker Result: accepted Alpha.txt`; cancel dismissed the reopened picker, left the Provider running, and produced AppKit `.cancel` / `Picker Result: cancelled`.
