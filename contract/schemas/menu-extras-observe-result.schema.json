@@ -1,0 +1,53 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/schemas/menu-extras-observe-result.schema.json",
+  "title": "menuExtras.observe result",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["state", "menuExtras", "observation", "backend"],
+  "properties": {
+    "state": {"const": "OBSERVED"},
+    "menuExtras": {
+      "oneOf": [
+        {"type": "null"},
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["items"],
+          "properties": {
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "additionalProperties": false,
+                "required": ["title", "description", "value", "enabled"],
+                "properties": {
+                  "title": {"type": ["string", "null"]},
+                  "description": {"type": ["string", "null"]},
+                  "value": {"type": ["string", "null"]},
+                  "enabled": {"type": ["boolean", "null"]}
+                }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "observation": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method"],
+      "properties": {"method": {"type": "string", "minLength": 1}}
+    },
+    "backend": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "strategy"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "strategy": {"type": "string", "minLength": 1}
+      }
+    },
+    "diagnostics": {"type": "object"}
+  }
+}
