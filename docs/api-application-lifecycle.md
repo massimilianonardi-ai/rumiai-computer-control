@@ -76,7 +76,7 @@ Important failures include:
 - `APP_TERMINATE_REJECTED` — the OS did not accept the graceful request;
 - `APP_TERMINATION_NOT_COMPLETED` — the graceful request was accepted but the application remained running through the verification deadline.
 
-`application.terminate` starts as `IMPLEMENTED` until deterministic physical validation proves graceful exit, idempotence and postcondition behavior on the reference AppKit fixture.
+Phase 9A2 is `PHYSICALLY_VALIDATED` on the deterministic macOS Cocoa/AppKit fixture. Evidence is recorded in `docs/evidence/phase9a2-application-termination-physical.md`. The physical checkpoint proves both graceful exit and the refusal path: an application that refuses termination remains running and Computer Control does not escalate to force-kill.
 
 ## Security boundary
 
