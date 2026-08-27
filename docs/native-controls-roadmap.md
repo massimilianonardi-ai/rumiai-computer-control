@@ -18,23 +18,23 @@ Computer Control models semantic native UI operations across platform backends. 
 ## Current lifecycle state
 
 ```text
-Phase 0  contract foundation            IMPLEMENTED
-Phase 1  ui.describe                    PHYSICALLY_VALIDATED
-Phase 2  ui.invoke                      PHYSICALLY_VALIDATED
-Phase 3  ui.toggle/select               PHYSICALLY_VALIDATED on AppKit reference controls
-Phase 4  ui.expand/collapse             PHYSICALLY_VALIDATED on AppKit reference controls
-Phase 5  value mutations                PHYSICALLY_VALIDATED on AppKit numeric controls
-Phase 6  ui.children                    PHYSICALLY_VALIDATED on AppKit hierarchy fixture
-Phase 7  scrolling                      PHYSICALLY_VALIDATED on AppKit scroll fixture
-Phase 8A text observation               PHYSICALLY_VALIDATED on AppKit NSTextView
-Phase 8B text range selection           PHYSICALLY_VALIDATED on AppKit NSTextView
-Phase 8C text mutation                  PHYSICALLY_VALIDATED on AppKit NSTextView
-Phase 9A1 application list/launch/activate IMPLEMENTED; physical checkpoint pending
-Phase 9A2 application terminate         PENDING security/consent review
-Phase 9B dialogs/file pickers           PENDING
-Phase 9C system chrome                  PENDING
-Phase 9D displays/richer clipboard      PENDING
-Phase 10 low-level fallbacks            PENDING
+Phase 0  contract foundation               IMPLEMENTED
+Phase 1  ui.describe                       PHYSICALLY_VALIDATED
+Phase 2  ui.invoke                         PHYSICALLY_VALIDATED
+Phase 3  ui.toggle/select                  PHYSICALLY_VALIDATED on AppKit reference controls
+Phase 4  ui.expand/collapse                PHYSICALLY_VALIDATED on AppKit reference controls
+Phase 5  value mutations                   PHYSICALLY_VALIDATED on AppKit numeric controls
+Phase 6  ui.children                       PHYSICALLY_VALIDATED on AppKit hierarchy fixture
+Phase 7  scrolling                         PHYSICALLY_VALIDATED on AppKit scroll fixture
+Phase 8A text observation                  PHYSICALLY_VALIDATED on AppKit NSTextView
+Phase 8B text range selection              PHYSICALLY_VALIDATED on AppKit NSTextView
+Phase 8C text mutation                     PHYSICALLY_VALIDATED on AppKit NSTextView
+Phase 9A1 application list/launch/activate PHYSICALLY_VALIDATED on AppKit lifecycle fixture
+Phase 9A2 application terminate            IMPLEMENTED; physical checkpoint pending
+Phase 9B dialogs/file pickers              PENDING
+Phase 9C system chrome                     PENDING
+Phase 9D displays/richer clipboard         PENDING
+Phase 10 low-level fallbacks               PENDING
 ```
 
 ## Physical evidence
@@ -61,6 +61,15 @@ Advanced text checkpoints:
    evidence: 451ea2f7b70dc740216792a1634abe337992b23b
    validated product: d679a89a88977a70c450eec9e1aece6c7b2a6506
    result: 17 PASS / 0 FAIL / 0 BLOCKED
+```
+
+Application lifecycle checkpoint:
+
+```text
+9A1 session: cc-phase9a1-application-lifecycle-s01
+    evidence: 8f75ba73c1443842b8b8f29e9cd9fd67cddb4b79
+    validated product: 5e36c5fd098ac50f80e439f1bb4e778e73c3fd86
+    result: 18 PASS / 0 FAIL / 0 BLOCKED
 ```
 
 ## Phase 3-7 residual backlog
@@ -137,7 +146,7 @@ The physical evidence proves non-BMP/emoji indexing, selected text, caret observ
 
 Phase 9 changes or observes system-wide state and therefore requires explicit security boundaries per sub-phase.
 
-### Phase 9A1 — provider-scoped application inventory, launch and activation
+### Phase 9A1 — provider-scoped application inventory, launch and activation — COMPLETE on AppKit reference surface
 
 Public APIs:
 
@@ -157,9 +166,9 @@ Contract decisions:
 - activation success requires the Provider identity to match the observed foreground application;
 - public descriptors contain semantic/provider identity only; process IDs are not durable application identity.
 
-Status: `IMPLEMENTED`; deterministic macOS physical checkpoint pending.
+Status: `PHYSICALLY_VALIDATED` on the deterministic macOS Cocoa/AppKit lifecycle fixture.
 
-Required physical evidence:
+Evidence proves:
 
 1. fixture Provider appears in `application.list` before launch as available and not running;
 2. `application.activate` before launch fails `APP_NOT_RUNNING` and does not launch;
@@ -167,18 +176,37 @@ Required physical evidence:
 4. repeated launch is idempotent;
 5. activation brings the fixture to foreground;
 6. repeated activation is idempotent;
-7. `application.list` reflects running/active state transitions;
-8. unavailable/unregistered Provider failures remain distinct.
+7. `application.list` reflects running/active state transitions.
 
 ### Phase 9A2 — graceful application termination
 
-Candidate API:
+Public API:
 
-```text
-application.terminate
+```js
+client.terminateApplication({application})
 ```
 
-This is intentionally separated from 9A1. Before implementation define consent expectations, unsaved-document behavior, graceful termination semantics, refusal/timeout handling and whether any force-termination capability should exist at all. Force-kill is not implied by this roadmap.
+Contract decisions:
+
+- only registered application Providers are addressable;
+- already-stopped applications succeed idempotently;
+- the macOS backend identifies the application through its resolved bundle identity and requests graceful termination with `NSRunningApplication.terminate()`;
+- no PID or arbitrary executable path is accepted through the public contract;
+- no force-termination primitive is part of the capability;
+- Computer Control never answers save/discard/cancel or other application dialogs as part of termination;
+- semantic success requires an independent postcondition that the Provider application is no longer observed running;
+- a rejected request, ambiguous native identity or application that remains running fails explicitly rather than being reported as terminated.
+
+Status: `IMPLEMENTED`; deterministic physical checkpoint pending.
+
+Required physical evidence:
+
+1. terminating an already-stopped fixture is idempotent and does not launch it;
+2. a launched fixture can be terminated gracefully by exact Provider identity;
+3. result state is `APPLICATION_TERMINATED` only after the process is independently observed absent;
+4. final `application.list` reports `running:false` and `active:false`;
+5. repeated termination remains idempotent;
+6. the test proves the product contains no force-kill fallback.
 
 ### Phase 9B — dialogs and file pickers
 

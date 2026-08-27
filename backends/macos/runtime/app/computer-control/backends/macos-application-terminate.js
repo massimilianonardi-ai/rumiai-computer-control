@@ -1,0 +1,16 @@
+"use strict";
+
+const cp=require("node:child_process");
+const fs=require("node:fs");
+const os=require("node:os");
+const path=require("node:path");
+
+const SOURCE=path.resolve(__dirname,"..","..","..","tools","macos-application-terminate.swift");
+const BINARY=path.join(os.tmpdir(),"rumiai-computer-control","rumiai-macos-application-terminate");
+
+function run(cmd,args){const started=performance.now();const result=cp.spawnSync(cmd,args,{encoding:"utf8",maxBuffer:8*1024*1024});return{ok:(result.status??1)===0,code:result.status??1,stdout:result.stdout||"",stderr:result.stderr||"",seconds:(performance.now()-started)/1000,method:`${cmd} ${args.join(" ")}`};}
+function needsCompile(){if(!fs.existsSync(BINARY))return true;try{return fs.statSync(SOURCE).mtimeMs>fs.statSync(BINARY).mtimeMs;}catch{return true;}}
+function ensureHelper(){if(!fs.existsSync(SOURCE))return{ok:false,error:"APP_TERMINATE_HELPER_SOURCE_MISSING",detail:`missing helper source: ${SOURCE}`,seconds:0};if(!needsCompile())return{ok:true,path:BINARY,compiled:false,seconds:0};const which=run("/usr/bin/xcrun",["--find","swiftc"]);if(!which.ok)return{ok:false,error:"APP_TERMINATE_HELPER_UNAVAILABLE",detail:(which.stderr||which.stdout||"swiftc unavailable").trim(),seconds:which.seconds};fs.mkdirSync(path.dirname(BINARY),{recursive:true});const compiled=run("/usr/bin/xcrun",["swiftc",SOURCE,"-o",BINARY,"-framework","AppKit"]);if(!compiled.ok)return{ok:false,error:"APP_TERMINATE_HELPER_COMPILE_FAILED",detail:(compiled.stderr||compiled.stdout||"helper compilation failed").trim(),seconds:which.seconds+compiled.seconds};try{fs.chmodSync(BINARY,0o755);}catch{}return{ok:true,path:BINARY,compiled:true,seconds:which.seconds+compiled.seconds};}
+function request({bundle}){const value=String(bundle||"").trim();if(!value)return{ok:false,state:"FAILED",error:"APP_TERMINATE_IDENTITY_UNAVAILABLE",detail:"resolved macOS bundle identity is required",seconds:0,method:"NSRunningApplication.terminate"};const helper=ensureHelper();if(!helper.ok)return{...helper,state:"FAILED",method:"NSRunningApplication.terminate"};const executed=run(helper.path,[value]);const seconds=(helper.seconds||0)+(executed.seconds||0);let data=null;try{data=JSON.parse(String(executed.stdout||"").trim());}catch(error){return{ok:false,state:"FAILED",error:"APP_TERMINATE_INVALID_JSON",detail:`invalid graceful-termination JSON: ${error.message}; stderr=${String(executed.stderr||"").trim()}`,seconds,method:"NSRunningApplication.terminate",compiled:helper.compiled===true};}if(!executed.ok||data?.ok!==true)return{ok:false,state:data?.state||"FAILED",error:data?.error||"APP_TERMINATE_REQUEST_FAILED",detail:data?.detail||String(executed.stderr||executed.stdout||"graceful termination request failed").trim(),bundle:value,matched:Number(data?.matched||0),accepted:data?.accepted===true,seconds,method:data?.method||"NSRunningApplication.terminate",compiled:helper.compiled===true};return{ok:true,state:data.state||"TERMINATION_REQUESTED",bundle:value,matched:Number(data.matched||0),accepted:data.accepted===true,seconds,method:data.method||"NSRunningApplication.terminate",compiled:helper.compiled===true};}
+
+module.exports={SOURCE,BINARY,ensureHelper,request};

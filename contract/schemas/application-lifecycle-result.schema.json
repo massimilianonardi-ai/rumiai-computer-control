@@ -21,7 +21,7 @@
   "required": ["ok", "state", "verified", "application", "changed", "idempotent", "verification", "backend"],
   "properties": {
     "ok": {"const": true},
-    "state": {"enum": ["APPLICATION_RUNNING", "APPLICATION_ACTIVE"]},
+    "state": {"enum": ["APPLICATION_RUNNING", "APPLICATION_ACTIVE", "APPLICATION_TERMINATED"]},
     "verified": {"const": true},
     "application": {"$ref": "#/$defs/application"},
     "changed": {"type": "boolean"},
