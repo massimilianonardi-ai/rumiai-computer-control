@@ -61,15 +61,17 @@ function createMacOSBackend(options = {}) {
       if(!range||!Number.isInteger(range.start)||!Number.isInteger(range.end)||!Number.isInteger(range.length)||range.start<0||range.end<range.start||range.length!==range.end-range.start||range.unit!=="utf16-code-unit")throw new ComputerControlError("TEXT_SELECTION_INVALID","Native backend returned an invalid canonical text range","NONE",{state:"FAILED"});
       if(observed.selectedText!=null&&String(observed.selectedText).length!==range.length)throw new ComputerControlError("TEXT_SELECTION_INCONSISTENT","Selected text UTF-16 length does not match observed range length","NONE",{state:"FAILED"});
       if(observed.textLength!=null&&(!Number.isInteger(observed.textLength)||observed.textLength<range.end))throw new ComputerControlError("TEXT_SELECTION_INVALID","Observed text length is inconsistent with selection range","NONE",{state:"FAILED"});
+      if(observed.fullText!=null&&typeof observed.fullText!=="string")throw new ComputerControlError("TEXT_VALUE_INVALID","Native backend returned a non-string full text value","NONE",{state:"FAILED"});
+      if(observed.fullText!=null&&observed.textLength!=null&&observed.fullText.length!==observed.textLength)throw new ComputerControlError("TEXT_VALUE_INCONSISTENT","Fresh native full text length does not match native text-length observation","NONE",{state:"FAILED",fullTextLength:observed.fullText.length,observedLength:observed.textLength});
       return{described,...resolvedTarget,process,observed,range};
     });
   }
   async function mutateText({application,target,range,text,operation,before=null}){
     const current=before||await observeTextSelection({application,target,operation});
     if(current.described?.readOnly===true)throw new ComputerControlError("TEXT_TARGET_READ_ONLY",`${operation} cannot mutate a read-only text target`,"NONE",{state:"FAILED"});
-    const fullText=typeof current.described?.value==="string"?current.described.value:null;
-    if(fullText==null)throw new ComputerControlError("TEXT_VALUE_UNAVAILABLE",`${operation} requires exact full-text observation before mutation`,"NONE",{state:"FAILED"});
-    if(current.observed.textLength!=null&&current.observed.textLength!==fullText.length)throw new ComputerControlError("TEXT_VALUE_INCONSISTENT","Independent text-length observation does not match full-text UTF-16 length","NONE",{state:"FAILED",descriptionLength:fullText.length,observedLength:current.observed.textLength});
+    const fullText=typeof current.observed?.fullText==="string"?current.observed.fullText:null;
+    if(fullText==null)throw new ComputerControlError("TEXT_VALUE_UNAVAILABLE",`${operation} requires fresh native full-text observation before mutation`,"NONE",{state:"FAILED"});
+    if(current.observed.textLength!=null&&current.observed.textLength!==fullText.length)throw new ComputerControlError("TEXT_VALUE_INCONSISTENT","Native text-length observation does not match fresh native full-text UTF-16 length","NONE",{state:"FAILED",fullTextLength:fullText.length,observedLength:current.observed.textLength});
     if(!validUnicodeScalarSequence(text))throw new ComputerControlError("INVALID_TEXT_PAYLOAD",`${operation} requires a valid Unicode scalar sequence`,"NONE",{state:"FAILED"});
     const requested=canonicalTextRange(range.start,range.end);
     if(requested.end>fullText.length)throw new ComputerControlError("TEXT_RANGE_OUT_OF_BOUNDS",`Requested end ${requested.end} exceeds observed UTF-16 text length ${fullText.length}`,"NONE",{state:"FAILED",requestedRange:requested,textLength:fullText.length});
@@ -99,8 +101,8 @@ function createMacOSBackend(options = {}) {
     }
     const after=await observeTextSelection({application,target:current.target,operation});
     if(!sameTextRange(after.range,finalRange))throw new ComputerControlError("TEXT_MUTATION_CARET_UNVERIFIED","Independent AX observation did not match the deterministic final caret","NONE",{state:"UNVERIFIED",requestedRange:finalRange,observedRange:after.range});
-    const observedText=typeof after.described?.value==="string"?after.described.value:null;
-    if(observedText==null||observedText!==expectedText)throw new ComputerControlError("TEXT_MUTATION_UNVERIFIED","Independent full-text observation did not equal the exact expected result","NONE",{state:"UNVERIFIED",expectedTextLength:expectedText.length,observedTextLength:observedText==null?null:observedText.length});
+    const observedText=typeof after.observed?.fullText==="string"?after.observed.fullText:null;
+    if(observedText==null||observedText!==expectedText)throw new ComputerControlError("TEXT_MUTATION_UNVERIFIED","Independent fresh native full-text observation did not equal the exact expected result","NONE",{state:"UNVERIFIED",expectedTextLength:expectedText.length,observedTextLength:observedText==null?null:observedText.length});
     if(after.observed.textLength!=null&&after.observed.textLength!==expectedText.length)throw new ComputerControlError("TEXT_MUTATION_UNVERIFIED","Independent text-length observation did not equal the exact expected result","NONE",{state:"UNVERIFIED",expectedTextLength:expectedText.length,observedTextLength:after.observed.textLength});
     const changed=textChanged||selectionChanged;
     return{ok:true,state:"TEXT_MUTATED",verified:true,operation,target:after.target,requestedRange:requested,replacementLength:text.length,previousTextLength:fullText.length,resultingTextLength:expectedText.length,resultingSelection:after.range,caret:after.range.start,textChanged,selectionChanged,changed,idempotent:!changed,verification:{method:"native-ax-selected-text-plus-full-text-postcondition",evidence:{textMatches:true,selectionMatches:true,helperVerified:textChanged?mutation?.verifiedText===true:true,independentObservation:true}},backend:{name:"macos-ax",strategy:textChanged?(mutation?.method||"macos-ax-selected-text-range-mutation"):(changed?"native-caret-only":"idempotent-native-text-mutation"),fallback:false},diagnostics:{actionSeconds,observeSeconds:(current.process.seconds||0)+(current.observed.seconds||0)+(after.process.seconds||0)+(after.observed.seconds||0),helperCompiled}};
@@ -148,7 +150,7 @@ function createMacOSBackend(options = {}) {
     },
     async appendText({application,target,text}) {
       const before=await observeTextSelection({application,target,operation:"ui.appendText"});
-      const observedLength=typeof before.described?.value==="string"?before.described.value.length:before.observed.textLength;
+      const observedLength=typeof before.observed?.fullText==="string"?before.observed.fullText.length:before.observed.textLength;
       if(!Number.isInteger(observedLength)||observedLength<0)throw new ComputerControlError("TEXT_LENGTH_UNAVAILABLE","ui.appendText requires exact text length observation","NONE",{state:"FAILED"});
       return mutateText({application,target,range:{start:observedLength,end:observedLength},text,operation:"ui.appendText",before});
     },

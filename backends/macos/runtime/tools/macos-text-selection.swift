@@ -20,6 +20,7 @@ struct Observation: Codable {
     let caret: Int?
     let selectedText: String?
     let textLength: Int?
+    let fullText: String?
     let method: String
     let error: String?
     let detail: String?
@@ -104,27 +105,27 @@ func emit(_ observation: Observation, exitCode: Int32 = 0) -> Never {
 }
 
 guard CommandLine.arguments.count >= 4 else {
-    emit(Observation(ok:false,state:"FAILED",pid:0,role:nil,name:nil,range:nil,caret:nil,selectedText:nil,textLength:nil,method:"macos-ax-selected-text-range",error:"INVALID_ARGUMENTS",detail:"usage: helper <pid> <role> <name>"), exitCode: 2)
+    emit(Observation(ok:false,state:"FAILED",pid:0,role:nil,name:nil,range:nil,caret:nil,selectedText:nil,textLength:nil,fullText:nil,method:"macos-ax-selected-text-range",error:"INVALID_ARGUMENTS",detail:"usage: helper <pid> <role> <name>"), exitCode: 2)
 }
 guard AXIsProcessTrusted() else {
-    emit(Observation(ok:false,state:"FAILED",pid:0,role:nil,name:nil,range:nil,caret:nil,selectedText:nil,textLength:nil,method:"macos-ax-selected-text-range",error:"ACCESSIBILITY_PERMISSION_REQUIRED",detail:"macOS Accessibility permission is required"), exitCode: 3)
+    emit(Observation(ok:false,state:"FAILED",pid:0,role:nil,name:nil,range:nil,caret:nil,selectedText:nil,textLength:nil,fullText:nil,method:"macos-ax-selected-text-range",error:"ACCESSIBILITY_PERMISSION_REQUIRED",detail:"macOS Accessibility permission is required"), exitCode: 3)
 }
 guard let parsedPid = Int32(CommandLine.arguments[1]), parsedPid > 0 else {
-    emit(Observation(ok:false,state:"FAILED",pid:0,role:nil,name:nil,range:nil,caret:nil,selectedText:nil,textLength:nil,method:"macos-ax-selected-text-range",error:"INVALID_PID",detail:"positive pid required"), exitCode: 2)
+    emit(Observation(ok:false,state:"FAILED",pid:0,role:nil,name:nil,range:nil,caret:nil,selectedText:nil,textLength:nil,fullText:nil,method:"macos-ax-selected-text-range",error:"INVALID_PID",detail:"positive pid required"), exitCode: 2)
 }
 let requestedRole = CommandLine.arguments[2]
 let requestedName = CommandLine.arguments[3]
 if requestedName.isEmpty {
-    emit(Observation(ok:false,state:"FAILED",pid:parsedPid,role:requestedRole,name:nil,range:nil,caret:nil,selectedText:nil,textLength:nil,method:"macos-ax-selected-text-range",error:"TEXT_TARGET_UNNAMED",detail:"safe native text re-resolution requires an accessible name"), exitCode: 4)
+    emit(Observation(ok:false,state:"FAILED",pid:parsedPid,role:requestedRole,name:nil,range:nil,caret:nil,selectedText:nil,textLength:nil,fullText:nil,method:"macos-ax-selected-text-range",error:"TEXT_TARGET_UNNAMED",detail:"safe native text re-resolution requires an accessible name"), exitCode: 4)
 }
 
 let app = AXUIElementCreateApplication(pid_t(parsedPid))
 switch resolveTarget(app: app, role: requestedRole, name: requestedName) {
 case .failure(let code, let detail):
-    emit(Observation(ok:false,state:"FAILED",pid:parsedPid,role:requestedRole,name:requestedName,range:nil,caret:nil,selectedText:nil,textLength:nil,method:"macos-ax-selected-text-range",error:code,detail:detail), exitCode: 5)
+    emit(Observation(ok:false,state:"FAILED",pid:parsedPid,role:requestedRole,name:requestedName,range:nil,caret:nil,selectedText:nil,textLength:nil,fullText:nil,method:"macos-ax-selected-text-range",error:code,detail:detail), exitCode: 5)
 case .success(let element):
     guard let nativeRange = selectedRange(element), nativeRange.location >= 0, nativeRange.length >= 0 else {
-        emit(Observation(ok:false,state:"FAILED",pid:parsedPid,role:canonicalRole(element),name:elementName(element),range:nil,caret:nil,selectedText:nil,textLength:nil,method:"macos-ax-selected-text-range",error:"TEXT_SELECTION_UNAVAILABLE",detail:"AXSelectedTextRange is unavailable or not a CFRange"), exitCode: 6)
+        emit(Observation(ok:false,state:"FAILED",pid:parsedPid,role:canonicalRole(element),name:elementName(element),range:nil,caret:nil,selectedText:nil,textLength:nil,fullText:nil,method:"macos-ax-selected-text-range",error:"TEXT_SELECTION_UNAVAILABLE",detail:"AXSelectedTextRange is unavailable or not a CFRange"), exitCode: 6)
     }
     let start = nativeRange.location
     let length = nativeRange.length
@@ -134,10 +135,10 @@ case .success(let element):
     let fullText = stringAttribute(element, kAXValueAttribute as CFString)
     let textLength = fullText.map { $0.utf16.count }
     if let total = textLength, end > total {
-        emit(Observation(ok:false,state:"FAILED",pid:parsedPid,role:canonicalRole(element),name:elementName(element),range:range,caret:nil,selectedText:selected,textLength:total,method:"macos-ax-selected-text-range",error:"TEXT_SELECTION_INVALID",detail:"observed selection exceeds observed UTF-16 text length"), exitCode: 7)
+        emit(Observation(ok:false,state:"FAILED",pid:parsedPid,role:canonicalRole(element),name:elementName(element),range:range,caret:nil,selectedText:selected,textLength:total,fullText:fullText,method:"macos-ax-selected-text-range",error:"TEXT_SELECTION_INVALID",detail:"observed selection exceeds observed UTF-16 text length"), exitCode: 7)
     }
     if let selected = selected, selected.utf16.count != length {
-        emit(Observation(ok:false,state:"FAILED",pid:parsedPid,role:canonicalRole(element),name:elementName(element),range:range,caret:nil,selectedText:selected,textLength:textLength,method:"macos-ax-selected-text-range",error:"TEXT_SELECTION_INCONSISTENT",detail:"AXSelectedText UTF-16 length does not match AXSelectedTextRange"), exitCode: 8)
+        emit(Observation(ok:false,state:"FAILED",pid:parsedPid,role:canonicalRole(element),name:elementName(element),range:range,caret:nil,selectedText:selected,textLength:textLength,fullText:fullText,method:"macos-ax-selected-text-range",error:"TEXT_SELECTION_INCONSISTENT",detail:"AXSelectedText UTF-16 length does not match AXSelectedTextRange"), exitCode: 8)
     }
-    emit(Observation(ok:true,state:"OBSERVED",pid:parsedPid,role:canonicalRole(element),name:elementName(element),range:range,caret:length == 0 ? start : nil,selectedText:selected,textLength:textLength,method:"macos-ax-selected-text-range",error:nil,detail:nil))
+    emit(Observation(ok:true,state:"OBSERVED",pid:parsedPid,role:canonicalRole(element),name:elementName(element),range:range,caret:length == 0 ? start : nil,selectedText:selected,textLength:textLength,fullText:fullText,method:"macos-ax-selected-text-range",error:nil,detail:nil))
 }
