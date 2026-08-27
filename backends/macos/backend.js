@@ -38,8 +38,8 @@ const PHASE9B3A = [
 ];
 
 const PHASE9B3B = [
-  {name:"filePicker.selectItem", available:true, validationState:"IMPLEMENTED", strategies:["provider-scoped-native-AX-pick","selected-item-postcondition"]},
-  {name:"filePicker.expandDirectory", available:true, validationState:"IMPLEMENTED", strategies:["provider-scoped-native-AX-disclosure-press","directory-disclosing-postcondition"]},
+  {name:"filePicker.selectItem", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["provider-scoped-native-AX-pick","selected-item-postcondition"]},
+  {name:"filePicker.expandDirectory", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["provider-scoped-native-AX-disclosure-press","directory-disclosing-postcondition"]},
 ];
 
 function canonicalDialog(value={}) {
