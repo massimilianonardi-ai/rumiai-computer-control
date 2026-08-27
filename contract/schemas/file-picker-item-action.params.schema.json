@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "file-picker-item-action.params.schema.json",
+  "title": "File picker item action parameters",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["application", "name"],
+  "properties": {
+    "application": {"type": "string", "minLength": 1},
+    "name": {"type": "string", "minLength": 1},
+    "timeoutMs": {"type": "integer", "minimum": 100, "maximum": 60000}
+  }
+}
