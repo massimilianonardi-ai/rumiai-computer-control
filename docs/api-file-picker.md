@@ -120,7 +120,7 @@ Repeated expansion of an already expanded directory succeeds with `changed:false
 
 The earlier unvalidated `filePicker.openDirectory` model was removed before promotion because three physical sessions disproved its assumed location-change semantics.
 
-Phase 9B3B validation state: `IMPLEMENTED`; deterministic Cocoa/AppKit public-API checkpoint pending.
+Phase 9B3B validation state: `PHYSICALLY_VALIDATED` on the deterministic Cocoa/AppKit `NSOpenPanel` reference fixture.
 
 ## macOS reference backend and evidence
 
@@ -132,15 +132,18 @@ Historical Phase 9B3B evidence is preserved:
 - `cc-phase9b3b-file-picker-navigation-selection-s02`: selection passed; descendant `AXOpen` returned `kAXErrorAttributeUnsupported`;
 - `cc-phase9b3b-directory-actions-discovery-s01`: showed `AXOpen` means `Open Finder item` and `AXConfirm` means `confirm` on the name field;
 - `cc-phase9b3b-file-picker-navigation-selection-s03`: exact `AXConfirm` delivery succeeded but `location` did not change;
-- `cc-phase9b3b-directory-disclosure-discovery-s01`: proved `AXPress` on the disclosure triangle changes `AXDisclosing:false→true` and exposes `Nested.txt` while location remains unchanged.
+- `cc-phase9b3b-directory-disclosure-discovery-s01`: proved `AXPress` on the disclosure triangle changes `AXDisclosing:false→true` and exposes `Nested.txt` while location remains unchanged;
+- `cc-phase9b3b-file-picker-selection-expansion-s01`: public API checkpoint validated selection, independent selected-state observation, disclosure expansion, independent `AXDisclosing=true`, visible nested content, picker preservation, stable location, and idempotence.
 
-Canonical disclosure discovery:
+Canonical physical validation:
 
 ```text
-session: cc-phase9b3b-directory-disclosure-discovery-s01
-evidence commit: 48ead70cf79cf05827cc5dcde9e7d7fda31363b3
-validated discovery product: 16e4f1b427170b0e5c729a10629990d48ee71daf
+session: cc-phase9b3b-file-picker-selection-expansion-s01
+evidence commit: 36ca5eb400954457f44467d9028e6f26a21e70cd
+validated product: 805ec5126f991bd6a19945bfda5d0fc2778ae221
+test source: 5e9fb88809af10c07bcf9f109d8d1e51ff92994a
+poc SHA tested: 8db375a5b23103f834d04721639400c6d61cbdc5
 result: 26 PASS / 0 FAIL / 0 BLOCKED
 ```
 
-Phase 9B3C will add explicit accept/cancel semantics only after Phase 9B3B is physically validated.
+Phase 9B3C adds explicit accept/cancel semantics after this completed Phase 9B3B checkpoint.
