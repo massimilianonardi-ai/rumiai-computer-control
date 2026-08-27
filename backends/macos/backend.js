@@ -44,8 +44,8 @@ const PHASE9B3B = [
 ];
 
 const PHASE9B3C = [
-  {name:"filePicker.accept", available:true, validationState:"IMPLEMENTED", strategies:["provider-scoped-native-AX-default-button","picker-absence-postcondition"]},
-  {name:"filePicker.cancel", available:true, validationState:"IMPLEMENTED", strategies:["provider-scoped-native-AX-cancel-button","picker-absence-postcondition"]},
+  {name:"filePicker.accept", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["provider-scoped-native-AX-picker-accept-button","picker-absence-postcondition"]},
+  {name:"filePicker.cancel", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["provider-scoped-native-AX-picker-cancel-button","picker-absence-postcondition"]},
 ];
 
 function canonicalDialog(value={}) {
@@ -239,7 +239,7 @@ function createMacOSBackend(options = {}) {
             idempotent:false,
             verified:true,
             verification:{method:"native-file-picker-absent-after-semantic-action",evidence:{beforeCount:1,afterCount:0}},
-            backend:{name:"macos-ax",strategy:action==="cancel"?"provider-scoped-native-AX-cancel-button":"provider-scoped-native-AX-default-button",fallback:false},
+            backend:{name:"macos-ax",strategy:action==="cancel"?"provider-scoped-native-AX-picker-cancel-button":"provider-scoped-native-AX-picker-accept-button",fallback:false},
             diagnostics:{actionSeconds:delivered.seconds||0,observeSeconds:(beforeNative.seconds||0)+(after.seconds||0),helperCompiled:delivered.compiled===true||after.compiled===true},
           };
         }
