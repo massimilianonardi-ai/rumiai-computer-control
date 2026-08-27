@@ -1,0 +1,6 @@
+{
+  "method": "filePicker.observe",
+  "params": {
+    "application": "Example App"
+  }
+}
