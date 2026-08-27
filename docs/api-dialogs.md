@@ -38,7 +38,7 @@ The result is canonical and platform-neutral:
 }
 ```
 
-Fields unavailable from the native accessibility surface remain `null`; Computer Control does not infer them from labels or layout.
+Fields unavailable from the native accessibility surface remain `null`; Computer Control does not infer them from labels or layout. The macOS AppKit validation fixture specifically demonstrated that `AXModal` may be unavailable for an `NSAlert` sheet, in which case the canonical result correctly preserves `modal:null`.
 
 ## Safety boundary
 
@@ -57,4 +57,13 @@ Default/cancel semantic actions are deferred to Phase 9B2, where native Accessib
 
 The macOS implementation re-resolves the registered Provider to its single running process and performs a fresh Accessibility observation. It recognizes native dialog/sheet surfaces and returns visible static text, modal state and button labels/enabled state when those values are exposed by Accessibility.
 
-Validation state: `IMPLEMENTED` until deterministic Cocoa/AppKit physical validation passes.
+Validation state: `PHYSICALLY_VALIDATED` on the deterministic Cocoa/AppKit `NSAlert` sheet fixture.
+
+Authoritative evidence:
+
+```text
+session: cc-phase9b1-dialog-observation-s02
+evidence commit: 33a5af37e98e93e7321050f23002072ecad2290d
+validated product: 2e7aaa24572fe5d55262d8cdce7f8fbc06cfaa58
+result: 20 PASS / 0 FAIL / 0 BLOCKED
+```
