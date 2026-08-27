@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/schemas/menu-extras-observe.params.schema.json",
+  "title": "menuExtras.observe params",
+  "type": "object",
+  "additionalProperties": false,
+  "properties": {}
+}
