@@ -1,0 +1,29 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "file-picker-item-selection-result.schema.json",
+  "title": "File picker item selection result",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["state", "application", "item", "location", "changed", "idempotent", "verified", "verification", "backend"],
+  "properties": {
+    "state": {"const": "FILE_PICKER_ITEM_SELECTED"},
+    "application": {"type": "object"},
+    "item": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind", "selected", "enabled"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "kind": {"enum": ["file", "directory", "unknown"]},
+        "selected": {"const": true},
+        "enabled": {"type": ["boolean", "null"]}
+      }
+    },
+    "location": {"type": ["string", "null"]},
+    "changed": {"type": "boolean"},
+    "idempotent": {"type": "boolean"},
+    "verified": {"const": true},
+    "verification": {"type": "object"},
+    "backend": {"type": "object"}
+  }
+}
