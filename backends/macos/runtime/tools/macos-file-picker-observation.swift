@@ -92,7 +92,7 @@ func pickerItem(from row: AXUIElement) -> PickerItem? {
     }), let rawName = stringAttribute(nameElement, kAXValueAttribute as CFString) else { return nil }
     let name = rawName.trimmingCharacters(in: .whitespacesAndNewlines)
     if name.isEmpty { return nil }
-    let isDirectory = findFirst(row, depth: 5, predicate: { role($0) == (kAXDisclosureTriangleRole as String) }) != nil
+    let isDirectory = findFirst(row, depth: 5, predicate: { role($0) == "AXDisclosureTriangle" }) != nil
     let selected = boolAttribute(row, kAXSelectedAttribute as CFString)
     let enabled = boolAttribute(row, kAXEnabledAttribute as CFString) ?? boolAttribute(nameElement, kAXEnabledAttribute as CFString)
     return PickerItem(name: name, kind: isDirectory ? "directory" : "file", selected: selected, enabled: enabled)
