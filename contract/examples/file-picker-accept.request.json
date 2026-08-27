@@ -1,0 +1,6 @@
+{
+  "method": "filePicker.accept",
+  "params": {
+    "application": "Example App"
+  }
+}
