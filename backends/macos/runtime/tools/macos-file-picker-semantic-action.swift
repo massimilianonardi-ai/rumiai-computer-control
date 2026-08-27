@@ -31,10 +31,6 @@ func elements(_ element: AXUIElement, _ attribute: CFString) -> [AXUIElement] {
     if CFGetTypeID(raw) == AXUIElementGetTypeID() { return [raw as! AXUIElement] }
     return []
 }
-func element(_ element: AXUIElement, _ attribute: CFString) -> AXUIElement? {
-    guard let raw = copyAttribute(element, attribute), CFGetTypeID(raw) == AXUIElementGetTypeID() else { return nil }
-    return raw as! AXUIElement
-}
 func children(_ element: AXUIElement) -> [AXUIElement] { elements(element, kAXChildrenAttribute as CFString) }
 func role(_ element: AXUIElement) -> String? { stringAttribute(element, kAXRoleAttribute as CFString) }
 func identifier(_ element: AXUIElement) -> String? { stringAttribute(element, kAXIdentifierAttribute as CFString) }
@@ -62,6 +58,14 @@ func isOpenPanel(_ element: AXUIElement) -> Bool {
     if identifier(element) == "open-panel" { return true }
     return hasDescendant(element, identifier: "ListView") && hasDescendant(element, identifier: "OKButton") && hasDescendant(element, identifier: "CancelButton")
 }
+func semanticButtons(_ panel: AXUIElement, action: String) -> [AXUIElement] {
+    let expectedIdentifier = action == "accept" ? "OKButton" : "CancelButton"
+    var matches: [AXUIElement] = []
+    collect(panel, predicate: {
+        identifier($0) == expectedIdentifier && role($0) == (kAXButtonRole as String)
+    }, into: &matches)
+    return matches
+}
 func emit(_ output: Output, _ code: Int32) -> Never {
     let encoder = JSONEncoder(); encoder.outputFormatting = [.sortedKeys]
     if let data = try? encoder.encode(output) { FileHandle.standardOutput.write(data); FileHandle.standardOutput.write(Data("\n".utf8)) }
@@ -85,10 +89,14 @@ guard panels.count == 1 else {
     fail(action,panels.isEmpty ? "FILE_PICKER_NOT_FOUND" : "FILE_PICKER_AMBIGUOUS","semantic picker action requires exactly one supported native file picker; observed \(panels.count)",4)
 }
 let panel = panels[0]
-let semanticAttribute: CFString = action == "accept" ? kAXDefaultButtonAttribute as CFString : kAXCancelButtonAttribute as CFString
-guard let button = element(panel, semanticAttribute) else {
-    fail(action,action == "accept" ? "FILE_PICKER_ACCEPT_ACTION_UNAVAILABLE" : "FILE_PICKER_CANCEL_ACTION_UNAVAILABLE","native Accessibility does not expose the requested semantic picker button",5)
+let buttons = semanticButtons(panel, action: action)
+guard buttons.count == 1 else {
+    if buttons.isEmpty {
+        fail(action,action == "accept" ? "FILE_PICKER_ACCEPT_ACTION_UNAVAILABLE" : "FILE_PICKER_CANCEL_ACTION_UNAVAILABLE","native Accessibility does not expose exactly one expected semantic picker button identifier",5)
+    }
+    fail(action,"FILE_PICKER_ACTION_AMBIGUOUS","native Accessibility exposes multiple matching semantic picker buttons; observed \(buttons.count)",5)
 }
+let button = buttons[0]
 guard boolAttribute(button, kAXEnabledAttribute as CFString) != false else {
     fail(action,"FILE_PICKER_ACTION_DISABLED","native semantic picker button is disabled",6)
 }
