@@ -31,7 +31,7 @@ Phase 8B  text range selection                 PHYSICALLY_VALIDATED on AppKit NS
 Phase 8C  text mutation                        PHYSICALLY_VALIDATED on AppKit NSTextView
 Phase 9A1 application list/launch/activate     PHYSICALLY_VALIDATED on AppKit lifecycle fixture
 Phase 9A2 application terminate                PHYSICALLY_VALIDATED on AppKit lifecycle fixture
-Phase 9B1 dialog/alert observation              NEXT
+Phase 9B1 dialog/alert observation              IMPLEMENTED; physical checkpoint pending
 Phase 9B2 dialog semantic actions               PENDING
 Phase 9B3 file picker navigation/selection      PENDING
 Phase 9C  system chrome                         PENDING
@@ -206,28 +206,37 @@ Evidence proves:
 6. a fixture that refuses termination yields `APP_TERMINATION_NOT_COMPLETED` and remains physically running;
 7. no force-kill escalation occurs.
 
-### Phase 9B1 — native dialog and alert observation — NEXT
+### Phase 9B1 — native dialog and alert observation
 
-Goal: observe current application-owned native modal surfaces without taking action.
-
-Planned canonical API:
+Public API:
 
 ```js
 client.listDialogs({application})
 ```
 
-Contract direction:
+Contract decisions:
 
 - application-scoped through an existing registered Provider;
 - read-only observation only;
 - no implicit launch or activation;
-- canonical dialog kinds rather than raw platform Accessibility objects;
-- observable title/text/modal state and enabled button labels where exposed;
+- canonical `dialog` / `sheet` kinds rather than raw platform Accessibility objects;
+- observable title, visible static text, modal state and button label/enabled state where exposed;
 - unavailable state is represented explicitly rather than guessed;
-- observation-scoped/native identifiers do not become durable public identity;
-- no button is invoked and no dialog is dismissed as part of observation.
+- native identifiers, PIDs and AX objects do not become durable public identity;
+- no button is invoked and no dialog is dismissed as part of observation;
+- default/cancel and destructive semantics are not inferred from labels.
 
-Physical checkpoint: deterministic AppKit alert/sheet fixture, including empty-state observation before presentation and exact observable content after presentation.
+Status: `IMPLEMENTED`; deterministic Cocoa/AppKit physical checkpoint pending.
+
+Required physical evidence:
+
+1. running fixture with no dialog returns an observed empty list;
+2. a native AppKit `NSAlert` presented as a sheet becomes observable;
+3. canonical kind is `sheet` without exposing `AXSheet` publicly;
+4. message and informative text are observed exactly;
+5. modal state is observed when Accessibility exposes it;
+6. button labels and enabled state are observable;
+7. a repeated observation leaves the dialog physically present, proving read-only behavior.
 
 ### Phase 9B2 — dialog semantic actions
 
