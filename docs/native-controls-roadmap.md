@@ -31,12 +31,12 @@ Phase 8B  text range selection                 PHYSICALLY_VALIDATED on AppKit NS
 Phase 8C  text mutation                        PHYSICALLY_VALIDATED on AppKit NSTextView
 Phase 9A1 application list/launch/activate     PHYSICALLY_VALIDATED on AppKit lifecycle fixture
 Phase 9A2 application terminate                PHYSICALLY_VALIDATED on AppKit lifecycle fixture
-Phase 9B1 dialog/alert observation              IMPLEMENTED; physical checkpoint pending
-Phase 9B2 dialog semantic actions               PENDING
-Phase 9B3 file picker navigation/selection      PENDING
-Phase 9C  system chrome                         PENDING
-Phase 9D  displays/richer clipboard             PENDING
-Phase 10  low-level fallbacks                   PENDING
+Phase 9B1 dialog/alert observation             PHYSICALLY_VALIDATED on AppKit NSAlert sheet fixture
+Phase 9B2 dialog semantic default/cancel       IMPLEMENTED; physical checkpoint pending
+Phase 9B3 file picker navigation/selection     PENDING
+Phase 9C  system chrome                        PENDING
+Phase 9D  displays/richer clipboard            PENDING
+Phase 10  low-level fallbacks                  PENDING
 ```
 
 ## Physical evidence
@@ -78,6 +78,17 @@ Application lifecycle checkpoints:
     validated product: 2c99a708a5c78262a0df1c2d9bbbdc18cf72932a
     result: 19 PASS / 0 FAIL / 0 BLOCKED
 ```
+
+Dialog checkpoints:
+
+```text
+9B1 session: cc-phase9b1-dialog-observation-s02
+    evidence: 33a5af37e98e93e7321050f23002072ecad2290d
+    validated product: 2e7aaa24572fe5d55262d8cdce7f8fbc06cfaa58
+    result: 20 PASS / 0 FAIL / 0 BLOCKED
+```
+
+Historical FAIL evidence remains preserved, including `cc-phase9b1-dialog-observation-s01`; later PASS evidence does not rewrite earlier sessions.
 
 ## Phase 3-7 residual backlog
 
@@ -196,17 +207,7 @@ Contract decisions:
 
 Status: `PHYSICALLY_VALIDATED` on the deterministic macOS Cocoa/AppKit lifecycle fixture.
 
-Evidence proves:
-
-1. an already-stopped fixture terminates idempotently without launch;
-2. a launched fixture terminates gracefully by exact Provider identity;
-3. `APPLICATION_TERMINATED` is returned only after independent process absence;
-4. `application.list` reports `running:false` and `active:false` after success;
-5. repeated termination is idempotent;
-6. a fixture that refuses termination yields `APP_TERMINATION_NOT_COMPLETED` and remains physically running;
-7. no force-kill escalation occurs.
-
-### Phase 9B1 — native dialog and alert observation
+### Phase 9B1 — native dialog and alert observation — COMPLETE on AppKit reference surface
 
 Public API:
 
@@ -226,21 +227,42 @@ Contract decisions:
 - no button is invoked and no dialog is dismissed as part of observation;
 - default/cancel and destructive semantics are not inferred from labels.
 
+Status: `PHYSICALLY_VALIDATED` on the deterministic Cocoa/AppKit `NSAlert` sheet fixture.
+
+Evidence proves an empty observed state, native sheet discovery, exact alert text, button labels/enabled state, explicit preservation of unavailable `AXModal` as `null`, and repeated observation without dismissing or mutating the sheet.
+
+### Phase 9B2 — dialog semantic actions
+
+Public APIs:
+
+```js
+client.invokeDialogDefault({application, timeoutMs})
+client.invokeDialogCancel({application, timeoutMs})
+```
+
+Contract decisions:
+
+- application-scoped through an existing registered Provider;
+- no implicit launch or activation;
+- exactly one running Provider process and exactly one native dialog/sheet are required at action time;
+- `default` resolves only through native `AXDefaultButton`;
+- `cancel` resolves only through native `AXCancelButton`;
+- no label, coordinate, public native handle or heuristic text matching selects the action target;
+- disabled or unavailable semantic actions fail explicitly;
+- delivery is not success: after native `AXPress`, the dialog must become absent under independent Accessibility observation;
+- application exit is not silently treated as ordinary dialog-action success;
+- destructive/security-sensitive authorization is not inferred from labels and remains a higher-layer policy decision.
+
 Status: `IMPLEMENTED`; deterministic Cocoa/AppKit physical checkpoint pending.
 
 Required physical evidence:
 
-1. running fixture with no dialog returns an observed empty list;
-2. a native AppKit `NSAlert` presented as a sheet becomes observable;
-3. canonical kind is `sheet` without exposing `AXSheet` publicly;
-4. message and informative text are observed exactly;
-5. modal state is observed when Accessibility exposes it;
-6. button labels and enabled state are observable;
-7. a repeated observation leaves the dialog physically present, proving read-only behavior.
-
-### Phase 9B2 — dialog semantic actions
-
-After 9B1 is physically validated, define explicit default/cancel semantic actions. Destructive/security-sensitive confirmation must remain distinct from ordinary default/cancel semantics; labels must not be heuristically interpreted as authorization.
+1. no-dialog invocation fails closed;
+2. a real `NSAlert` exposes and executes its native default action;
+3. the sheet is absent after default action success;
+4. a reopened `NSAlert` exposes and executes its native cancel action;
+5. the sheet is absent after cancel action success;
+6. both actions report verified semantic postconditions without label-based targeting.
 
 ### Phase 9B3 — file picker navigation and selection
 
