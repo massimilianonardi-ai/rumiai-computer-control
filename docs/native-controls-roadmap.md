@@ -32,8 +32,10 @@ Phase 8C  text mutation                        PHYSICALLY_VALIDATED on AppKit NS
 Phase 9A1 application list/launch/activate     PHYSICALLY_VALIDATED on AppKit lifecycle fixture
 Phase 9A2 application terminate                PHYSICALLY_VALIDATED on AppKit lifecycle fixture
 Phase 9B1 dialog/alert observation             PHYSICALLY_VALIDATED on AppKit NSAlert sheet fixture
-Phase 9B2 dialog semantic default/cancel       IMPLEMENTED; physical checkpoint pending
-Phase 9B3 file picker navigation/selection     PENDING
+Phase 9B2 dialog semantic default/cancel       PHYSICALLY_VALIDATED on AppKit NSAlert sheet fixture
+Phase 9B3A file picker observation/topology    DISCOVERY checkpoint next
+Phase 9B3B file picker navigation/selection    PENDING
+Phase 9B3C file picker accept/cancel           PENDING
 Phase 9C  system chrome                        PENDING
 Phase 9D  displays/richer clipboard            PENDING
 Phase 10  low-level fallbacks                  PENDING
@@ -86,6 +88,11 @@ Dialog checkpoints:
     evidence: 33a5af37e98e93e7321050f23002072ecad2290d
     validated product: 2e7aaa24572fe5d55262d8cdce7f8fbc06cfaa58
     result: 20 PASS / 0 FAIL / 0 BLOCKED
+
+9B2 session: cc-phase9b2-dialog-semantic-actions-s01
+    evidence: 05ddc49834da2a5c6734ecd9904e3bb7051bbc37
+    validated product: 86421b35f6413c990cebcb76f4357412266d06f7
+    result: 21 PASS / 0 FAIL / 0 BLOCKED
 ```
 
 Historical FAIL evidence remains preserved, including `cc-phase9b1-dialog-observation-s01`; later PASS evidence does not rewrite earlier sessions.
@@ -231,7 +238,7 @@ Status: `PHYSICALLY_VALIDATED` on the deterministic Cocoa/AppKit `NSAlert` sheet
 
 Evidence proves an empty observed state, native sheet discovery, exact alert text, button labels/enabled state, explicit preservation of unavailable `AXModal` as `null`, and repeated observation without dismissing or mutating the sheet.
 
-### Phase 9B2 — dialog semantic actions
+### Phase 9B2 — dialog semantic actions — COMPLETE on AppKit reference surface
 
 Public APIs:
 
@@ -253,26 +260,47 @@ Contract decisions:
 - application exit is not silently treated as ordinary dialog-action success;
 - destructive/security-sensitive authorization is not inferred from labels and remains a higher-layer policy decision.
 
-Status: `IMPLEMENTED`; deterministic Cocoa/AppKit physical checkpoint pending.
+Status: `PHYSICALLY_VALIDATED` on the deterministic Cocoa/AppKit `NSAlert` sheet fixture.
 
-Required physical evidence:
+Evidence proves the no-dialog fail-closed path, native default and cancel execution, and independent one-dialog-to-zero postconditions for both actions with no label-based targeting.
 
-1. no-dialog invocation fails closed;
-2. a real `NSAlert` exposes and executes its native default action;
-3. the sheet is absent after default action success;
-4. a reopened `NSAlert` exposes and executes its native cancel action;
-5. the sheet is absent after cancel action success;
-6. both actions report verified semantic postconditions without label-based targeting.
+### Phase 9B3 — native file picker
 
-### Phase 9B3 — file picker navigation and selection
+Apple documents that, on macOS 10.15 and later, the system draws `NSOpenPanel` in a separate process even when the calling application is not sandboxed. Therefore file-picker ownership and targeting must not assume that the picker belongs to the Provider process used for ordinary application dialogs.
 
-After dialog observation/action semantics stabilize:
+9B3 is split deliberately:
+
+#### Phase 9B3A — observation and native topology discovery
+
+Before freezing a public API, physically inspect a real `NSOpenPanel` on the reference macOS environment and record:
+
+- Provider application process identity;
+- process owning the accessible picker surface;
+- focused application/window relationships;
+- native AX roles/subroles and hierarchy for the panel;
+- how current location, visible items, selected items and accept/cancel semantics are exposed;
+- which relationships are stable enough for a platform-neutral contract.
+
+This is a discovery checkpoint, not a product capability validation. No public 9B3 API is declared before the topology is observed.
+
+#### Phase 9B3B — navigation and selection
+
+After 9B3A evidence stabilizes the model:
 
 - native file-picker observation;
 - directory navigation;
 - file/directory selection;
-- explicit accept/cancel semantics;
-- no arbitrary filesystem mutation implied by picker navigation.
+- explicit selection postconditions;
+- no filesystem mutation implied by navigation or selection.
+
+#### Phase 9B3C — accept and cancel
+
+After observation/navigation are validated:
+
+- explicit native accept semantic action;
+- explicit native cancel semantic action;
+- independent postconditions on picker dismissal and result state;
+- no inference of authorization from button labels.
 
 ### Phase 9C — system chrome
 
