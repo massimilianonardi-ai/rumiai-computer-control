@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "file-picker-directory-expansion-result.schema.json",
+  "title": "File picker directory expansion result",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["state", "application", "directory", "location", "changed", "idempotent", "verified", "verification", "backend"],
+  "properties": {
+    "state": {"const": "FILE_PICKER_DIRECTORY_EXPANDED"},
+    "application": {"type": "object"},
+    "directory": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "kind"],
+      "properties": {
+        "name": {"type": "string", "minLength": 1},
+        "kind": {"const": "directory"}
+      }
+    },
+    "location": {"type": ["string", "null"]},
+    "picker": {"type": "object"},
+    "changed": {"type": "boolean"},
+    "idempotent": {"type": "boolean"},
+    "verified": {"const": true},
+    "verification": {"type": "object"},
+    "backend": {"type": "object"}
+  }
+}
