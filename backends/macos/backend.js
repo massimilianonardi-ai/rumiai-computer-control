@@ -9,9 +9,9 @@ const PHASE8C = new Set([
 ]);
 
 const PHASE9A1 = [
-  {name:"application.list", available:true, validationState:"IMPLEMENTED", strategies:["provider-scoped-application-inventory","process-and-foreground-observation"]},
-  {name:"application.launch", available:true, validationState:"IMPLEMENTED", strategies:["desktop-plugin-launch","process-postcondition"]},
-  {name:"application.activate", available:true, validationState:"IMPLEMENTED", strategies:["desktop-plugin-activate","foreground-postcondition"]},
+  {name:"application.list", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["provider-scoped-application-inventory","process-and-foreground-observation"]},
+  {name:"application.launch", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["desktop-plugin-launch","process-postcondition"]},
+  {name:"application.activate", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["desktop-plugin-activate","foreground-postcondition"]},
 ];
 
 function createMacOSBackend(options = {}) {
