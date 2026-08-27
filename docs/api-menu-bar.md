@@ -54,7 +54,7 @@ If the Provider application has no Accessibility-visible menu bar, `menuBar` is 
 - no `AXUIElementPerformAction`, AX attribute mutation, mouse, keyboard, clipboard, AppleScript, filesystem operation or coordinate targeting is part of observation;
 - repeated observation is non-invasive.
 
-Phase 9C1A validation state: `IMPLEMENTED`; corrected deterministic Cocoa/AppKit physical checkpoint pending.
+Phase 9C1A validation state: `PHYSICALLY_VALIDATED` on the deterministic Cocoa/AppKit reference fixture.
 
 ## Why invocation is separate
 
@@ -62,7 +62,7 @@ Discovery showed that native menu items advertise actions such as `AXPress` and 
 
 A menu command can save a document, change a preference, open a window, quit an app, trigger system UI, or have no externally stable state change at all. Therefore a successful `AXPress` return cannot by itself satisfy the project-wide rule that delivery is not success.
 
-Phase 9C1B remains pending until Computer Control has a general postcondition model for menu commands or a deliberately narrower semantic contract whose outcome can be independently observed.
+Phase 9C1B remains pending until Computer Control has a general postcondition model for menu commands or a deliberately narrower semantic contract whose outcome can be independently observed. If no general verified-success contract exists, menu command delivery belongs in the explicit low-level/fallback layer rather than weakening the verified semantic API.
 
 ## Physical discovery
 
@@ -78,3 +78,18 @@ result: 30 PASS / 0 FAIL / 0 BLOCKED
 ```
 
 See `docs/evidence/phase9c1-menu-bar-discovery.md` for the observed native topology and the historical `s01` harness failure.
+
+## Physical validation
+
+Authoritative Phase 9C1A checkpoint:
+
+```text
+session: cc-phase9c1a-menu-bar-observation-s02
+evidence commit: decc4ccd989c694e624e3c3db69884b6903b0cee
+validated product: d0d1d23eedb7258d1fc292e3647559cf96d726d5
+test source: 2018e5ede25b44dc5f68285ce103ec5eb3355bfd
+poc SHA tested: 0cb4359a18040d0d51c0ab3546375e6d7ac5cf7f
+result: 31 PASS / 0 FAIL / 0 BLOCKED
+```
+
+See `docs/evidence/phase9c1a-menu-bar-observation-physical.md`.
