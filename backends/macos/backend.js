@@ -6,6 +6,7 @@ const dialogAction = require("./runtime/app/computer-control/backends/macos-dial
 const filePickerObservation = require("./runtime/app/computer-control/backends/macos-file-picker-observation");
 const filePickerItemAction = require("./runtime/app/computer-control/backends/macos-file-picker-item-action");
 const filePickerDirectoryState = require("./runtime/app/computer-control/backends/macos-file-picker-directory-state");
+const filePickerSemanticAction = require("./runtime/app/computer-control/backends/macos-file-picker-semantic-action");
 const {ComputerControlError} = require("../../runtime/src/errors");
 
 const PHASE8C = new Set([
@@ -40,6 +41,11 @@ const PHASE9B3A = [
 const PHASE9B3B = [
   {name:"filePicker.selectItem", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["provider-scoped-native-AX-pick","selected-item-postcondition"]},
   {name:"filePicker.expandDirectory", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["provider-scoped-native-AX-disclosure-press","directory-disclosing-postcondition"]},
+];
+
+const PHASE9B3C = [
+  {name:"filePicker.accept", available:true, validationState:"IMPLEMENTED", strategies:["provider-scoped-native-AX-default-button","picker-absence-postcondition"]},
+  {name:"filePicker.cancel", available:true, validationState:"IMPLEMENTED", strategies:["provider-scoped-native-AX-cancel-button","picker-absence-postcondition"]},
 ];
 
 function canonicalDialog(value={}) {
@@ -131,7 +137,7 @@ function createMacOSBackend(options = {}) {
           : capability
       );
       const names = new Set(promoted.map(capability => capability.name));
-      return {...info, capabilities:[...promoted, ...PHASE9A1.filter(capability => !names.has(capability.name)), ...PHASE9A2.filter(capability => !names.has(capability.name)), ...PHASE9B1.filter(capability => !names.has(capability.name)), ...PHASE9B2.filter(capability => !names.has(capability.name)), ...PHASE9B3A.filter(capability => !names.has(capability.name)), ...PHASE9B3B.filter(capability => !names.has(capability.name))]};
+      return {...info, capabilities:[...promoted, ...PHASE9A1.filter(capability => !names.has(capability.name)), ...PHASE9A2.filter(capability => !names.has(capability.name)), ...PHASE9B1.filter(capability => !names.has(capability.name)), ...PHASE9B2.filter(capability => !names.has(capability.name)), ...PHASE9B3A.filter(capability => !names.has(capability.name)), ...PHASE9B3B.filter(capability => !names.has(capability.name)), ...PHASE9B3C.filter(capability => !names.has(capability.name))]};
     },
     async listApplications({availableOnly=false}={}) { return lifecycle.list({availableOnly}); },
     async launchApplication({application,timeoutMs}) { return lifecycle.launch({application,timeoutMs}); },
@@ -211,6 +217,35 @@ function createMacOSBackend(options = {}) {
         await sleep(50);
       }
       throw new ComputerControlError("FILE_PICKER_EXPANSION_POSTCONDITION_UNVERIFIED",`${method} was delivered but directory "${name}" was not observed expanded`,"NONE",{state:"FAILED",method:delivered.method});
+    },
+    async performFilePickerAction({application,action,timeoutMs=3000}) {
+      const method=action==="cancel"?"filePicker.cancel":"filePicker.accept";
+      const {entry,pid}=filePickerContext(application,method);
+      const beforeNative=observeFilePicker(pid,method);
+      requireFilePicker(beforeNative,method);
+      const delivered=filePickerSemanticAction.perform({pid,action});
+      if(!delivered?.ok) throw new ComputerControlError(delivered?.error||"FILE_PICKER_ACTION_FAILED",delivered?.detail||`${method} native semantic action failed`,"NONE",{state:delivered?.state||"FAILED",method:delivered?.method});
+      const deadline=Date.now()+timeoutMs;
+      while(Date.now()<=deadline){
+        const running=lifecycle.observeResolved(entry);
+        if(!running.running) throw new ComputerControlError("FILE_PICKER_ACTION_APP_EXITED",`${method} caused or coincided with application exit; picker dismissal is not verified`,"NONE",{state:"FAILED"});
+        const after=observeFilePicker(pid,method);
+        if(after.pickers.length===0){
+          return {
+            state:action==="cancel"?"FILE_PICKER_CANCELLED":"FILE_PICKER_ACCEPTED",
+            action,
+            application:lifecycle.publicDescriptor(entry,running),
+            changed:true,
+            idempotent:false,
+            verified:true,
+            verification:{method:"native-file-picker-absent-after-semantic-action",evidence:{beforeCount:1,afterCount:0}},
+            backend:{name:"macos-ax",strategy:action==="cancel"?"provider-scoped-native-AX-cancel-button":"provider-scoped-native-AX-default-button",fallback:false},
+            diagnostics:{actionSeconds:delivered.seconds||0,observeSeconds:(beforeNative.seconds||0)+(after.seconds||0),helperCompiled:delivered.compiled===true||after.compiled===true},
+          };
+        }
+        await sleep(50);
+      }
+      throw new ComputerControlError("FILE_PICKER_ACTION_POSTCONDITION_UNVERIFIED",`${method} was delivered but the native picker remained observable`,"NONE",{state:"FAILED",method:delivered.method});
     },
     async performDialogAction({application,action,timeoutMs=3000}) {
       const method=action==="cancel"?"dialog.invokeCancel":"dialog.invokeDefault";
