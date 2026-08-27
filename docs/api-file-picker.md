@@ -1,6 +1,6 @@
 # Native file-picker API
 
-Phase 9B3A provides read-only observation of a native file picker. Phase 9B3B adds native item selection and hierarchical directory expansion while keeping picker dismissal separate for Phase 9B3C.
+Phase 9B3A provides read-only observation of a native file picker. Phase 9B3B adds native item selection and hierarchical directory expansion. Phase 9B3C adds explicit semantic accept/cancel actions.
 
 ## `filePicker.observe`
 
@@ -122,6 +122,72 @@ The earlier unvalidated `filePicker.openDirectory` model was removed before prom
 
 Phase 9B3B validation state: `PHYSICALLY_VALIDATED` on the deterministic Cocoa/AppKit `NSOpenPanel` reference fixture.
 
+## `filePicker.accept`
+
+```js
+const result = await client.acceptFilePicker({
+  application: "Example App"
+});
+```
+
+`accept` is an explicit semantic authorization by the caller to accept the current native picker state. The backend does not choose this action automatically and does not infer authorization from button labels.
+
+On macOS the backend resolves the one supported native `NSOpenPanel`, reads its native `AXDefaultButton` relationship, requires the resulting button to be enabled and to advertise `AXPress`, and presses only that semantic target.
+
+Success requires the Provider application to remain running and a fresh independent picker observation to report `picker:null`.
+
+Example result:
+
+```json
+{
+  "state": "FILE_PICKER_ACCEPTED",
+  "action": "accept",
+  "changed": true,
+  "idempotent": false,
+  "verified": true
+}
+```
+
+## `filePicker.cancel`
+
+```js
+const result = await client.cancelFilePicker({
+  application: "Example App"
+});
+```
+
+On macOS the backend resolves the native `AXCancelButton` relationship rather than matching a visible label. It requires an enabled button that advertises `AXPress` and verifies dismissal independently.
+
+Example result:
+
+```json
+{
+  "state": "FILE_PICKER_CANCELLED",
+  "action": "cancel",
+  "changed": true,
+  "idempotent": false,
+  "verified": true
+}
+```
+
+## Phase 9B3C contract decisions
+
+- actions are explicit: `filePicker.accept` and `filePicker.cancel`;
+- both require one already-open supported picker in exactly one registered Provider process;
+- neither launches or activates an application implicitly;
+- accept resolves only through native `AXDefaultButton`;
+- cancel resolves only through native `AXCancelButton`;
+- visible button labels are not used for action selection or authorization;
+- disabled or unavailable semantic buttons fail explicitly;
+- only an advertised native `AXPress` is delivered;
+- delivery alone is not success;
+- success requires the Provider application to remain running and fresh `filePicker.observe` to report no picker;
+- application exit is not silently treated as picker-action success;
+- no coordinate, mouse, keyboard, clipboard, synthetic keypress, filesystem or dialog-label fallback is permitted;
+- all native handles and internal identifiers remain backend-private.
+
+Phase 9B3C validation state: `IMPLEMENTED`; deterministic Cocoa/AppKit physical checkpoint pending.
+
 ## macOS reference backend and evidence
 
 Physical discovery with a real `NSOpenPanel` on macOS 26.5.2 showed that the accessible picker surface is visible in the Provider application's AX tree. Global focused-application information may be unavailable while the picker remains fully observable, so focus is diagnostic evidence only.
@@ -135,7 +201,7 @@ Historical Phase 9B3B evidence is preserved:
 - `cc-phase9b3b-directory-disclosure-discovery-s01`: proved `AXPress` on the disclosure triangle changes `AXDisclosing:false→true` and exposes `Nested.txt` while location remains unchanged;
 - `cc-phase9b3b-file-picker-selection-expansion-s01`: public API checkpoint validated selection, independent selected-state observation, disclosure expansion, independent `AXDisclosing=true`, visible nested content, picker preservation, stable location, and idempotence.
 
-Canonical physical validation:
+Canonical Phase 9B3B physical validation:
 
 ```text
 session: cc-phase9b3b-file-picker-selection-expansion-s01
@@ -145,5 +211,3 @@ test source: 5e9fb88809af10c07bcf9f109d8d1e51ff92994a
 poc SHA tested: 8db375a5b23103f834d04721639400c6d61cbdc5
 result: 26 PASS / 0 FAIL / 0 BLOCKED
 ```
-
-Phase 9B3C adds explicit accept/cancel semantics after this completed Phase 9B3B checkpoint.
