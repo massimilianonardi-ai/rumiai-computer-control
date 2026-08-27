@@ -1,0 +1,7 @@
+{
+  "method": "dialog.invokeCancel",
+  "params": {
+    "application": "Example App",
+    "timeoutMs": 3000
+  }
+}
