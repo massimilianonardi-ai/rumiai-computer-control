@@ -77,7 +77,18 @@ Success is not action delivery alone. After `AXPress`, Computer Control re-obser
 
 A successful result has state `DIALOG_ACTION_COMPLETED`, action `default` or `cancel`, `verified:true`, and verification method `native-dialog-absent-after-semantic-action`.
 
-Phase 9B2 validation state: `IMPLEMENTED` until deterministic Cocoa/AppKit physical validation passes.
+Phase 9B2 validation state: `PHYSICALLY_VALIDATED` on the deterministic Cocoa/AppKit `NSAlert` sheet fixture.
+
+Authoritative evidence:
+
+```text
+session: cc-phase9b2-dialog-semantic-actions-s01
+evidence commit: 05ddc49834da2a5c6734ecd9904e3bb7051bbc37
+validated product: 86421b35f6413c990cebcb76f4357412266d06f7
+result: 21 PASS / 0 FAIL / 0 BLOCKED
+```
+
+The physical checkpoint proves both native default and cancel actions, a no-dialog fail-closed path, and independent dialog-absence postconditions after action delivery.
 
 ## Safety boundary
 
