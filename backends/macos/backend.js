@@ -9,6 +9,7 @@ const filePickerDirectoryState = require("./runtime/app/computer-control/backend
 const filePickerSemanticAction = require("./runtime/app/computer-control/backends/macos-file-picker-semantic-action");
 const menuBarObservation = require("./runtime/app/computer-control/backends/macos-menu-bar-observation");
 const dockObservation = require("./runtime/app/computer-control/backends/macos-dock-observation");
+const menuExtrasObservation = require("./runtime/app/computer-control/backends/macos-menu-extras-observation");
 const {ComputerControlError} = require("../../runtime/src/errors");
 
 const PHASE8C = new Set([
@@ -58,6 +59,10 @@ const PHASE9C2A = [
   {name:"dock.observe", available:true, validationState:"IMPLEMENTED", strategies:["os-owned-native-AX-dock-observation"]},
 ];
 
+const PHASE9C3A = [
+  {name:"menuExtras.observe", available:true, validationState:"IMPLEMENTED", strategies:["os-owned-native-AX-menu-extras-observation"]},
+];
+
 function canonicalDialog(value={}) {
   return {
     kind:value.kind === "sheet" ? "sheet" : "dialog",
@@ -103,6 +108,15 @@ function canonicalDockItem(value={}) {
     title:value.title == null || String(value.title).length===0 ? null : String(value.title),
     running:typeof value.running === "boolean" ? value.running : null,
     status:value.status == null || String(value.status).length===0 ? null : String(value.status),
+  };
+}
+
+function canonicalMenuExtraItem(value={}) {
+  return {
+    title:value.title == null || String(value.title).length===0 ? null : String(value.title),
+    description:value.description == null || String(value.description).length===0 ? null : String(value.description),
+    value:value.value == null || String(value.value).length===0 ? null : String(value.value),
+    enabled:typeof value.enabled === "boolean" ? value.enabled : null,
   };
 }
 
@@ -154,6 +168,11 @@ function observeDockNative(){
   if(!native?.ok) throw new ComputerControlError(native?.error||"DOCK_OBSERVATION_FAILED",native?.detail||"Could not observe native Dock","NONE",{state:native?.state||"FAILED",method:native?.method});
   return native;
 }
+function observeMenuExtrasNative(){
+  const native=menuExtrasObservation.observe();
+  if(!native?.ok) throw new ComputerControlError(native?.error||"MENU_EXTRAS_OBSERVATION_FAILED",native?.detail||"Could not observe native menu extras","NONE",{state:native?.state||"FAILED",method:native?.method});
+  return native;
+}
 function requireFilePicker(native,method){
   if(native.pickers.length===0) throw new ComputerControlError("FILE_PICKER_NOT_FOUND",`${method} requires one open native file picker`,"NONE",{state:"FAILED",method:native.method});
   return canonicalFilePicker(native.pickers[0]);
@@ -182,7 +201,7 @@ function createMacOSBackend(options = {}) {
           : capability
       );
       const names = new Set(promoted.map(capability => capability.name));
-      return {...info, capabilities:[...promoted, ...PHASE9A1.filter(capability => !names.has(capability.name)), ...PHASE9A2.filter(capability => !names.has(capability.name)), ...PHASE9B1.filter(capability => !names.has(capability.name)), ...PHASE9B2.filter(capability => !names.has(capability.name)), ...PHASE9B3A.filter(capability => !names.has(capability.name)), ...PHASE9B3B.filter(capability => !names.has(capability.name)), ...PHASE9B3C.filter(capability => !names.has(capability.name)), ...PHASE9C1A.filter(capability => !names.has(capability.name)), ...PHASE9C2A.filter(capability => !names.has(capability.name))]};
+      return {...info, capabilities:[...promoted, ...PHASE9A1.filter(capability => !names.has(capability.name)), ...PHASE9A2.filter(capability => !names.has(capability.name)), ...PHASE9B1.filter(capability => !names.has(capability.name)), ...PHASE9B2.filter(capability => !names.has(capability.name)), ...PHASE9B3A.filter(capability => !names.has(capability.name)), ...PHASE9B3B.filter(capability => !names.has(capability.name)), ...PHASE9B3C.filter(capability => !names.has(capability.name)), ...PHASE9C1A.filter(capability => !names.has(capability.name)), ...PHASE9C2A.filter(capability => !names.has(capability.name)), ...PHASE9C3A.filter(capability => !names.has(capability.name))]};
     },
     async listApplications({availableOnly=false}={}) { return lifecycle.list({availableOnly}); },
     async launchApplication({application,timeoutMs}) { return lifecycle.launch({application,timeoutMs}); },
@@ -219,6 +238,16 @@ function createMacOSBackend(options = {}) {
         dock:native.dockPresent===true ? {items:native.items.map(canonicalDockItem)} : null,
         observation:{method:native.method},
         backend:{name:"macos-ax",strategy:"os-owned-native-AX-dock-observation"},
+        diagnostics:{observeSeconds:native.seconds||0,helperCompiled:native.compiled===true},
+      };
+    },
+    async observeMenuExtras() {
+      const native=observeMenuExtrasNative();
+      return {
+        state:"OBSERVED",
+        menuExtras:native.menuExtrasPresent===true ? {items:native.items.map(canonicalMenuExtraItem)} : null,
+        observation:{method:native.method},
+        backend:{name:"macos-ax",strategy:"os-owned-native-AX-menu-extras-observation"},
         diagnostics:{observeSeconds:native.seconds||0,helperCompiled:native.compiled===true},
       };
     },
@@ -348,4 +377,4 @@ function createMacOSBackend(options = {}) {
   };
 }
 
-module.exports = {...controls, createMacOSBackend, canonicalDialog, canonicalFilePickerItem, canonicalFilePicker, canonicalMenuBarItem, canonicalDockItem, dialogContext, filePickerContext, menuBarContext, observeDialogs, observeFilePicker, observeFilePickerDirectoryState, observeMenuBarNative, observeDockNative, requireFilePicker, exactFilePickerItem};
+module.exports = {...controls, createMacOSBackend, canonicalDialog, canonicalFilePickerItem, canonicalFilePicker, canonicalMenuBarItem, canonicalDockItem, canonicalMenuExtraItem, dialogContext, filePickerContext, menuBarContext, observeDialogs, observeFilePicker, observeFilePickerDirectoryState, observeMenuBarNative, observeDockNative, observeMenuExtrasNative, requireFilePicker, exactFilePickerItem};
