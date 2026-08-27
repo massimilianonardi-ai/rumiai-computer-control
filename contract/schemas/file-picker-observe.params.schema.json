@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "file-picker-observe.params.schema.json",
+  "title": "File picker observation parameters",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["application"],
+  "properties": {
+    "application": {"type": "string", "minLength": 1}
+  }
+}
