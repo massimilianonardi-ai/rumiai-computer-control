@@ -18,23 +18,25 @@ Computer Control models semantic native UI operations across platform backends. 
 ## Current lifecycle state
 
 ```text
-Phase 0  contract foundation               IMPLEMENTED
-Phase 1  ui.describe                       PHYSICALLY_VALIDATED
-Phase 2  ui.invoke                         PHYSICALLY_VALIDATED
-Phase 3  ui.toggle/select                  PHYSICALLY_VALIDATED on AppKit reference controls
-Phase 4  ui.expand/collapse                PHYSICALLY_VALIDATED on AppKit reference controls
-Phase 5  value mutations                   PHYSICALLY_VALIDATED on AppKit numeric controls
-Phase 6  ui.children                       PHYSICALLY_VALIDATED on AppKit hierarchy fixture
-Phase 7  scrolling                         PHYSICALLY_VALIDATED on AppKit scroll fixture
-Phase 8A text observation                  PHYSICALLY_VALIDATED on AppKit NSTextView
-Phase 8B text range selection              PHYSICALLY_VALIDATED on AppKit NSTextView
-Phase 8C text mutation                     PHYSICALLY_VALIDATED on AppKit NSTextView
-Phase 9A1 application list/launch/activate PHYSICALLY_VALIDATED on AppKit lifecycle fixture
-Phase 9A2 application terminate            IMPLEMENTED; physical checkpoint pending
-Phase 9B dialogs/file pickers              PENDING
-Phase 9C system chrome                     PENDING
-Phase 9D displays/richer clipboard         PENDING
-Phase 10 low-level fallbacks               PENDING
+Phase 0   contract foundation                  IMPLEMENTED
+Phase 1   ui.describe                          PHYSICALLY_VALIDATED
+Phase 2   ui.invoke                            PHYSICALLY_VALIDATED
+Phase 3   ui.toggle/select                     PHYSICALLY_VALIDATED on AppKit reference controls
+Phase 4   ui.expand/collapse                   PHYSICALLY_VALIDATED on AppKit reference controls
+Phase 5   value mutations                      PHYSICALLY_VALIDATED on AppKit numeric controls
+Phase 6   ui.children                          PHYSICALLY_VALIDATED on AppKit hierarchy fixture
+Phase 7   scrolling                            PHYSICALLY_VALIDATED on AppKit scroll fixture
+Phase 8A  text observation                     PHYSICALLY_VALIDATED on AppKit NSTextView
+Phase 8B  text range selection                 PHYSICALLY_VALIDATED on AppKit NSTextView
+Phase 8C  text mutation                        PHYSICALLY_VALIDATED on AppKit NSTextView
+Phase 9A1 application list/launch/activate     PHYSICALLY_VALIDATED on AppKit lifecycle fixture
+Phase 9A2 application terminate                PHYSICALLY_VALIDATED on AppKit lifecycle fixture
+Phase 9B1 dialog/alert observation              NEXT
+Phase 9B2 dialog semantic actions               PENDING
+Phase 9B3 file picker navigation/selection      PENDING
+Phase 9C  system chrome                         PENDING
+Phase 9D  displays/richer clipboard             PENDING
+Phase 10  low-level fallbacks                   PENDING
 ```
 
 ## Physical evidence
@@ -63,13 +65,18 @@ Advanced text checkpoints:
    result: 17 PASS / 0 FAIL / 0 BLOCKED
 ```
 
-Application lifecycle checkpoint:
+Application lifecycle checkpoints:
 
 ```text
 9A1 session: cc-phase9a1-application-lifecycle-s01
     evidence: 8f75ba73c1443842b8b8f29e9cd9fd67cddb4b79
     validated product: 5e36c5fd098ac50f80e439f1bb4e778e73c3fd86
     result: 18 PASS / 0 FAIL / 0 BLOCKED
+
+9A2 session: cc-phase9a2-application-terminate-s01
+    evidence: e58549c9492a300581e8e6fd13f859bebfb7c3f3
+    validated product: 2c99a708a5c78262a0df1c2d9bbbdc18cf72932a
+    result: 19 PASS / 0 FAIL / 0 BLOCKED
 ```
 
 ## Phase 3-7 residual backlog
@@ -144,7 +151,7 @@ The physical evidence proves non-BMP/emoji indexing, selected text, caret observ
 
 ## Phase 9 — application and system surfaces
 
-Phase 9 changes or observes system-wide state and therefore requires explicit security boundaries per sub-phase.
+Phase 9 changes or observes system-wide state and therefore uses explicit security boundaries per sub-phase.
 
 ### Phase 9A1 — provider-scoped application inventory, launch and activation — COMPLETE on AppKit reference surface
 
@@ -168,17 +175,7 @@ Contract decisions:
 
 Status: `PHYSICALLY_VALIDATED` on the deterministic macOS Cocoa/AppKit lifecycle fixture.
 
-Evidence proves:
-
-1. fixture Provider appears in `application.list` before launch as available and not running;
-2. `application.activate` before launch fails `APP_NOT_RUNNING` and does not launch;
-3. `application.launch` starts the exact fixture bundle and reports running;
-4. repeated launch is idempotent;
-5. activation brings the fixture to foreground;
-6. repeated activation is idempotent;
-7. `application.list` reflects running/active state transitions.
-
-### Phase 9A2 — graceful application termination
+### Phase 9A2 — graceful application termination — COMPLETE on AppKit reference surface
 
 Public API:
 
@@ -197,23 +194,54 @@ Contract decisions:
 - semantic success requires an independent postcondition that the Provider application is no longer observed running;
 - a rejected request, ambiguous native identity or application that remains running fails explicitly rather than being reported as terminated.
 
-Status: `IMPLEMENTED`; deterministic physical checkpoint pending.
+Status: `PHYSICALLY_VALIDATED` on the deterministic macOS Cocoa/AppKit lifecycle fixture.
 
-Required physical evidence:
+Evidence proves:
 
-1. terminating an already-stopped fixture is idempotent and does not launch it;
-2. a launched fixture can be terminated gracefully by exact Provider identity;
-3. result state is `APPLICATION_TERMINATED` only after the process is independently observed absent;
-4. final `application.list` reports `running:false` and `active:false`;
-5. repeated termination remains idempotent;
-6. the test proves the product contains no force-kill fallback.
+1. an already-stopped fixture terminates idempotently without launch;
+2. a launched fixture terminates gracefully by exact Provider identity;
+3. `APPLICATION_TERMINATED` is returned only after independent process absence;
+4. `application.list` reports `running:false` and `active:false` after success;
+5. repeated termination is idempotent;
+6. a fixture that refuses termination yields `APP_TERMINATION_NOT_COMPLETED` and remains physically running;
+7. no force-kill escalation occurs.
 
-### Phase 9B — dialogs and file pickers
+### Phase 9B1 — native dialog and alert observation — NEXT
 
-- modal dialog/alert observation;
-- default/cancel semantic actions;
-- file picker navigation and selection;
-- explicit handling of destructive/security-sensitive dialogs.
+Goal: observe current application-owned native modal surfaces without taking action.
+
+Planned canonical API:
+
+```js
+client.listDialogs({application})
+```
+
+Contract direction:
+
+- application-scoped through an existing registered Provider;
+- read-only observation only;
+- no implicit launch or activation;
+- canonical dialog kinds rather than raw platform Accessibility objects;
+- observable title/text/modal state and enabled button labels where exposed;
+- unavailable state is represented explicitly rather than guessed;
+- observation-scoped/native identifiers do not become durable public identity;
+- no button is invoked and no dialog is dismissed as part of observation.
+
+Physical checkpoint: deterministic AppKit alert/sheet fixture, including empty-state observation before presentation and exact observable content after presentation.
+
+### Phase 9B2 — dialog semantic actions
+
+After 9B1 is physically validated, define explicit default/cancel semantic actions. Destructive/security-sensitive confirmation must remain distinct from ordinary default/cancel semantics; labels must not be heuristically interpreted as authorization.
+
+### Phase 9B3 — file picker navigation and selection
+
+After dialog observation/action semantics stabilize:
+
+- native file-picker observation;
+- directory navigation;
+- file/directory selection;
+- explicit accept/cancel semantics;
+- no arbitrary filesystem mutation implied by picker navigation.
 
 ### Phase 9C — system chrome
 
