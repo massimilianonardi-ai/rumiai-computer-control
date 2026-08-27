@@ -1,0 +1,7 @@
+{
+  "method": "filePicker.selectItem",
+  "params": {
+    "application": "Example App",
+    "name": "Example.txt"
+  }
+}
