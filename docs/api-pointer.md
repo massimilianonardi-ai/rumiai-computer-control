@@ -147,9 +147,11 @@ A successful result reports posting only:
 }
 ```
 
-`WHEEL_POSTED` does not mean an arbitrary application scrolled, scrolled in the intended semantic container, or reached a requested semantic state. A stronger consequence claim requires an independent observer. Phase 10D delivery discovery used a test-owned `NSScrollView` oracle and established both delivery and a real viewport change for both signs before this public vocabulary was frozen.
+`WHEEL_POSTED` does not mean an arbitrary application scrolled, scrolled in the intended semantic container, or reached a requested semantic state. A stronger consequence claim requires an independent observer.
 
-Phase 10D public API state: `IMPLEMENTED`. A dedicated real runtime/SDK physical checkpoint is required before promotion to `PHYSICALLY_VALIDATED`.
+The authoritative public physical checkpoint exercised the real runtime and SDK for both canonical directions. A separate test-owned AppKit `NSScrollView` oracle independently observed one wheel event and an `increasing-y` viewport consequence for `direction:"down"`, then after exact baseline reset observed one wheel event and a `decreasing-y` consequence for `direction:"up"`. The public result kept the native sign private, restored pointer/focus, touched no user content and persisted no fixture coordinates, offsets or native display identifiers.
+
+Phase 10D public API state: `PHYSICALLY_VALIDATED` on the current macOS reference surface.
 
 ## Safety and lifecycle boundary
 
@@ -191,17 +193,25 @@ poc SHA tested: 0def3a8ba72e8cceffc03ec23721e63c2504decf
 result: PASS
 ```
 
-Phase 10D wheel: `IMPLEMENTED` after authoritative physical delivery discovery.
+Phase 10D wheel: `PHYSICALLY_VALIDATED`.
 
-Authoritative Phase 10D discovery checkpoint:
+Authoritative Phase 10D public checkpoint:
+
+```text
+session: cc-phase10d-pointer-wheel-public-s01
+evidence: b1ed223bb401ab79b5b7e6cc11c8512347afe0be
+validated product: a3fcd4cbaa4f770e59bd974c0239b9af35701e99
+test source: 7a0d62b2723bd0dca11e57a9b8aa931251a6f475
+poc SHA tested: 37b03c1e7a59f712bfa674122fb636b5ca24447b
+result: PASS
+```
+
+Prerequisite Phase 10D delivery discovery:
 
 ```text
 session: cc-phase10d-wheel-delivery-discovery-s02
 evidence: 6e63c9e1450db6b32510bb17250722bb3efc2f3b
-observed product: 9cb037f688a82f733de520062b0adb30c0994a8b
-test source: a438ce771cbd1278dbefea7c4c209e77bf2a9217
-poc SHA tested: 275587696909bfe1452a346d27583f684b5a43b7
 result: PASS
 ```
 
-See `docs/evidence/phase10b-pointer-public-physical.md`, `docs/evidence/phase10b-pointer-delivery-discovery-physical.md`, `docs/evidence/phase10c-drag-delivery-discovery-physical.md`, `docs/evidence/phase10c-pointer-drag-public-physical.md` and `docs/evidence/phase10d-wheel-delivery-discovery-physical.md`.
+See the Phase 10B/10C evidence files plus `docs/evidence/phase10d-wheel-delivery-discovery-physical.md` and `docs/evidence/phase10d-pointer-wheel-public-physical.md`.
