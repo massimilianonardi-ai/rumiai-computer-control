@@ -11,7 +11,7 @@ Phase 10 discovery   PHYSICALLY_OBSERVED
 Phase 10A capture    PHYSICALLY_VALIDATED
 Phase 10B pointer    PHYSICALLY_VALIDATED
 Phase 10C drag/drop  PHYSICALLY_VALIDATED
-Phase 10D wheel      IMPLEMENTED
+Phase 10D wheel      PHYSICALLY_VALIDATED
 Phase 10E keyboard   PENDING
 OCR / vision         PENDING (separate interpretation layer)
 ```
@@ -110,31 +110,26 @@ client.wheelPointer({
 })
 ```
 
-State: `IMPLEMENTED`. A dedicated public runtime/SDK physical checkpoint is required before promotion.
+State: `PHYSICALLY_VALIDATED` on the current macOS reference surface.
 
 Existing semantic `ui.scroll` remains preferred whenever a semantic scroll target exists. `pointer.wheel` is an explicit coordinate fallback and must not weaken or bypass `ui.scroll` postcondition semantics.
 
-Authoritative delivery discovery:
+Authoritative public checkpoint:
 
 ```text
-session: cc-phase10d-wheel-delivery-discovery-s02
-evidence: 6e63c9e1450db6b32510bb17250722bb3efc2f3b
-observed product: 9cb037f688a82f733de520062b0adb30c0994a8b
-test source: a438ce771cbd1278dbefea7c4c209e77bf2a9217
-poc SHA tested: 275587696909bfe1452a346d27583f684b5a43b7
+session: cc-phase10d-pointer-wheel-public-s01
+evidence: b1ed223bb401ab79b5b7e6cc11c8512347afe0be
+validated product: a3fcd4cbaa4f770e59bd974c0239b9af35701e99
+test source: 7a0d62b2723bd0dca11e57a9b8aa931251a6f475
+poc SHA tested: 37b03c1e7a59f712bfa674122fb636b5ca24447b
 result: PASS
 ```
 
-The test-owned AppKit `NSScrollView` independently established real wheel delivery and a real viewport consequence for both raw native signs after exact baseline reset:
+The real SDK/runtime path was exercised twice against a separate test-owned AppKit `NSScrollView` oracle. Canonical `direction:"down", amount:3` produced one independently observed wheel event and an `increasing-y` viewport consequence. After exact baseline reset, canonical `direction:"up", amount:3` produced one independently observed wheel event and a `decreasing-y` consequence. The directions were therefore observed as opposite end-to-end.
 
-```text
-wheel1=-3 -> delivery observed=1 -> increasing-y
-wheel1=+3 -> delivery observed=1 -> decreasing-y
-```
+The native sign mapping remains backend-private. The public result exposed only canonical direction/amount and `WHEEL_POSTED`, kept `semanticConsequenceVerified:false`, restored pointer/focus, touched no user content and persisted no fixture coordinates, offsets or native display identifiers.
 
-That mapping is backend-private evidence. The public API exposes only canonical `direction:"up"|"down"`; on the reference macOS backend, `down` maps to a negative native line delta and `up` maps to a positive native line delta.
-
-The public contract is deliberately narrow:
+The public contract remains deliberately narrow:
 
 - vertical wheel only;
 - one explicit primary-display-local target point;
@@ -147,13 +142,30 @@ The public contract is deliberately narrow:
 - `semanticConsequenceVerified` is always false;
 - event posting alone does not establish that an arbitrary application's intended semantic scroll occurred.
 
-See `docs/api-pointer.md` and `docs/evidence/phase10d-wheel-delivery-discovery-physical.md`.
+Prerequisite delivery discovery remains immutable:
+
+```text
+session: cc-phase10d-wheel-delivery-discovery-s02
+evidence: 6e63c9e1450db6b32510bb17250722bb3efc2f3b
+result: PASS
+```
+
+See `docs/api-pointer.md`, `docs/evidence/phase10d-wheel-delivery-discovery-physical.md` and `docs/evidence/phase10d-pointer-wheel-public-physical.md`.
 
 ## 10E — keyboard fallback
 
 State: `PENDING`.
 
 Discovery proved only keyboard-event constructibility. Existing semantic text mutation, invoke and other structured APIs remain preferred. Raw keyboard delivery requires an explicit key vocabulary, modifier semantics and a separate physical checkpoint.
+
+The next 10E discovery must remain test-owned and precede any public keyboard contract. It should physically establish at minimum:
+
+- printable text delivery to an AppKit text fixture;
+- one special-key delivery with an independently observable fixture consequence;
+- modifier delivery observed by the fixture;
+- key-down/key-up lifecycle completion and cleanup;
+- native virtual-key identifiers kept private and referenced only through symbolic platform constants internally;
+- no public API frozen by the discovery itself.
 
 ## OCR and vision
 
