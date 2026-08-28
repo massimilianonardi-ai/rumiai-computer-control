@@ -10,6 +10,8 @@ private struct Request: Decodable {
     let destinationX: Double?
     let destinationY: Double?
     let button: String?
+    let direction: String?
+    let amount: Int?
 }
 
 private func emit(_ value: [String: Any], exitCode: Int32) -> Never {
@@ -111,6 +113,46 @@ struct MacOSPointerHelper {
             ], exitCode: 0)
         }
 
+        if request.operation == "wheel" {
+            guard let direction = request.direction, direction == "up" || direction == "down" else {
+                failed("POINTER_WHEEL_DIRECTION_UNSUPPORTED", "Pointer wheel supports only direction=up or direction=down")
+            }
+            guard let amount = request.amount, amount >= 1, amount <= 10 else {
+                failed("POINTER_WHEEL_AMOUNT_INVALID", "Pointer wheel amount must be an integer from 1 through 10")
+            }
+
+            // Physical Phase 10D discovery established the reference-surface mapping:
+            // positive wheel1 -> decreasing document y, negative wheel1 -> increasing document y.
+            // Keep the Quartz sign private and expose only canonical up/down direction.
+            let nativeDelta = Int32(direction == "up" ? amount : -amount)
+            guard let wheel = CGEvent(
+                scrollWheelEvent2Source: nil,
+                units: .line,
+                wheelCount: 1,
+                wheel1: nativeDelta,
+                wheel2: 0,
+                wheel3: 0
+            ) else {
+                failed("POINTER_WHEEL_EVENT_CONSTRUCTION_FAILED", "Could not construct native pointer wheel event")
+            }
+            wheel.post(tap: .cghidEventTap)
+            usleep(30_000)
+
+            emit([
+                "ok": true,
+                "state": "WHEEL_POSTED",
+                "display": "primary",
+                "x": positionedLocal.x,
+                "y": positionedLocal.y,
+                "direction": direction,
+                "amount": amount,
+                "positionVerified": true,
+                "wheelDelivery": "POSTED",
+                "semanticConsequenceVerified": false,
+                "method": "quartz-primary-display-pointer-wheel-post"
+            ], exitCode: 0)
+        }
+
         if request.operation == "drag" {
             guard request.button == "left" else {
                 failed("POINTER_BUTTON_UNSUPPORTED", "Pointer drag currently supports only button=left")
@@ -187,7 +229,7 @@ struct MacOSPointerHelper {
         }
 
         guard request.operation == "click" else {
-            failed("POINTER_OPERATION_UNSUPPORTED", "Pointer helper supports only move, click or drag")
+            failed("POINTER_OPERATION_UNSUPPORTED", "Pointer helper supports only move, click, drag or wheel")
         }
         guard let button = request.button, button == "left" || button == "right" else {
             failed("POINTER_BUTTON_UNSUPPORTED", "Pointer click supports only left or right button")
