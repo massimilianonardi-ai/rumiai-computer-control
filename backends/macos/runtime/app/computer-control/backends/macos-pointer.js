@@ -33,4 +33,5 @@ function invoke(request){
 
 const move=({display,x,y})=>invoke({operation:"move",display,x,y});
 const click=({display,x,y,button})=>invoke({operation:"click",display,x,y,button});
-module.exports={move,click};
+const drag=({display,source,destination,button})=>invoke({operation:"drag",display,x:source.x,y:source.y,destinationX:destination.x,destinationY:destination.y,button});
+module.exports={move,click,drag};
