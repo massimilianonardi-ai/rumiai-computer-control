@@ -11,6 +11,7 @@ const menuBarObservation = require("./runtime/app/computer-control/backends/maco
 const dockObservation = require("./runtime/app/computer-control/backends/macos-dock-observation");
 const menuExtrasObservation = require("./runtime/app/computer-control/backends/macos-menu-extras-observation");
 const displayObservation = require("./runtime/app/computer-control/backends/macos-display-observation");
+const clipboardMetadataObservation = require("./runtime/app/computer-control/backends/macos-clipboard-metadata-observation");
 const {ComputerControlError} = require("../../runtime/src/errors");
 
 const PHASE8C = new Set([
@@ -67,6 +68,12 @@ const PHASE9C3A = [
 const PHASE9D1A = [
   {name:"display.list", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["os-owned-native-display-observation"]},
 ];
+
+const PHASE9D2A = [
+  {name:"clipboard.observe", available:true, validationState:"IMPLEMENTED", strategies:["os-owned-native-clipboard-metadata-observation"]},
+];
+
+const CLIPBOARD_FORMATS = ["text/plain", "text/html", "text/rtf", "image/png"];
 
 function canonicalDialog(value={}) {
   return {
@@ -150,6 +157,22 @@ function canonicalDisplay(value={}) {
   };
 }
 
+function canonicalClipboardMetadata(value={}) {
+  const revision=value.revision == null ? "" : String(value.revision);
+  if(!revision) throw new ComputerControlError("CLIPBOARD_METADATA_INVALID_NATIVE_STATE","clipboard.observe observed an empty native revision","NONE",{state:"FAILED"});
+  if(!Array.isArray(value.items)) throw new ComputerControlError("CLIPBOARD_METADATA_INVALID_NATIVE_STATE","clipboard.observe observed invalid native item metadata","NONE",{state:"FAILED"});
+  const items=value.items.map((item,index)=>{
+    if(!item||typeof item!=="object"||Number(item.index)!==index||!Number.isInteger(Number(item.index))) throw new ComputerControlError("CLIPBOARD_METADATA_INVALID_NATIVE_STATE","clipboard.observe observed invalid item index state","NONE",{state:"FAILED"});
+    if(!Array.isArray(item.formats)) throw new ComputerControlError("CLIPBOARD_METADATA_INVALID_NATIVE_STATE","clipboard.observe observed invalid item format state","NONE",{state:"FAILED"});
+    const seen=new Set();
+    for(const format of item.formats){if(!CLIPBOARD_FORMATS.includes(format)||seen.has(format))throw new ComputerControlError("CLIPBOARD_METADATA_INVALID_NATIVE_STATE","clipboard.observe observed unsupported or duplicate canonical format state","NONE",{state:"FAILED"});seen.add(format);}
+    const unsupportedFormatCount=Number(item.unsupportedFormatCount);
+    if(!Number.isInteger(unsupportedFormatCount)||unsupportedFormatCount<0) throw new ComputerControlError("CLIPBOARD_METADATA_INVALID_NATIVE_STATE","clipboard.observe observed invalid unsupported-format count","NONE",{state:"FAILED"});
+    return {index,formats:CLIPBOARD_FORMATS.filter(format=>seen.has(format)),unsupportedFormatCount};
+  });
+  return {revision,items};
+}
+
 function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 function dialogContext(application,method){
   const entry=lifecycle.resolveProvider(application);
@@ -208,6 +231,11 @@ function observeDisplaysNative(){
   if(!native?.ok) throw new ComputerControlError(native?.error||"DISPLAY_OBSERVATION_FAILED",native?.detail||"Could not observe native displays","NONE",{state:native?.state||"FAILED",method:native?.method});
   return native;
 }
+function observeClipboardNative(){
+  const native=clipboardMetadataObservation.observe();
+  if(!native?.ok) throw new ComputerControlError(native?.error||"CLIPBOARD_METADATA_OBSERVATION_FAILED",native?.detail||"Could not observe native clipboard metadata","NONE",{state:native?.state||"FAILED",method:native?.method});
+  return native;
+}
 function requireFilePicker(native,method){
   if(native.pickers.length===0) throw new ComputerControlError("FILE_PICKER_NOT_FOUND",`${method} requires one open native file picker`,"NONE",{state:"FAILED",method:native.method});
   return canonicalFilePicker(native.pickers[0]);
@@ -236,7 +264,7 @@ function createMacOSBackend(options = {}) {
           : capability
       );
       const names = new Set(promoted.map(capability => capability.name));
-      return {...info, capabilities:[...promoted, ...PHASE9A1.filter(capability => !names.has(capability.name)), ...PHASE9A2.filter(capability => !names.has(capability.name)), ...PHASE9B1.filter(capability => !names.has(capability.name)), ...PHASE9B2.filter(capability => !names.has(capability.name)), ...PHASE9B3A.filter(capability => !names.has(capability.name)), ...PHASE9B3B.filter(capability => !names.has(capability.name)), ...PHASE9B3C.filter(capability => !names.has(capability.name)), ...PHASE9C1A.filter(capability => !names.has(capability.name)), ...PHASE9C2A.filter(capability => !names.has(capability.name)), ...PHASE9C3A.filter(capability => !names.has(capability.name)), ...PHASE9D1A.filter(capability => !names.has(capability.name))]};
+      return {...info, capabilities:[...promoted, ...PHASE9A1.filter(capability => !names.has(capability.name)), ...PHASE9A2.filter(capability => !names.has(capability.name)), ...PHASE9B1.filter(capability => !names.has(capability.name)), ...PHASE9B2.filter(capability => !names.has(capability.name)), ...PHASE9B3A.filter(capability => !names.has(capability.name)), ...PHASE9B3B.filter(capability => !names.has(capability.name)), ...PHASE9B3C.filter(capability => !names.has(capability.name)), ...PHASE9C1A.filter(capability => !names.has(capability.name)), ...PHASE9C2A.filter(capability => !names.has(capability.name)), ...PHASE9C3A.filter(capability => !names.has(capability.name)), ...PHASE9D1A.filter(capability => !names.has(capability.name)), ...PHASE9D2A.filter(capability => !names.has(capability.name))]};
     },
     async listApplications({availableOnly=false}={}) { return lifecycle.list({availableOnly}); },
     async launchApplication({application,timeoutMs}) { return lifecycle.launch({application,timeoutMs}); },
@@ -293,6 +321,18 @@ function createMacOSBackend(options = {}) {
         displays:native.displays.map(canonicalDisplay),
         observation:{method:native.method},
         backend:{name:"macos-ax",strategy:"os-owned-native-display-observation"},
+        diagnostics:{observeSeconds:native.seconds||0,helperCompiled:native.compiled===true},
+      };
+    },
+    async observeClipboard() {
+      const native=observeClipboardNative();
+      const observed=canonicalClipboardMetadata(native);
+      return {
+        state:"OBSERVED",
+        revision:observed.revision,
+        items:observed.items,
+        observation:{method:native.method},
+        backend:{name:"macos-ax",strategy:"os-owned-native-clipboard-metadata-observation"},
         diagnostics:{observeSeconds:native.seconds||0,helperCompiled:native.compiled===true},
       };
     },
@@ -422,4 +462,4 @@ function createMacOSBackend(options = {}) {
   };
 }
 
-module.exports = {...controls, createMacOSBackend, canonicalDialog, canonicalFilePickerItem, canonicalFilePicker, canonicalMenuBarItem, canonicalDockItem, canonicalMenuExtraItem, canonicalDisplayRect, canonicalDisplay, dialogContext, filePickerContext, menuBarContext, observeDialogs, observeFilePicker, observeFilePickerDirectoryState, observeMenuBarNative, observeDockNative, observeMenuExtrasNative, observeDisplaysNative, requireFilePicker, exactFilePickerItem};
+module.exports = {...controls, createMacOSBackend, canonicalDialog, canonicalFilePickerItem, canonicalFilePicker, canonicalMenuBarItem, canonicalDockItem, canonicalMenuExtraItem, canonicalDisplayRect, canonicalDisplay, canonicalClipboardMetadata, dialogContext, filePickerContext, menuBarContext, observeDialogs, observeFilePicker, observeFilePickerDirectoryState, observeMenuBarNative, observeDockNative, observeMenuExtrasNative, observeDisplaysNative, observeClipboardNative, requireFilePicker, exactFilePickerItem};
