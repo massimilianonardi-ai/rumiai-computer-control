@@ -70,7 +70,7 @@ const PHASE9D1A = [
 ];
 
 const PHASE9D2A = [
-  {name:"clipboard.observe", available:true, validationState:"IMPLEMENTED", strategies:["os-owned-native-clipboard-metadata-observation"]},
+  {name:"clipboard.observe", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["os-owned-native-clipboard-metadata-observation"]},
 ];
 
 const CLIPBOARD_FORMATS = ["text/plain", "text/html", "text/rtf", "image/png"];
