@@ -1,0 +1,41 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PointerMoveResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["state", "verified", "display", "position", "changed", "idempotent", "verification", "backend"],
+  "properties": {
+    "state": {"const": "MOVED"},
+    "verified": {"const": true},
+    "display": {"const": "primary"},
+    "position": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {"x": {"type": "number", "minimum": 0}, "y": {"type": "number", "minimum": 0}}
+    },
+    "changed": {"type": "boolean"},
+    "idempotent": {"type": "boolean"},
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["method", "evidence"],
+      "properties": {
+        "method": {"const": "quartz-current-pointer-location"},
+        "evidence": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["display", "x", "y"],
+          "properties": {"display": {"const": "primary"}, "x": {"type": "number", "minimum": 0}, "y": {"type": "number", "minimum": 0}}
+        }
+      }
+    },
+    "backend": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "strategy", "fallback"],
+      "properties": {"name": {"const": "macos-quartz"}, "strategy": {"const": "primary-display-pointer-move"}, "fallback": {"const": true}}
+    },
+    "diagnostics": {"type": "object"}
+  }
+}
