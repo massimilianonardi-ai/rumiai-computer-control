@@ -29,6 +29,14 @@ private func keyboardEvent(_ key: Int, down: Bool, flags: CGEventFlags = []) -> 
     return event
 }
 
+private func settleModifierDelivery() {
+    Thread.sleep(forTimeInterval: 0.05)
+}
+
+private func settleKeyDelivery() {
+    Thread.sleep(forTimeInterval: 0.04)
+}
+
 @main
 struct MacOSKeyboardHelper {
     static func main() {
@@ -61,10 +69,18 @@ struct MacOSKeyboardHelper {
             guard shiftDown != nil, shiftUp != nil else { failed("KEYBOARD_MODIFIER_EVENT_CONSTRUCTION_FAILED") }
         }
 
-        if shiftedA { shiftDown!.post(tap: .cghidEventTap) }
+        if shiftedA {
+            shiftDown!.post(tap: .cghidEventTap)
+            settleModifierDelivery()
+        }
         keyDown.post(tap: .cghidEventTap)
+        if shiftedA { settleKeyDelivery() }
         keyUp.post(tap: .cghidEventTap)
-        if shiftedA { shiftUp!.post(tap: .cghidEventTap) }
+        if shiftedA {
+            settleKeyDelivery()
+            shiftUp!.post(tap: .cghidEventTap)
+            settleModifierDelivery()
+        }
 
         emit([
             "ok": true,
