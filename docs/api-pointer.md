@@ -1,6 +1,6 @@
 # Pointer fallback API
 
-Phase 10B and Phase 10C provide explicit low-level pointer fallback operations after physical Quartz-to-AppKit delivery discovery.
+Phase 10B, Phase 10C and Phase 10D provide explicit low-level pointer fallback operations after physical Quartz-to-AppKit delivery discovery.
 
 A semantic Computer Control operation remains preferred whenever one exists. Coordinate input is a fallback mechanism, not a substitute for semantic targeting.
 
@@ -96,11 +96,68 @@ The authoritative public physical checkpoint exercised the real runtime and SDK.
 
 Phase 10C public API state: `PHYSICALLY_VALIDATED` on the current macOS reference surface.
 
+## `pointer.wheel`
+
+Phase 10D exposes a narrow vertical raw-wheel fallback. It is lower-level than semantic `ui.scroll`: use `ui.scroll` whenever Computer Control has a semantic scroll target and postcondition.
+
+SDK:
+
+```js
+client.wheelPointer({
+  display: "primary",
+  x: 640,
+  y: 420,
+  direction: "down",
+  amount: 3
+})
+```
+
+RPC: `pointer.wheel`.
+
+The public vocabulary is canonical:
+
+- `direction` is only `"up"` or `"down"`;
+- `amount` is an integer from `1` through `10` line units;
+- the target is one explicit primary-display-local point;
+- there are no public Quartz `wheel1`/`wheel2`/`wheel3` deltas, pixel units, phase/momentum fields or gesture semantics.
+
+The helper positions the pointer at the requested point and independently re-observes that location immediately before posting one vertical Quartz line-wheel event. Physical discovery established the backend-private reference-surface sign mapping: canonical `up` maps to positive Quartz wheel axis 1, while canonical `down` maps to negative Quartz wheel axis 1. The native sign is not exposed in the request or result.
+
+A successful result reports posting only:
+
+```json
+{
+  "state": "WHEEL_POSTED",
+  "display": "primary",
+  "position": {"x": 640, "y": 420},
+  "direction": "down",
+  "amount": 3,
+  "positionVerified": true,
+  "wheelDelivery": "POSTED",
+  "semanticConsequenceVerified": false,
+  "verification": {
+    "positionMethod": "quartz-current-pointer-location",
+    "wheelMethod": "quartz-event-post-only"
+  },
+  "backend": {
+    "name": "macos-quartz",
+    "strategy": "primary-display-pointer-wheel-post",
+    "fallback": true
+  }
+}
+```
+
+`WHEEL_POSTED` does not mean an arbitrary application scrolled, scrolled in the intended semantic container, or reached a requested semantic state. A stronger consequence claim requires an independent observer. Phase 10D delivery discovery used a test-owned `NSScrollView` oracle and established both delivery and a real viewport change for both signs before this public vocabulary was frozen.
+
+Phase 10D public API state: `IMPLEMENTED`. A dedicated real runtime/SDK physical checkpoint is required before promotion to `PHYSICALLY_VALIDATED`.
+
 ## Safety and lifecycle boundary
 
 There are no public `pointer.down` or `pointer.up` calls. A held mouse button across independent RPC calls would create fragile cross-call state and unsafe cleanup semantics.
 
-`pointer.drag` owns the complete button lifecycle in one operation. The pointer APIs do not automatically activate an application, resolve a UI element, infer a visual target, or verify an application's reaction. Computer Use must choose coordinates only when a higher-level semantic Computer Control operation cannot satisfy the task.
+`pointer.drag` owns the complete button lifecycle in one operation. Pointer fallback APIs do not automatically activate an application, resolve a UI element, infer a visual target, or verify an application's reaction. Computer Use must choose coordinates only when a higher-level semantic Computer Control operation cannot satisfy the task.
+
+`pointer.wheel` must not replace semantic `ui.scroll` when a semantic scroll target is available. Its coordinate point and posted wheel event are mechanics, not semantic targeting or semantic success.
 
 ## Permissions
 
@@ -134,12 +191,17 @@ poc SHA tested: 0def3a8ba72e8cceffc03ec23721e63c2504decf
 result: PASS
 ```
 
-Prerequisite Phase 10C delivery discovery:
+Phase 10D wheel: `IMPLEMENTED` after authoritative physical delivery discovery.
+
+Authoritative Phase 10D discovery checkpoint:
 
 ```text
-session: cc-phase10c-drag-delivery-discovery-s01
-evidence: 47ee8e31a08597cffc0c773dfaf72a093501e5c4
+session: cc-phase10d-wheel-delivery-discovery-s02
+evidence: 6e63c9e1450db6b32510bb17250722bb3efc2f3b
+observed product: 9cb037f688a82f733de520062b0adb30c0994a8b
+test source: a438ce771cbd1278dbefea7c4c209e77bf2a9217
+poc SHA tested: 275587696909bfe1452a346d27583f684b5a43b7
 result: PASS
 ```
 
-See `docs/evidence/phase10b-pointer-public-physical.md`, `docs/evidence/phase10b-pointer-delivery-discovery-physical.md`, `docs/evidence/phase10c-drag-delivery-discovery-physical.md` and `docs/evidence/phase10c-pointer-drag-public-physical.md`.
+See `docs/evidence/phase10b-pointer-public-physical.md`, `docs/evidence/phase10b-pointer-delivery-discovery-physical.md`, `docs/evidence/phase10c-drag-delivery-discovery-physical.md`, `docs/evidence/phase10c-pointer-drag-public-physical.md` and `docs/evidence/phase10d-wheel-delivery-discovery-physical.md`.
