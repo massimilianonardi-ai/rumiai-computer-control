@@ -12,6 +12,7 @@ class ComputerControlClient extends core.ComputerControlClient {
   observeDock() { return this.call("dock.observe", {}); }
   observeMenuExtras() { return this.call("menuExtras.observe", {}); }
   listDisplays() { return this.call("display.list", {}); }
+  captureDisplay({display}) { return this.call("display.capture", {display}); }
   observeClipboard() { return this.call("clipboard.observe", {}); }
   readClipboardFormat({revision, itemIndex, format}) { return this.call("clipboard.readFormat", {revision, itemIndex, format}); }
   writeClipboardFormat({format, dataBase64}) { return this.call("clipboard.writeFormat", {format, dataBase64}); }
