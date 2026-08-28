@@ -1,6 +1,6 @@
 # Pointer fallback API
 
-Phase 10B introduces explicit low-level pointer fallback operations after physical Quartz-to-AppKit delivery discovery.
+Phase 10B introduces explicit low-level pointer fallback operations after physical Quartz-to-AppKit delivery discovery and public runtime/SDK validation.
 
 A semantic Computer Control operation remains preferred whenever one exists. Coordinate input is a fallback mechanism, not a substitute for semantic targeting.
 
@@ -16,7 +16,7 @@ display = "primary"
 
 The backend validates the coordinate against the primary display that exists at execution time. Coordinates outside that display fail explicitly. Native display identifiers and global desktop arrangement identifiers remain private.
 
-This initial physical scope is the reference Mac's current primary-display topology. Multi-display coordinate conformance remains future work.
+This physical scope is the reference Mac's current primary-display topology. Multi-display coordinate conformance remains future work.
 
 ## `pointer.move`
 
@@ -95,11 +95,11 @@ A successful result intentionally does **not** claim semantic success:
 }
 ```
 
-The helper first positions the pointer and independently verifies that coordinate. It then posts the native button down/up pair. It verifies that the pointer did not move away during the sequence.
+The helper first positions the pointer and independently verifies the requested coordinate immediately before button delivery. It then posts the native button down/up pair at that coordinate. Cursor motion after posting is not treated as evidence that posting failed; application-level delivery is instead established only by a separate observer when a test requires that stronger claim.
 
-Quartz event posting itself has no application-level acknowledgement. Therefore the public runtime reports `buttonDelivery:"POSTED"`, not `verified:true`, and explicitly returns `semanticConsequenceVerified:false`.
+Quartz event posting itself has no application-level acknowledgement. Therefore the public runtime reports `buttonDelivery:"POSTED"`, not a generic semantic `verified:true`, and explicitly returns `semanticConsequenceVerified:false`.
 
-The physical discovery proved that the same native event path delivered one left down/up and one right down/up to a test-owned AppKit fixture on the reference Mac. That evidence establishes backend viability; it does not make an arbitrary future application's semantic reaction observable.
+The authoritative public physical checkpoint independently observed one left down/up and one right down/up in a test-owned AppKit fixture after the public SDK calls. That validates the low-level delivery path on the reference surface without making an arbitrary future application's semantic reaction observable.
 
 ## Safety and lifecycle boundary
 
@@ -115,19 +115,27 @@ The macOS path requires Accessibility permission for synthetic input. Missing pe
 
 ## Validation state
 
-Phase 10B public API state: `IMPLEMENTED`.
+Phase 10B public API state: `PHYSICALLY_VALIDATED` on the current macOS reference surface.
 
-The native delivery prerequisite was physically established by:
+Authoritative public checkpoint:
+
+```text
+session: cc-phase10b-pointer-public-s03
+evidence: a7b878ff25e56ee7c16705dfdec1468f6a47b0a1
+validated product: 3f68502848f127d73f72cac023deed511f3ce75d
+test source: a3cd3f6b143d4c2e74d1d831218778ea19a3e48b
+poc SHA tested: 1271dd80d331d97005e8e99c00b98af116f66225
+result: 43 PASS / 0 FAIL / 0 BLOCKED
+```
+
+The same checkpoint independently observed exact left and right AppKit button delivery, restored the original pointer position, clicked no user content and persisted no fixture coordinates or native display identifiers.
+
+Prerequisite delivery discovery:
 
 ```text
 session: cc-phase10b-pointer-delivery-discovery-s02
 evidence: 4c973a4400660417cfb39fb8297cd363e8c13c63
-observed product: 085f0015291419b945540b59a1d56855507f6098
-test source: 48f750f7bb22718f713d47c149311178169110ac
-poc SHA tested: 45fefdd37f6d0449595ac1e289d09eb3b256f042
-result: PASS
+result: 42 PASS / 0 FAIL / 0 BLOCKED
 ```
 
-That discovery does not by itself validate the new public RPC/SDK contract. A dedicated physical runtime/SDK checkpoint is required before `pointer.move` or `pointer.click` can be promoted to `PHYSICALLY_VALIDATED`.
-
-See `docs/evidence/phase10b-pointer-delivery-discovery-physical.md`.
+See `docs/evidence/phase10b-pointer-public-physical.md` and `docs/evidence/phase10b-pointer-delivery-discovery-physical.md`.
