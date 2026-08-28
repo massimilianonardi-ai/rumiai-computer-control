@@ -31,6 +31,11 @@ function createRouter(backend){
         validatePoint(params.source,method,"source");validatePoint(params.destination,method,"destination");
         if(params.source.x===params.destination.x&&params.source.y===params.destination.y)throw new ComputerControlError("POINTER_DRAG_ZERO_DISTANCE","pointer.drag requires distinct source and destination coordinates","NONE");
         return backend.dragPointer({display:params.display,source:{...params.source},destination:{...params.destination},button:"left"});
+      case"pointer.wheel":
+        validatePointerCoordinates(params,method,["display","x","y","direction","amount"]);
+        if(params.direction!=="up"&&params.direction!=="down")throw new ComputerControlError("POINTER_WHEEL_DIRECTION_UNSUPPORTED","pointer.wheel supports only direction=up or direction=down","NONE");
+        if(!Number.isInteger(params.amount)||params.amount<1||params.amount>10)throw new ComputerControlError("POINTER_WHEEL_AMOUNT_INVALID","pointer.wheel amount must be an integer from 1 through 10","NONE");
+        return backend.wheelPointer({display:params.display,x:params.x,y:params.y,direction:params.direction,amount:params.amount});
       default:return routePrior(method,params);
     }
   };
