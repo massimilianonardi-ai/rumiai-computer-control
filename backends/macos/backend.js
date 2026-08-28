@@ -60,7 +60,7 @@ const PHASE9C2A = [
 ];
 
 const PHASE9C3A = [
-  {name:"menuExtras.observe", available:true, validationState:"IMPLEMENTED", strategies:["os-owned-native-AX-menu-extras-observation"]},
+  {name:"menuExtras.observe", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["os-owned-native-AX-menu-extras-observation"]},
 ];
 
 function canonicalDialog(value={}) {
