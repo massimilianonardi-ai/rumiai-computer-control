@@ -1,0 +1,10 @@
+{
+  "method": "pointer.wheel",
+  "params": {
+    "display": "primary",
+    "x": 640,
+    "y": 420,
+    "direction": "down",
+    "amount": 3
+  }
+}
