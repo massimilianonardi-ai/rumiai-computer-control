@@ -2,7 +2,7 @@
 "use strict";
 
 const path = require("node:path");
-const {createRouter} = require("./router");
+const {createRouter} = require("./router-low-level");
 const {createServer} = require("./server");
 const {createMacOSBackend} = require("../../backends/macos/backend-low-level");
 
