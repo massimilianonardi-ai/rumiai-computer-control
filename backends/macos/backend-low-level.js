@@ -22,7 +22,7 @@ function createMacOSBackend(options={}){
     async movePointer({display,x,y}){
       const native=pointer.move({display,x,y});
       if(!native?.ok)throw backendFailure(native,"POINTER_MOVE_FAILED");
-      if(native.state!=="MOVED"||native.display!=="primary"||native.positionVerified!==true||native.method!=="quartz-primary-display-pointer-move")throw new ComputerControlError("POINTER_INVALID_NATIVE_STATE","pointer.move returned inconsistent native state","NONE",{state:"UNVERIFIED"});
+      if(native.state!=="MOVED"||native.display!=="primary"||native.positionVerified!==true||native.method!=="quartz-primary-display-pointer-move"||native.changed===native.idempotent)throw new ComputerControlError("POINTER_INVALID_NATIVE_STATE","pointer.move returned inconsistent native state","NONE",{state:"UNVERIFIED"});
       const position={x:finiteCoordinate(native.x,"x"),y:finiteCoordinate(native.y,"y")};
       return{
         state:"MOVED",verified:true,display:"primary",position,
