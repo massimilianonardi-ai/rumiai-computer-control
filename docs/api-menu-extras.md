@@ -76,9 +76,9 @@ Observation performs no Accessibility action, no Accessibility attribute mutatio
 
 ### Validation state
 
-Phase 9C3A validation state: `IMPLEMENTED`.
+Phase 9C3A validation state: `PHYSICALLY_VALIDATED`.
 
-The contract is derived from the authoritative combined read-only topology discovery:
+The contract was derived from the authoritative combined read-only topology discovery:
 
 ```text
 session: cc-phase9c23-system-chrome-discovery-s01
@@ -89,9 +89,20 @@ poc SHA tested: 037d6b40d5eb342607e686637931d458be0d20b9
 result: 32 PASS / 0 FAIL / 0 BLOCKED
 ```
 
-That discovery observed Siri plus Control Center-owned Battery, Clock, Sound, Wi-Fi and Control Center entries, as well as anonymous disabled menu-extra nodes. It also observed native `AXPress` / `AXCancel` action advertisement and backend-private `com.apple.menuextra.*` identifiers. Those facts define the observation input but do **not** physically validate this new public `menuExtras.observe` implementation.
+That discovery observed Siri plus Control Center-owned Battery, Clock, Sound, Wi-Fi and Control Center entries, as well as anonymous disabled menu-extra nodes. It also observed native `AXPress` / `AXCancel` action advertisement and backend-private `com.apple.menuextra.*` identifiers.
 
-Promotion to `PHYSICALLY_VALIDATED` requires a separate end-to-end physical checkpoint through the real runtime and SDK.
+The public implementation was then physically validated end-to-end:
+
+```text
+session: cc-phase9c3a-menu-extras-observation-s01
+evidence: 5cc824a2209da7ad0de4feaa3cf0eff75ce42e55
+validated product: 042d587299852f517022e6792874ec4fae7d826c
+test source: f4946f51b39a64e870c5c4a3ee3e73e1cab1e147
+poc SHA tested: 71eba71f346a3462b5d358385932ed2b7a943491
+result: 34 PASS / 0 FAIL / 0 BLOCKED
+```
+
+The physical test used an independent native AX topology observer and compared stable public semantics without requiring volatile values such as clock or battery text to remain byte-identical between observations. See `docs/evidence/phase9c3a-menu-extras-observation-physical.md`.
 
 ## Invocation remains separate
 
