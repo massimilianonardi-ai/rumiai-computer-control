@@ -14,6 +14,7 @@ class ComputerControlClient extends core.ComputerControlClient {
   listDisplays() { return this.call("display.list", {}); }
   observeClipboard() { return this.call("clipboard.observe", {}); }
   readClipboardFormat({revision, itemIndex, format}) { return this.call("clipboard.readFormat", {revision, itemIndex, format}); }
+  writeClipboardFormat({format, dataBase64}) { return this.call("clipboard.writeFormat", {format, dataBase64}); }
   observeFilePicker({application}) { return this.call("filePicker.observe", {application}); }
   selectFilePickerItem({application, name, timeoutMs}) { return this.call("filePicker.selectItem", {application, name, timeoutMs}); }
   expandFilePickerDirectory({application, name, timeoutMs}) { return this.call("filePicker.expandDirectory", {application, name, timeoutMs}); }
