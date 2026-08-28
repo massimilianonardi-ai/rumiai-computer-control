@@ -1,0 +1,13 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PointerClickParams",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["display", "x", "y", "button"],
+  "properties": {
+    "display": {"const": "primary"},
+    "x": {"type": "number", "minimum": 0},
+    "y": {"type": "number", "minimum": 0},
+    "button": {"enum": ["left", "right"]}
+  }
+}
