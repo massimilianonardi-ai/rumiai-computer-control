@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["revision", "itemIndex", "format"],
+  "properties": {
+    "revision": {"type": "string", "minLength": 1},
+    "itemIndex": {"type": "integer", "minimum": 0},
+    "format": {"enum": ["text/plain", "text/html", "text/rtf", "image/png"]}
+  },
+  "additionalProperties": false
+}
