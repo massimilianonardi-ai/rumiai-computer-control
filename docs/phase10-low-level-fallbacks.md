@@ -9,14 +9,14 @@ A working semantic capability always takes precedence. Low-level delivery must n
 ```text
 Phase 10 discovery   PHYSICALLY_OBSERVED
 Phase 10A capture    PHYSICALLY_VALIDATED
-Phase 10B pointer    PENDING
+Phase 10B pointer    IMPLEMENTED
 Phase 10C drag/drop  PENDING
 Phase 10D wheel      PENDING
 Phase 10E keyboard   PENDING
 OCR / vision         PENDING (separate interpretation layer)
 ```
 
-`PHYSICALLY_OBSERVED` for discovery means the native primitives were inspected on real hardware; it is not a public capability validation state.
+`PHYSICALLY_OBSERVED` for discovery means native primitives or delivery behavior were inspected on real hardware; it is not by itself a public capability validation state.
 
 ## Discovery checkpoint
 
@@ -70,19 +70,52 @@ The independent oracle decoded the public PNG, independently observed primary-di
 
 See `docs/api-display-capture.md` and `docs/evidence/phase10a-display-capture-physical.md`.
 
-## 10B — pointer move/button delivery
+## 10B — pointer move/click fallback
 
-State: `PENDING`.
+Public APIs:
 
-Discovery proved only that Quartz mouse move and left/right button events can be constructed. It did not post them. Public design therefore waits for a deterministic physical fixture that can independently observe pointer movement and button delivery/consequence.
+```js
+client.movePointer({display:"primary", x, y})
+client.clickPointer({display:"primary", x, y, button:"left"|"right"})
+```
 
-Coordinates must be explicit low-level coordinates. They must never replace a semantic element target when a semantic operation exists.
+State: `IMPLEMENTED`.
+
+The prerequisite physical delivery discovery is complete:
+
+```text
+session: cc-phase10b-pointer-delivery-discovery-s02
+evidence: 4c973a4400660417cfb39fb8297cd363e8c13c63
+observed product: 085f0015291419b945540b59a1d56855507f6098
+test source: 48f750f7bb22718f713d47c149311178169110ac
+poc SHA tested: 45fefdd37f6d0449595ac1e289d09eb3b256f042
+result: PASS
+```
+
+That checkpoint physically observed pointer movement and exactly one left and one right down/up pair in a test-owned AppKit fixture, restored the original pointer position, and clicked no user content.
+
+The public contract is deliberately narrower than the native discovery:
+
+- primary display only;
+- coordinates are primary-display-local, top-left origin, in `display.list` logical units;
+- `pointer.move` succeeds only after the requested position is independently re-observed and therefore returns `verified:true`;
+- `pointer.click` first verifies position, then posts a complete down/up pair;
+- button posting is reported as `buttonDelivery:"POSTED"`, not as verified application delivery;
+- `semanticConsequenceVerified` is always false for the raw click API;
+- separate `pointer.down`/`pointer.up` are not public in 10B;
+- native display identifiers and global desktop identity remain private.
+
+A dedicated public runtime/SDK physical checkpoint is still required before Phase 10B can be promoted to `PHYSICALLY_VALIDATED`.
+
+Coordinates must remain explicit low-level fallback coordinates. They must never replace a semantic element target when a semantic operation exists.
+
+See `docs/api-pointer.md` and `docs/evidence/phase10b-pointer-delivery-discovery-physical.md`.
 
 ## 10C — drag/drop
 
 State: `PENDING`.
 
-Drag is a compound stateful input sequence, not an alias for click or pointer movement. It requires deterministic source/destination semantics, button-state handling, cancellation/failure behavior and an independent postcondition.
+Drag is a compound stateful input sequence, not an alias for click or pointer movement. It requires deterministic source/destination semantics, button-state handling, cancellation/failure behavior and an independent postcondition. Phase 10B intentionally does not expose a held-button state across RPC calls.
 
 ## 10D — wheel/gesture delivery
 
