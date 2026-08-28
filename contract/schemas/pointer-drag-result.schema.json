@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PointerDragResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["state", "display", "source", "destination", "button", "sourcePositionVerified", "buttonLifecycle", "dragDelivery", "releasePosted", "semanticConsequenceVerified", "verification", "backend"],
+  "properties": {
+    "state": {"const": "DRAG_POSTED"},
+    "display": {"const": "primary"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {"x": {"type": "number", "minimum": 0}, "y": {"type": "number", "minimum": 0}}
+    },
+    "destination": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {"x": {"type": "number", "minimum": 0}, "y": {"type": "number", "minimum": 0}}
+    },
+    "button": {"const": "left"},
+    "sourcePositionVerified": {"const": true},
+    "buttonLifecycle": {"const": "POSTED"},
+    "dragDelivery": {"const": "POSTED"},
+    "releasePosted": {"const": true},
+    "semanticConsequenceVerified": {"const": false},
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sourcePositionMethod", "dragMethod", "releaseMethod"],
+      "properties": {
+        "sourcePositionMethod": {"const": "quartz-current-pointer-location"},
+        "dragMethod": {"const": "quartz-event-post-only"},
+        "releaseMethod": {"const": "quartz-left-mouse-up-post"}
+      }
+    },
+    "backend": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "strategy", "fallback"],
+      "properties": {"name": {"const": "macos-quartz"}, "strategy": {"const": "primary-display-pointer-drag-post"}, "fallback": {"const": true}}
+    },
+    "diagnostics": {"type": "object"}
+  }
+}
