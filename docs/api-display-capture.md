@@ -90,19 +90,23 @@ Image interpretation, OCR and vision are separate concerns. Phase 10A returns th
 
 ## Validation state
 
-Phase 10A state: `IMPLEMENTED`.
+Phase 10A state: `PHYSICALLY_VALIDATED` on the current macOS reference surface.
 
-The underlying ScreenCaptureKit primitive was physically discovered in:
+Authoritative public runtime/SDK checkpoint:
 
 ```text
-session: cc-phase10-low-level-fallback-discovery-s03
-evidence: ae385e0746d58bcf4c1c41ba6a8641fa8d258fc5
-observed product: 82c7ac2cd1d842d50db5a27339a563e2cec919c6
-test source: 5a580668bf3e0edad1749f0c9c814b471599c9e6
-poc SHA tested: 15f333ca0eb00972c120d9cd0cb7ca86ea49fd0e
-result: 40 PASS / 0 FAIL / 0 BLOCKED
+session: cc-phase10a-display-capture-s03
+evidence: 4d215cace1cf30fa5837852e17dcb273f8e969c3
+validated product: ec3cd5f07defacdbe8b634a61b99d5510f77d832
+test source: 2375e53952ef72afd32c61a5d79e9b97d374f88c
+poc SHA tested: ebc1a4ef9bdeebabf4e359353b5c312f9e015a11
+result: PASS
 ```
 
-That discovery proves the native capture primitive on the reference Mac but does **not** by itself physically validate this new public runtime/SDK contract. A dedicated Phase 10A session is required before promotion to `PHYSICALLY_VALIDATED`.
+The checkpoint exercised the public SDK path and independently verified PNG decode, primary-display dimensions and a second ScreenCaptureKit frame at `1710 × 1107`. The public PNG was `1025899` bytes. Screenshot bytes/base64 were kept out of logs and were not persisted by the product or harness.
 
-See `docs/evidence/phase10-low-level-fallback-discovery-physical.md`.
+Earlier `s01` and `s02` outcomes remain immutable historical evidence. `s01` exposed stale PoC guards/oracle build plumbing; `s02` isolated a product helper compile defect. The corrected product `ec3cd5f07defacdbe8b634a61b99d5510f77d832` is the product validated by authoritative `s03`.
+
+The underlying primitive discovery remains recorded separately in `docs/evidence/phase10-low-level-fallback-discovery-physical.md`.
+
+See `docs/evidence/phase10a-display-capture-physical.md` for the public validation boundary.
