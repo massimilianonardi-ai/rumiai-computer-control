@@ -12,9 +12,11 @@ Phase 10A capture    PHYSICALLY_VALIDATED
 Phase 10B pointer    PHYSICALLY_VALIDATED
 Phase 10C drag/drop  PHYSICALLY_VALIDATED
 Phase 10D wheel      PHYSICALLY_VALIDATED
-Phase 10E keyboard   IMPLEMENTED
+Phase 10E keyboard   PHYSICALLY_VALIDATED
 OCR / vision         PENDING (separate interpretation layer)
 ```
+
+The Phase 10A-10E low-level mechanics are complete on the current macOS reference surface. OCR/vision is not a missing low-level input mechanic: it is a separate interpretation layer over captured or otherwise supplied image data.
 
 `PHYSICALLY_OBSERVED` for discovery means native primitives or delivery behavior were inspected on real hardware; it is not by itself a public capability validation state.
 
@@ -94,7 +96,7 @@ The real SDK/runtime path was exercised twice against a separate test-owned AppK
 
 ## 10E — keyboard fallback
 
-Public candidate API:
+Public API:
 
 ```js
 client.pressKey({key:"a", modifiers:[]})
@@ -102,28 +104,36 @@ client.pressKey({key:"a", modifiers:["shift"]})
 client.pressKey({key:"enter", modifiers:[]})
 ```
 
-State: `IMPLEMENTED`. A dedicated public runtime/SDK physical checkpoint is required before promotion.
+State: `PHYSICALLY_VALIDATED` on the current macOS reference surface.
 
 Existing semantic text mutation, invoke and other structured APIs remain preferred. `keyboard.press` is a low-level fallback and does not claim that an arbitrary application accepted text, triggered a shortcut or reached an intended semantic state.
 
-Authoritative delivery discovery:
+Authoritative public checkpoint:
+
+```text
+session: cc-phase10e-keyboard-public-s02
+evidence: c5db7fffdccdbcca35e9918c3e547641f98f4059
+validated product: e2eb419c352f5996ce45ad6c13b37d7ea52c8c21
+test source: cfc8460f31772f5e6f6a10505fbc71fc9f6d8887
+poc SHA tested: 852d6a69b9701af8c368e66dad411fb163f0d1f7
+result: PASS
+```
+
+The real SDK/runtime path was exercised against a separate test-owned AppKit `NSTextView` oracle. Plain `a` produced exactly one key-down and one key-up plus the lowercase fixture consequence. Enter produced exactly one down/up pair plus newline. Shift+A produced exactly one Shift-on and one Shift-off transition, one shifted A down/up pair and the uppercase fixture consequence. No emergency modifier release was required, the previous frontmost application was restored, and evidence markers persisted neither numeric keycodes nor user text.
+
+The public result remained delivery-only (`KEY_POSTED`, `semanticConsequenceVerified:false`) even when the independent oracle observed fixture consequences.
+
+Historical public s01 evidence `707a97154f652e8e21f2e54f87c61144f996c80a` remains preserved with overall `FAIL`. It established that back-to-back Shift/key event posting was insufficient for the separate AppKit oracle. The forward-only product fix introduced short internal settling intervals and s02 validated that corrected implementation.
+
+Authoritative delivery discovery remains immutable:
 
 ```text
 session: cc-phase10e-keyboard-delivery-discovery-s01
 evidence: 1aa6efa523dab83d7dd5e2b14fb1b6deb83dc324
-observed product: 0f4d2c0378b12df50ed192721dded97edff9f72e
-test source: fd462455a0b989b459d63d5a3d5833420a191d2f
-poc SHA tested: ddd7f69cffe3b2eed67b9e3dfc2a7bd57179d589
 result: PASS
 ```
 
-The test-owned AppKit text fixture independently established three physically grounded tuples:
-
-- `a` with no modifiers: one key-down, one key-up, lowercase text consequence;
-- `enter` with no modifiers: one key-down, one key-up, newline consequence;
-- `a` with `shift`: Shift on/off transitions, shifted key observation and uppercase text consequence.
-
-The public contract is deliberately narrower than a general keyboard API:
+The public contract remains deliberately narrow:
 
 - only canonical key `a` and `enter`;
 - only modifier `shift`;
@@ -135,10 +145,12 @@ The public contract is deliberately narrower than a general keyboard API:
 - `semanticConsequenceVerified` is always false;
 - any future vocabulary expansion requires separate evidence rather than guessed native identifiers.
 
-See `docs/api-keyboard.md` and `docs/evidence/phase10e-keyboard-delivery-discovery-physical.md`.
+See `docs/api-keyboard.md`, `docs/evidence/phase10e-keyboard-delivery-discovery-physical.md` and `docs/evidence/phase10e-keyboard-public-physical.md`.
 
-## OCR and vision
+## OCR and vision boundary
 
-Image interpretation is not part of `display.capture`.
+Image interpretation is not part of `display.capture` or the Phase 10A-10E low-level mechanics.
 
-OCR/vision consumes captured or otherwise supplied image data as a separate layer. It must not convert screen coordinates or visual guesses into semantic success without an appropriate postcondition.
+OCR/vision consumes captured or otherwise supplied image data as a separate interpretation layer. Its output may propose text, regions or coordinate candidates, but it must not convert a visual guess into semantic success. Any subsequent Computer Control mutation still requires the postcondition appropriate to the chosen semantic or low-level operation.
+
+This separation allows visual interpretation to evolve independently of capture and input delivery, and prevents the fallback layer from treating uncertain pixel interpretation as a verified UI target.
