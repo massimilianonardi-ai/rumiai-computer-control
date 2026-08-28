@@ -1,0 +1,8 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/v0.9/clipboard-observe.params.schema.json",
+  "title": "Clipboard metadata observation parameters",
+  "type": "object",
+  "properties": {},
+  "additionalProperties": false
+}
