@@ -1,6 +1,6 @@
 # Clipboard API
 
-Computer Control preserves the existing text clipboard contract and extends richer clipboard support in separate phases. Phase 9D2A adds metadata-only observation; Phase 9D2B adds explicit revision-scoped typed payload reads. Neither phase mutates the general pasteboard.
+Computer Control preserves the existing text clipboard contract and extends richer clipboard support in separate phases. Phase 9D2A adds metadata-only observation; Phase 9D2B adds explicit revision-scoped typed payload reads; Phase 9D2C adds explicit typed replacement with exact native readback verification.
 
 ## Existing text contract
 
@@ -206,10 +206,128 @@ The operation is read-only with respect to the pasteboard: it does not call `cle
 
 ### Validation state
 
-Phase 9D2B validation state: `IMPLEMENTED`.
+Phase 9D2B validation state: `PHYSICALLY_VALIDATED`.
 
-The native format mechanics are grounded in the Phase 9D isolated-pasteboard discovery for all four admitted formats. The new public `clipboard.readFormat` capability still requires a dedicated end-to-end physical checkpoint before promotion. Physical evidence must compare payload identity without logging the user's clipboard contents.
+Authoritative checkpoint:
+
+```text
+session: cc-phase9d2b-clipboard-typed-read-s02
+evidence: ab2745383e7e3051d6d4bb797cd908fb7c5b3f77
+validated product: 52339ec3c032ef62bae80113336b6588e7135771
+test source: 8cf666fb16ad364795cb8e534f27ad2d1d2598ae
+poc SHA tested: 9b8c0ae3e4a919c9761eaadba7dc6ed2ff4c26d5
+result: 38 PASS / 0 FAIL / 0 BLOCKED
+```
+
+The session used the actual runtime and SDK against an independent `NSPasteboard` oracle. The live pasteboard advertised one canonical target, `itemIndex=0 / text/plain`; exact byte identity was proved without logging payload, base64 or digest. Stale revision, missing-item and non-advertised-format failures were also exercised, and the final pasteboard revision remained stable.
+
+This promotes the typed-read path while keeping the format coverage precise: `text/plain` has end-to-end real-pasteboard payload evidence from this checkpoint. `text/html`, `text/rtf` and `image/png` remain implemented/contract-tested canonical branches with isolated native discovery evidence, but require additional real-pasteboard samples for equivalent per-format conformance claims. See `docs/evidence/phase9d2b-clipboard-typed-read-physical.md`.
+
+Historical s01 evidence `835bbbbb8f90cd6fe50150077efab87a4e8694c6` remains immutable with `37 PASS / 1 FAIL / 0 BLOCKED`: its dedicated physical typed-read test already passed; only the historical Phase 9D discovery guard still forbade the newly introduced canonical method.
 
 ## Phase 9D2C — typed write
 
-Typed write is a further separate mutation phase and requires independently observed readback/postcondition semantics. It must not weaken or reinterpret the existing text-only `clipboard.write` contract.
+Public SDK:
+
+```js
+client.writeClipboardFormat({format, dataBase64})
+```
+
+RPC:
+
+```text
+clipboard.writeFormat
+```
+
+Parameters:
+
+```json
+{
+  "format": "text/plain",
+  "dataBase64": "UnVtaUFJ"
+}
+```
+
+### Mutation semantics
+
+`clipboard.writeFormat` is an explicit mutation. It replaces the current general pasteboard contents with one newly written item containing the requested canonical representation.
+
+The public contract intentionally makes no promise that macOS will expose **only** one native type identifier afterwards. AppKit/pasteboard services may synthesize or advertise compatible representations. Computer Control guarantees the requested canonical representation and exact requested bytes, not the absence of platform-generated compatibility types.
+
+The operation always represents an explicit write request, so a successful result reports:
+
+```text
+changed=true
+idempotent=false
+```
+
+Computer Control does not attempt a pre-write equality optimization because that would require additional reads of existing clipboard content and would weaken the simple replacement contract.
+
+### Verification semantics
+
+Delivery is not success.
+
+The native writer:
+
+1. decodes canonical base64;
+2. rejects payloads larger than 16 MiB;
+3. records the previous pasteboard revision;
+4. clears the general pasteboard;
+5. writes the requested native representation;
+6. requires the pasteboard revision to change;
+7. requires exactly one pasteboard item and the requested representation to be advertised.
+
+That delivery result is still not sufficient for semantic success. The JavaScript backend then starts the separate typed-read helper with the **new** revision, `itemIndex=0` and requested canonical format. Success requires exact equality of revision, item index, format, byte count and canonical base64 bytes.
+
+The public verification method is:
+
+```text
+native-typed-readback-exact
+```
+
+If the clipboard changes between delivery and readback, the typed-read helper fails on its revision guard and the write is not reported as verified even though mutation may already have occurred. This preserves `delivery != success`.
+
+### Transport and privacy boundary
+
+The write helper receives its request through JSON on **stdin**, not command-line arguments. This avoids OS argument-length limits for large base64 payloads and avoids exposing the payload in process arguments.
+
+The write result does not echo `dataBase64` or other payload bytes. It returns only revision, canonical format, byte count and verification metadata.
+
+No keyboard shortcut, mouse action, AppleScript, `pbcopy` or guessed native type identifier is part of this API.
+
+### Result shape
+
+```json
+{
+  "state": "WRITTEN",
+  "verified": true,
+  "revision": "1514",
+  "itemIndex": 0,
+  "format": "text/plain",
+  "byteCount": 6,
+  "changed": true,
+  "idempotent": false,
+  "verification": {
+    "method": "native-typed-readback-exact",
+    "evidence": {
+      "revision": "1514",
+      "itemIndex": 0,
+      "format": "text/plain",
+      "byteCount": 6
+    }
+  },
+  "backend": {
+    "name": "macos-ax",
+    "strategy": "os-owned-native-clipboard-typed-write",
+    "fallback": false
+  }
+}
+```
+
+### Validation state
+
+Phase 9D2C validation state: `IMPLEMENTED`.
+
+It must not be promoted until a physical session validates real general-pasteboard mutation plus an independent native postcondition. Because the physical test necessarily mutates the user's clipboard, the session must use explicit test-owned payloads and must define restoration behavior separately rather than pretending a mutation test is read-only.
+
+The existing text-only `clipboard.write` remains unchanged and independently `PHYSICALLY_VALIDATED`.
