@@ -12,7 +12,7 @@ let cachedBinary=null;
 function compile(){
   if(cachedBinary&&fs.existsSync(cachedBinary))return{ok:true,path:cachedBinary,compiled:false};
   const binary=path.join(os.tmpdir(),"rumiai-macos-display-capture");
-  const result=spawnSync("/usr/bin/xcrun",["swiftc",HELPER,"-o",binary,"-framework","AppKit","-framework","CoreGraphics","-framework","ScreenCaptureKit"],{encoding:"utf8",maxBuffer:8*1024*1024});
+  const result=spawnSync("/usr/bin/xcrun",["swiftc","-parse-as-library",HELPER,"-o",binary,"-framework","AppKit","-framework","CoreGraphics","-framework","ScreenCaptureKit"],{encoding:"utf8",maxBuffer:8*1024*1024});
   if((result.status??1)!==0)return{ok:false,state:"BLOCKED",error:"DISPLAY_CAPTURE_HELPER_COMPILE_FAILED",detail:String(result.stderr||result.stdout||"Swift helper compilation failed").trim()};
   cachedBinary=binary;
   return{ok:true,path:binary,compiled:true};
