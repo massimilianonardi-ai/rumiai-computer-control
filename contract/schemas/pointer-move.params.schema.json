@@ -1,0 +1,12 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PointerMoveParams",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["display", "x", "y"],
+  "properties": {
+    "display": {"const": "primary"},
+    "x": {"type": "number", "minimum": 0},
+    "y": {"type": "number", "minimum": 0}
+  }
+}
