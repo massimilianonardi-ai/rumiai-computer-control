@@ -15,6 +15,7 @@ class ComputerControlClient extends core.ComputerControlClient {
   captureDisplay({display}) { return this.call("display.capture", {display}); }
   movePointer({display, x, y}) { return this.call("pointer.move", {display, x, y}); }
   clickPointer({display, x, y, button}) { return this.call("pointer.click", {display, x, y, button}); }
+  dragPointer({display, source, destination, button="left"}) { return this.call("pointer.drag", {display, source, destination, button}); }
   observeClipboard() { return this.call("clipboard.observe", {}); }
   readClipboardFormat({revision, itemIndex, format}) { return this.call("clipboard.readFormat", {revision, itemIndex, format}); }
   writeClipboardFormat({format, dataBase64}) { return this.call("clipboard.writeFormat", {format, dataBase64}); }
