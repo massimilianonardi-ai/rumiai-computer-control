@@ -8,7 +8,7 @@ A working semantic capability always takes precedence. Low-level delivery must n
 
 ```text
 Phase 10 discovery   PHYSICALLY_OBSERVED
-Phase 10A capture    IMPLEMENTED
+Phase 10A capture    PHYSICALLY_VALIDATED
 Phase 10B pointer    PENDING
 Phase 10C drag/drop  PENDING
 Phase 10D wheel      PENDING
@@ -39,7 +39,7 @@ Public API:
 client.captureDisplay({display:"primary"})
 ```
 
-State: `IMPLEMENTED`.
+State: `PHYSICALLY_VALIDATED` on the current macOS reference surface.
 
 Implementation boundary:
 
@@ -54,9 +54,21 @@ Implementation boundary:
 - screenshot bytes returned to the caller but not persisted/logged by the capture operation;
 - width/height describe returned image pixels, not physical panel-pixel identity.
 
-A dedicated physical runtime/SDK checkpoint is required before promotion to `PHYSICALLY_VALIDATED`.
+Authoritative public checkpoint:
 
-See `docs/api-display-capture.md`.
+```text
+session: cc-phase10a-display-capture-s03
+evidence: 4d215cace1cf30fa5837852e17dcb273f8e969c3
+validated product: ec3cd5f07defacdbe8b634a61b99d5510f77d832
+test source: 2375e53952ef72afd32c61a5d79e9b97d374f88c
+poc SHA tested: ebc1a4ef9bdeebabf4e359353b5c312f9e015a11
+result: PASS
+observed PNG: 1710 × 1107, 1025899 bytes
+```
+
+The independent oracle decoded the public PNG, independently observed primary-display dimensions and obtained a separate ScreenCaptureKit frame with matching dimensions. No screenshot payload/base64 was logged or persisted by the product or physical harness.
+
+See `docs/api-display-capture.md` and `docs/evidence/phase10a-display-capture-physical.md`.
 
 ## 10B — pointer move/button delivery
 
