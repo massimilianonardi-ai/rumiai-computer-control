@@ -326,8 +326,25 @@ No keyboard shortcut, mouse action, AppleScript, `pbcopy` or guessed native type
 
 ### Validation state
 
-Phase 9D2C validation state: `IMPLEMENTED`.
+Phase 9D2C validation state: `PHYSICALLY_VALIDATED`.
 
-It must not be promoted until a physical session validates real general-pasteboard mutation plus an independent native postcondition. Because the physical test necessarily mutates the user's clipboard, the session must use explicit test-owned payloads and must define restoration behavior separately rather than pretending a mutation test is read-only.
+Authoritative checkpoint:
+
+```text
+session: cc-phase9d2c-clipboard-typed-write-s01
+evidence: 358e22bca3b18bb835e91ae05fece1b3a757b722
+validated product: a3bcb2cc9f9f374958b6816c32be06cb6c12908a
+test source: 57d4d002d1ecaf1cb673eaa144dbd883502c2e93
+poc SHA tested: c13b070ee2839ae6f22aa1d22e5a8c8933794505
+result: 39 PASS / 0 FAIL / 0 BLOCKED
+```
+
+The public physical checkpoint wrote deterministic test-owned payloads through the actual runtime/SDK for all four canonical formats: `text/plain` (45 bytes), `text/html` (66 bytes), `text/rtf` (42 bytes) and `image/png` (68 bytes). Every case passed product readback verification, independent AppKit byte comparison, revision equality, fresh metadata observation and public typed readback.
+
+The mutation checkpoint was preceded by the separate restoration-safety PASS `cc-phase9d2c-clipboard-restoration-discovery-s02` / evidence `c9806844aecb3bde47f72ee37e2e731c8d6e6c99`. During the authoritative public checkpoint, an independent in-memory guardian backed up the user's then-current clipboard and restored it item/type/data-byte exactly after the four test writes. The checkpoint logged no user/test payload, base64, digest or native type names. See `docs/evidence/phase9d2c-clipboard-typed-write-physical.md`.
 
 The existing text-only `clipboard.write` remains unchanged and independently `PHYSICALLY_VALIDATED`.
+
+## Phase 9D richer clipboard status
+
+Phase 9D richer clipboard is complete on the current macOS reference surface: metadata observation, revision-scoped typed read, and verified typed replacement are all physically validated. This does not expand the canonical format vocabulary beyond the four formats above and does not claim arbitrary native type, multi-item composition, merge/append or clipboard-history semantics.
