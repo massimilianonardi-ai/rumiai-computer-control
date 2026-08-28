@@ -1,0 +1,9 @@
+{
+  "method": "pointer.drag",
+  "params": {
+    "display": "primary",
+    "source": {"x": 520, "y": 420},
+    "destination": {"x": 660, "y": 420},
+    "button": "left"
+  }
+}
