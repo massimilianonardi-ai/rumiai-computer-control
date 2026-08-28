@@ -11,7 +11,7 @@ const PHASE10C=[
   {name:"pointer.drag",available:true,validationState:"PHYSICALLY_VALIDATED",strategies:["quartz-primary-display-pointer-drag-post","verified-source-before-drag-post","atomic-button-lifecycle"]},
 ];
 const PHASE10D=[
-  {name:"pointer.wheel",available:true,validationState:"IMPLEMENTED",strategies:["quartz-primary-display-pointer-wheel-post","verified-position-before-wheel-post","canonical-direction-private-native-sign"]},
+  {name:"pointer.wheel",available:true,validationState:"PHYSICALLY_VALIDATED",strategies:["quartz-primary-display-pointer-wheel-post","verified-position-before-wheel-post","canonical-direction-private-native-sign"]},
 ];
 
 function finiteCoordinate(value,field){const number=Number(value);if(!Number.isFinite(number)||number<0)throw new ComputerControlError("POINTER_INVALID_NATIVE_STATE",`Pointer helper returned invalid ${field}`,"NONE",{state:"FAILED"});return number;}
