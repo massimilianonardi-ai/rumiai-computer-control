@@ -1,0 +1,8 @@
+{
+  "method": "pointer.move",
+  "params": {
+    "display": "primary",
+    "x": 640,
+    "y": 420
+  }
+}
