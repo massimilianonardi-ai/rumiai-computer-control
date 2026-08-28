@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/v0.3/clipboard-write-format-result.schema.json",
+  "title": "Typed clipboard write result",
+  "type": "object",
+  "required": ["state", "verified", "revision", "itemIndex", "format", "byteCount", "changed", "idempotent", "verification", "backend"],
+  "properties": {
+    "state": {"const": "WRITTEN"},
+    "verified": {"const": true},
+    "revision": {"type": "string", "minLength": 1},
+    "itemIndex": {"const": 0},
+    "format": {"enum": ["text/plain", "text/html", "text/rtf", "image/png"]},
+    "byteCount": {"type": "integer", "minimum": 0, "maximum": 16777216},
+    "changed": {"const": true},
+    "idempotent": {"const": false},
+    "verification": {
+      "type": "object",
+      "required": ["method", "evidence"],
+      "properties": {
+        "method": {"const": "native-typed-readback-exact"},
+        "evidence": {
+          "type": "object",
+          "required": ["revision", "itemIndex", "format", "byteCount"],
+          "properties": {
+            "revision": {"type": "string", "minLength": 1},
+            "itemIndex": {"const": 0},
+            "format": {"enum": ["text/plain", "text/html", "text/rtf", "image/png"]},
+            "byteCount": {"type": "integer", "minimum": 0, "maximum": 16777216}
+          },
+          "additionalProperties": false
+        }
+      },
+      "additionalProperties": false
+    },
+    "backend": {
+      "type": "object",
+      "required": ["name", "strategy", "fallback"],
+      "properties": {
+        "name": {"const": "macos-ax"},
+        "strategy": {"const": "os-owned-native-clipboard-typed-write"},
+        "fallback": {"const": false}
+      },
+      "additionalProperties": false
+    },
+    "diagnostics": {"type": "object"}
+  },
+  "additionalProperties": false
+}
