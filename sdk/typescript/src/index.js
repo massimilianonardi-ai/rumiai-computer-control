@@ -12,6 +12,7 @@ class ComputerControlClient extends core.ComputerControlClient {
   observeDock() { return this.call("dock.observe", {}); }
   observeMenuExtras() { return this.call("menuExtras.observe", {}); }
   listDisplays() { return this.call("display.list", {}); }
+  observeClipboard() { return this.call("clipboard.observe", {}); }
   observeFilePicker({application}) { return this.call("filePicker.observe", {application}); }
   selectFilePickerItem({application, name, timeoutMs}) { return this.call("filePicker.selectItem", {application, name, timeoutMs}); }
   expandFilePickerDirectory({application, name, timeoutMs}) { return this.call("filePicker.expandDirectory", {application, name, timeoutMs}); }
