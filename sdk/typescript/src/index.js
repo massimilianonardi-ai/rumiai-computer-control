@@ -13,6 +13,7 @@ class ComputerControlClient extends core.ComputerControlClient {
   observeMenuExtras() { return this.call("menuExtras.observe", {}); }
   listDisplays() { return this.call("display.list", {}); }
   observeClipboard() { return this.call("clipboard.observe", {}); }
+  readClipboardFormat({revision, itemIndex, format}) { return this.call("clipboard.readFormat", {revision, itemIndex, format}); }
   observeFilePicker({application}) { return this.call("filePicker.observe", {application}); }
   selectFilePickerItem({application, name, timeoutMs}) { return this.call("filePicker.selectItem", {application, name, timeoutMs}); }
   expandFilePickerDirectory({application, name, timeoutMs}) { return this.call("filePicker.expandDirectory", {application, name, timeoutMs}); }
