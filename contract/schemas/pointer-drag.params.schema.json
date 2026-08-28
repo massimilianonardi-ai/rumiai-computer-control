@@ -1,0 +1,23 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PointerDragParams",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["display", "source", "destination", "button"],
+  "properties": {
+    "display": {"const": "primary"},
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {"x": {"type": "number", "minimum": 0}, "y": {"type": "number", "minimum": 0}}
+    },
+    "destination": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {"x": {"type": "number", "minimum": 0}, "y": {"type": "number", "minimum": 0}}
+    },
+    "button": {"const": "left"}
+  }
+}
