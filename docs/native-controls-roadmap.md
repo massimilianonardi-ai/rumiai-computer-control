@@ -38,7 +38,7 @@ Phase 9B3B file picker selection/expansion      PHYSICALLY_VALIDATED on AppKit N
 Phase 9B3C file picker accept/cancel            PHYSICALLY_VALIDATED on AppKit NSOpenPanel fixture
 Phase 9C1A application menu bar observation     PHYSICALLY_VALIDATED on macOS AppKit/AX surface
 Phase 9C2A Dock observation                     PHYSICALLY_VALIDATED on macOS Dock AX surface
-Phase 9C3A menu extras observation              IMPLEMENTED; physical checkpoint pending
+Phase 9C3A menu extras observation              PHYSICALLY_VALIDATED on macOS menu-extras AX surface
 Phase 9D   displays/richer clipboard            PENDING
 Phase 10   low-level fallbacks                  PENDING
 ```
@@ -158,9 +158,16 @@ System-chrome checkpoints:
     test source: c928f3dacd3c3456072d21baaef2742e042e5b0d
     poc SHA tested: 670cc9bd80d5d7f9fb315669a0f3e30e9f20b758
     result: 33 PASS / 0 FAIL / 0 BLOCKED
+
+9C3A menu extras observation: cc-phase9c3a-menu-extras-observation-s01
+    evidence: 5cc824a2209da7ad0de4feaa3cf0eff75ce42e55
+    validated product: 042d587299852f517022e6792874ec4fae7d826c
+    test source: f4946f51b39a64e870c5c4a3ee3e73e1cab1e147
+    poc SHA tested: 71eba71f346a3462b5d358385932ed2b7a943491
+    result: 34 PASS / 0 FAIL / 0 BLOCKED
 ```
 
-The earlier Phase 9C2A s01 evidence is preserved with overall `FAIL`: its dedicated physical Dock test passed, but a discovery-era guard still forbade `dock.observe`. The s02 checkpoint corrected only that stale lifecycle assertion while testing the identical product SHA.
+The earlier Phase 9C2A s01 evidence is preserved with overall `FAIL`: its dedicated physical Dock test passed, but a discovery-era guard still forbade `dock.observe`. The s02 checkpoint corrected only that stale lifecycle assertion while testing the identical product SHA. Phase 9C3A then physically validated the public menu-extras observation against an independent AX oracle while treating volatile values such as clock/battery text as volatile rather than requiring byte-identical snapshots.
 
 ## Phase 3-7 residual backlog
 
@@ -408,9 +415,11 @@ The authoritative s03 physical checkpoint independently proved both accept and c
 
 Status: `PHYSICALLY_VALIDATED` on the deterministic Cocoa/AppKit `NSOpenPanel` fixture.
 
-### Phase 9C — system chrome
+### Phase 9C — system chrome — OBSERVATION COMPLETE on macOS reference surface
 
 Phase 9C is split by surface and by observation versus any future mutation. The application menu bar is Provider-scoped; Dock and menu extras are OS-owned global surfaces. Native Accessibility identifiers and advertised actions remain backend-private.
+
+The three read-only observation surfaces are now physically validated. This does not imply that generic mutation APIs exist or are semantically valid. Any later mutation remains separate and must provide an independently observable semantic postcondition; otherwise it belongs only in the explicit low-level fallback layer.
 
 #### Phase 9C1A — application menu bar observation — COMPLETE on AppKit reference surface
 
@@ -449,9 +458,9 @@ Contract decisions:
 
 Status: `PHYSICALLY_VALIDATED` on the tested macOS Dock Accessibility surface. See `docs/evidence/phase9c2a-dock-observation-physical.md`.
 
-#### Phase 9C3A — menu extras observation
+#### Phase 9C3A — menu extras observation — COMPLETE on macOS reference surface
 
-Public API implemented:
+Public API:
 
 ```js
 client.observeMenuExtras()
@@ -466,7 +475,7 @@ Contract decisions:
 - native advertised `AXPress`/`AXCancel` actions do not define a generic semantic invocation contract;
 - no menu-extra mutation is performed by observation.
 
-Status: `IMPLEMENTED`; dedicated physical validation is the next Phase 9C checkpoint.
+Status: `PHYSICALLY_VALIDATED` on the tested macOS menu-extras Accessibility surface. See `docs/evidence/phase9c3a-menu-extras-observation-physical.md`.
 
 ### Phase 9D — displays and richer clipboard
 
