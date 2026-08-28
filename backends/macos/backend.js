@@ -12,6 +12,7 @@ const dockObservation = require("./runtime/app/computer-control/backends/macos-d
 const menuExtrasObservation = require("./runtime/app/computer-control/backends/macos-menu-extras-observation");
 const displayObservation = require("./runtime/app/computer-control/backends/macos-display-observation");
 const clipboardMetadataObservation = require("./runtime/app/computer-control/backends/macos-clipboard-metadata-observation");
+const clipboardTypedRead = require("./runtime/app/computer-control/backends/macos-clipboard-typed-read");
 const {ComputerControlError} = require("../../runtime/src/errors");
 
 const PHASE8C = new Set([
@@ -71,6 +72,10 @@ const PHASE9D1A = [
 
 const PHASE9D2A = [
   {name:"clipboard.observe", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["os-owned-native-clipboard-metadata-observation"]},
+];
+
+const PHASE9D2B = [
+  {name:"clipboard.readFormat", available:true, validationState:"IMPLEMENTED", strategies:["os-owned-native-clipboard-typed-read"]},
 ];
 
 const CLIPBOARD_FORMATS = ["text/plain", "text/html", "text/rtf", "image/png"];
@@ -173,6 +178,21 @@ function canonicalClipboardMetadata(value={}) {
   return {revision,items};
 }
 
+function canonicalClipboardRead(value={},requested={}) {
+  const revision=value.revision == null ? "" : String(value.revision);
+  const itemIndex=Number(value.itemIndex);
+  const format=value.format == null ? "" : String(value.format);
+  const byteCount=Number(value.byteCount);
+  const dataBase64=value.dataBase64 == null ? null : String(value.dataBase64);
+  if(!revision||revision!==requested.revision) throw new ComputerControlError("CLIPBOARD_TYPED_READ_INVALID_NATIVE_STATE","clipboard.readFormat returned a mismatched revision","NONE",{state:"FAILED"});
+  if(!Number.isInteger(itemIndex)||itemIndex!==requested.itemIndex) throw new ComputerControlError("CLIPBOARD_TYPED_READ_INVALID_NATIVE_STATE","clipboard.readFormat returned a mismatched item index","NONE",{state:"FAILED"});
+  if(!CLIPBOARD_FORMATS.includes(format)||format!==requested.format) throw new ComputerControlError("CLIPBOARD_TYPED_READ_INVALID_NATIVE_STATE","clipboard.readFormat returned a mismatched canonical format","NONE",{state:"FAILED"});
+  if(!Number.isInteger(byteCount)||byteCount<0||byteCount>clipboardTypedRead.MAX_PAYLOAD_BYTES||dataBase64==null) throw new ComputerControlError("CLIPBOARD_TYPED_READ_INVALID_NATIVE_STATE","clipboard.readFormat returned invalid payload metadata","NONE",{state:"FAILED"});
+  const payload=Buffer.from(dataBase64,"base64");
+  if(payload.length!==byteCount||payload.toString("base64")!==dataBase64) throw new ComputerControlError("CLIPBOARD_TYPED_READ_INVALID_NATIVE_STATE","clipboard.readFormat returned non-canonical base64 or an inconsistent byte count","NONE",{state:"FAILED"});
+  return {revision,itemIndex,format,byteCount,dataBase64};
+}
+
 function sleep(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
 function dialogContext(application,method){
   const entry=lifecycle.resolveProvider(application);
@@ -236,6 +256,11 @@ function observeClipboardNative(){
   if(!native?.ok) throw new ComputerControlError(native?.error||"CLIPBOARD_METADATA_OBSERVATION_FAILED",native?.detail||"Could not observe native clipboard metadata","NONE",{state:native?.state||"FAILED",method:native?.method});
   return native;
 }
+function readClipboardFormatNative(params){
+  const native=clipboardTypedRead.read(params);
+  if(!native?.ok) throw new ComputerControlError(native?.error||"CLIPBOARD_TYPED_READ_FAILED",native?.detail||"Could not read native clipboard payload","NONE",{state:native?.state||"FAILED",method:native?.method});
+  return native;
+}
 function requireFilePicker(native,method){
   if(native.pickers.length===0) throw new ComputerControlError("FILE_PICKER_NOT_FOUND",`${method} requires one open native file picker`,"NONE",{state:"FAILED",method:native.method});
   return canonicalFilePicker(native.pickers[0]);
@@ -264,7 +289,7 @@ function createMacOSBackend(options = {}) {
           : capability
       );
       const names = new Set(promoted.map(capability => capability.name));
-      return {...info, capabilities:[...promoted, ...PHASE9A1.filter(capability => !names.has(capability.name)), ...PHASE9A2.filter(capability => !names.has(capability.name)), ...PHASE9B1.filter(capability => !names.has(capability.name)), ...PHASE9B2.filter(capability => !names.has(capability.name)), ...PHASE9B3A.filter(capability => !names.has(capability.name)), ...PHASE9B3B.filter(capability => !names.has(capability.name)), ...PHASE9B3C.filter(capability => !names.has(capability.name)), ...PHASE9C1A.filter(capability => !names.has(capability.name)), ...PHASE9C2A.filter(capability => !names.has(capability.name)), ...PHASE9C3A.filter(capability => !names.has(capability.name)), ...PHASE9D1A.filter(capability => !names.has(capability.name)), ...PHASE9D2A.filter(capability => !names.has(capability.name))]};
+      return {...info, capabilities:[...promoted, ...PHASE9A1.filter(capability => !names.has(capability.name)), ...PHASE9A2.filter(capability => !names.has(capability.name)), ...PHASE9B1.filter(capability => !names.has(capability.name)), ...PHASE9B2.filter(capability => !names.has(capability.name)), ...PHASE9B3A.filter(capability => !names.has(capability.name)), ...PHASE9B3B.filter(capability => !names.has(capability.name)), ...PHASE9B3C.filter(capability => !names.has(capability.name)), ...PHASE9C1A.filter(capability => !names.has(capability.name)), ...PHASE9C2A.filter(capability => !names.has(capability.name)), ...PHASE9C3A.filter(capability => !names.has(capability.name)), ...PHASE9D1A.filter(capability => !names.has(capability.name)), ...PHASE9D2A.filter(capability => !names.has(capability.name)), ...PHASE9D2B.filter(capability => !names.has(capability.name))]};
     },
     async listApplications({availableOnly=false}={}) { return lifecycle.list({availableOnly}); },
     async launchApplication({application,timeoutMs}) { return lifecycle.launch({application,timeoutMs}); },
@@ -333,6 +358,18 @@ function createMacOSBackend(options = {}) {
         items:observed.items,
         observation:{method:native.method},
         backend:{name:"macos-ax",strategy:"os-owned-native-clipboard-metadata-observation"},
+        diagnostics:{observeSeconds:native.seconds||0,helperCompiled:native.compiled===true},
+      };
+    },
+    async readClipboardFormat({revision,itemIndex,format}) {
+      const requested={revision,itemIndex,format};
+      const native=readClipboardFormatNative(requested);
+      const read=canonicalClipboardRead(native,requested);
+      return {
+        state:"READ",
+        ...read,
+        observation:{method:native.method},
+        backend:{name:"macos-ax",strategy:"os-owned-native-clipboard-typed-read"},
         diagnostics:{observeSeconds:native.seconds||0,helperCompiled:native.compiled===true},
       };
     },
@@ -462,4 +499,4 @@ function createMacOSBackend(options = {}) {
   };
 }
 
-module.exports = {...controls, createMacOSBackend, canonicalDialog, canonicalFilePickerItem, canonicalFilePicker, canonicalMenuBarItem, canonicalDockItem, canonicalMenuExtraItem, canonicalDisplayRect, canonicalDisplay, canonicalClipboardMetadata, dialogContext, filePickerContext, menuBarContext, observeDialogs, observeFilePicker, observeFilePickerDirectoryState, observeMenuBarNative, observeDockNative, observeMenuExtrasNative, observeDisplaysNative, observeClipboardNative, requireFilePicker, exactFilePickerItem};
+module.exports = {...controls, createMacOSBackend, canonicalDialog, canonicalFilePickerItem, canonicalFilePicker, canonicalMenuBarItem, canonicalDockItem, canonicalMenuExtraItem, canonicalDisplayRect, canonicalDisplay, canonicalClipboardMetadata, canonicalClipboardRead, dialogContext, filePickerContext, menuBarContext, observeDialogs, observeFilePicker, observeFilePickerDirectoryState, observeMenuBarNative, observeDockNative, observeMenuExtrasNative, observeDisplaysNative, observeClipboardNative, readClipboardFormatNative, requireFilePicker, exactFilePickerItem};
