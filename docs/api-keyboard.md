@@ -8,7 +8,7 @@ A semantic Computer Control operation remains preferred whenever one exists. Str
 
 RPC: `keyboard.press`.
 
-SDK candidate:
+SDK:
 
 ```js
 client.pressKey({key:"a", modifiers:[]})
@@ -48,23 +48,23 @@ A successful result reports posting only:
 }
 ```
 
-For an unmodified key, `modifierLifecycle` is `"NOT_REQUIRED"`.
+For an unmodified key, `modifierLifecycle` is `"NOT_REQUIRED"` and `modifierMethod` is `"not-required"`.
 
 `KEY_POSTED` does not mean that an arbitrary application accepted text, triggered a shortcut, submitted a form, or reached the intended semantic state. Stronger consequence claims require an independent observer.
 
 ## Safety boundary
 
-The backend constructs the complete normal lifecycle before posting the first event. For a shifted key the lifecycle is conceptually:
+The native helper constructs the complete normal lifecycle before posting the first event. For a shifted key the lifecycle is conceptually:
 
 ```text
 Shift down -> key down -> key up -> Shift up
 ```
 
-The native implementation must not expose a held modifier across RPC calls. Any path that cannot complete the normal modifier release is not success.
+The native implementation must not expose a held modifier across RPC calls. The backend accepts success only when the helper reports a complete normal modifier lifecycle and no emergency modifier release.
 
 ## Native identity boundary
 
-The macOS implementation may use platform-native symbolic key constants internally. Numeric virtual-key values are not public contract values and must not appear in SDK types, JSON schemas, API results or evidence logs.
+The macOS implementation uses platform-native symbolic key constants internally. Numeric virtual-key values are not public contract values and must not appear in SDK types, JSON schemas, API results or evidence logs.
 
 ## Validation state
 
@@ -81,6 +81,6 @@ poc SHA tested: ddd7f69cffe3b2eed67b9e3dfc2a7bd57179d589
 result: PASS
 ```
 
-Phase 10E public API state: `IMPLEMENTED` only after the runtime/SDK implementation lands. A dedicated public physical checkpoint is required before `PHYSICALLY_VALIDATED`.
+Phase 10E public API state: `IMPLEMENTED`. A dedicated public physical checkpoint through the real runtime and SDK is required before `PHYSICALLY_VALIDATED`.
 
 See `docs/evidence/phase10e-keyboard-delivery-discovery-physical.md`.
