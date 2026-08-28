@@ -26,10 +26,26 @@ export interface PointerClickResult {
   backend:{name:"macos-quartz";strategy:"primary-display-pointer-click-post";fallback:true};
   diagnostics?:Record<string,unknown>;
 }
+export interface PointerDragResult {
+  state:"DRAG_POSTED";
+  display:"primary";
+  source:PointerPosition;
+  destination:PointerPosition;
+  button:"left";
+  sourcePositionVerified:true;
+  buttonLifecycle:"POSTED";
+  dragDelivery:"POSTED";
+  releasePosted:true;
+  semanticConsequenceVerified:false;
+  verification:{sourcePositionMethod:"quartz-current-pointer-location";dragMethod:"quartz-event-post-only";releaseMethod:"quartz-left-mouse-up-post"};
+  backend:{name:"macos-quartz";strategy:"primary-display-pointer-drag-post";fallback:true};
+  diagnostics?:Record<string,unknown>;
+}
 
 declare module "./index-stateful" {
   interface ComputerControlClient {
     movePointer(params:{display:"primary";x:number;y:number}):Promise<PointerMoveResult>;
     clickPointer(params:{display:"primary";x:number;y:number;button:PointerButton}):Promise<PointerClickResult>;
+    dragPointer(params:{display:"primary";source:PointerPosition;destination:PointerPosition;button?:"left"}):Promise<PointerDragResult>;
   }
 }
