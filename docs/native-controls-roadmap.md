@@ -39,7 +39,10 @@ Phase 9B3C file picker accept/cancel            PHYSICALLY_VALIDATED on AppKit N
 Phase 9C1A application menu bar observation     PHYSICALLY_VALIDATED on macOS AppKit/AX surface
 Phase 9C2A Dock observation                     PHYSICALLY_VALIDATED on macOS Dock AX surface
 Phase 9C3A menu extras observation              PHYSICALLY_VALIDATED on macOS menu-extras AX surface
-Phase 9D   displays/richer clipboard            PENDING
+Phase 9D1A display observation                  PHYSICALLY_VALIDATED on current macOS reference topology
+Phase 9D2A clipboard metadata observation       IMPLEMENTED
+Phase 9D2B typed clipboard read                 PENDING
+Phase 9D2C typed clipboard write                PENDING
 Phase 10   low-level fallbacks                  PENDING
 ```
 
@@ -168,6 +171,26 @@ System-chrome checkpoints:
 ```
 
 The earlier Phase 9C2A s01 evidence is preserved with overall `FAIL`: its dedicated physical Dock test passed, but a discovery-era guard still forbade `dock.observe`. The s02 checkpoint corrected only that stale lifecycle assertion while testing the identical product SHA. Phase 9C3A then physically validated the public menu-extras observation against an independent AX oracle while treating volatile values such as clock/battery text as volatile rather than requiring byte-identical snapshots.
+
+Phase 9D checkpoints:
+
+```text
+9D display/clipboard discovery: cc-phase9d-display-clipboard-discovery-s01
+    evidence: c70e0e581c54ee67d9f56c4400ef3a942012629e
+    observed product: 6e651f4c226e670ea45ed4b0139b3fe0eff8baac
+    test source: 68c76aa89d838641baac95abff4f89f47ac96d19
+    poc SHA tested: cb01e84d7e4901448d584c4075a7d28e97bda65b
+    result: PASS
+
+9D1A display observation: cc-phase9d1a-display-observation-s01
+    evidence: a7788371d7b6d446e783a714112643ba093f2814
+    validated product: 25c9052c514926f783d6c315cad2e14a5fa55311
+    test source: a7bd10dc6d522014e1c262a5691ad93c2f5245dd
+    poc SHA tested: 5d67cd4f3f10c05c31e590698a94809a328a49f4
+    result: 36 PASS / 0 FAIL / 0 BLOCKED
+```
+
+The 9D1A checkpoint used an independent AppKit/CoreGraphics oracle and matched the public semantic display vector exactly. Its physical scope is the current reference topology: one built-in Retina display. Multi-monitor, external-display, mirroring, rotation and hot-plug combinations remain additional conformance surfaces rather than claims made by that checkpoint.
 
 ## Phase 3-7 residual backlog
 
@@ -479,8 +502,56 @@ Status: `PHYSICALLY_VALIDATED` on the tested macOS menu-extras Accessibility sur
 
 ### Phase 9D — displays and richer clipboard
 
-- display and multi-monitor observation;
-- richer clipboard formats with explicit type metadata.
+Phase 9D is split so OS-owned observation is established before richer clipboard payload access or mutation.
+
+#### Phase 9D1A — display observation — COMPLETE on current macOS reference topology
+
+Public API:
+
+```js
+client.listDisplays()
+```
+
+Contract decisions:
+
+- global OS-owned read-only observation;
+- public display state is limited to `name`, logical `bounds`, logical `usableBounds`, `scale`, `rotationDegrees`, `primary`, `builtIn`, `active` and `online`;
+- `CGDirectDisplayID`, `NSScreenNumber` and other platform handles remain backend-private;
+- discovery did not justify exposing `pixelWidth` / `pixelHeight` as portable physical-pixel dimensions;
+- array order is observation order and not durable display identity;
+- no display configuration, mode switch, screenshot or input action is part of observation.
+
+Status: `PHYSICALLY_VALIDATED` on the current one-display Retina reference topology. See `docs/evidence/phase9d1a-display-observation-physical.md`. Multi-monitor/external-display variants remain additional conformance coverage.
+
+#### Phase 9D2A — clipboard metadata observation
+
+Public API:
+
+```js
+client.observeClipboard()
+```
+
+Contract decisions:
+
+- global OS-owned metadata-only observation of the general clipboard/pasteboard;
+- no clipboard payload bytes or text are read by this capability;
+- public `revision` is opaque and observation-scoped;
+- item `index` is meaningful only together with that revision;
+- supported canonical metadata formats are `text/plain`, `text/html`, `text/rtf` and `image/png`;
+- native UTI/type names remain backend-private;
+- unknown/private native types are represented only by `unsupportedFormatCount`;
+- metadata enumeration is guarded by before/after revision equality and fails if the clipboard changes mid-observation;
+- existing text `clipboard.read/write/copy/paste` semantics remain unchanged.
+
+Status: `IMPLEMENTED`; dedicated physical runtime/SDK validation is pending. See `docs/api-clipboard.md`.
+
+#### Phase 9D2B — typed clipboard read — PENDING
+
+Typed payload access remains separate from metadata observation. The intended safety direction is revision + item index + canonical format with stale-revision rejection; payload representation, size limits and physical validation scope must be fixed before implementation.
+
+#### Phase 9D2C — typed clipboard write — PENDING
+
+Typed clipboard mutation remains separate again and will require an independently observed readback/postcondition. It must not weaken or silently replace the existing exact text `clipboard.write` contract.
 
 ## Phase 10 — explicit low-level fallbacks
 
