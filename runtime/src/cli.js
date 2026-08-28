@@ -4,7 +4,7 @@
 const path = require("node:path");
 const {createRouter} = require("./router");
 const {createServer} = require("./server");
-const {createMacOSBackend} = require("../../backends/macos/backend");
+const {createMacOSBackend} = require("../../backends/macos/backend-low-level");
 
 const socketPath = process.env.RUMIAI_CC_SOCKET || "/tmp/rumiai-computer-control.sock";
 
