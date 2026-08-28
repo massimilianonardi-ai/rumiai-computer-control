@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/v0.9/display-list-result.schema.json",
+  "title": "Display list result",
+  "type": "object",
+  "required": ["state", "displays", "observation", "backend"],
+  "properties": {
+    "state": {"const": "OBSERVED"},
+    "displays": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["name", "bounds", "usableBounds", "scale", "rotationDegrees", "primary", "builtIn", "active", "online"],
+        "properties": {
+          "name": {"type": ["string", "null"]},
+          "bounds": {"$ref": "#/$defs/rect"},
+          "usableBounds": {"$ref": "#/$defs/rect"},
+          "scale": {"type": "number", "exclusiveMinimum": 0},
+          "rotationDegrees": {"type": "number"},
+          "primary": {"type": "boolean"},
+          "builtIn": {"type": "boolean"},
+          "active": {"type": "boolean"},
+          "online": {"type": "boolean"}
+        },
+        "additionalProperties": false
+      }
+    },
+    "observation": {
+      "type": "object",
+      "required": ["method"],
+      "properties": {"method": {"type": "string"}},
+      "additionalProperties": false
+    },
+    "backend": {
+      "type": "object",
+      "required": ["name", "strategy"],
+      "properties": {
+        "name": {"type": "string"},
+        "strategy": {"type": "string"}
+      },
+      "additionalProperties": false
+    },
+    "diagnostics": {"type": "object"}
+  },
+  "$defs": {
+    "rect": {
+      "type": "object",
+      "required": ["x", "y", "width", "height"],
+      "properties": {
+        "x": {"type": "number"},
+        "y": {"type": "number"},
+        "width": {"type": "number", "minimum": 0},
+        "height": {"type": "number", "minimum": 0}
+      },
+      "additionalProperties": false
+    }
+  },
+  "additionalProperties": false
+}
