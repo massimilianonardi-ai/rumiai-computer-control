@@ -1,6 +1,6 @@
 # Keyboard fallback API
 
-Phase 10E defines a deliberately narrow raw keyboard fallback only after physical Quartz-to-AppKit delivery discovery.
+Phase 10E defines a deliberately narrow raw keyboard fallback only after physical Quartz-to-AppKit delivery discovery and public runtime/SDK validation.
 
 A semantic Computer Control operation remains preferred whenever one exists. Structured text mutation, semantic invoke and other higher-level operations must not be replaced by raw key delivery when they can satisfy the task.
 
@@ -57,8 +57,10 @@ For an unmodified key, `modifierLifecycle` is `"NOT_REQUIRED"` and `modifierMeth
 The native helper constructs the complete normal lifecycle before posting the first event. For a shifted key the lifecycle is conceptually:
 
 ```text
-Shift down -> key down -> key up -> Shift up
+Shift down -> settle -> key down -> settle -> key up -> settle -> Shift up
 ```
+
+The short internal settling intervals are part of the current validated macOS implementation. Historical public session `cc-phase10e-keyboard-public-s01` demonstrated that posting the four shifted events back-to-back could return `KEY_POSTED` while the separate AppKit oracle failed to observe the shifted combination. The forward-only timing fix was then validated by s02.
 
 The native implementation must not expose a held modifier across RPC calls. The backend accepts success only when the helper reports a complete normal modifier lifecycle and no emergency modifier release.
 
@@ -81,6 +83,21 @@ poc SHA tested: ddd7f69cffe3b2eed67b9e3dfc2a7bd57179d589
 result: PASS
 ```
 
-Phase 10E public API state: `IMPLEMENTED`. A dedicated public physical checkpoint through the real runtime and SDK is required before `PHYSICALLY_VALIDATED`.
+Phase 10E public API state: `PHYSICALLY_VALIDATED` on the current macOS reference surface.
 
-See `docs/evidence/phase10e-keyboard-delivery-discovery-physical.md`.
+Authoritative public checkpoint:
+
+```text
+session: cc-phase10e-keyboard-public-s02
+evidence: c5db7fffdccdbcca35e9918c3e547641f98f4059
+validated product: e2eb419c352f5996ce45ad6c13b37d7ea52c8c21
+test source: cfc8460f31772f5e6f6a10505fbc71fc9f6d8887
+poc SHA tested: 852d6a69b9701af8c368e66dad411fb163f0d1f7
+result: PASS
+```
+
+The public s02 checkpoint exercised the real runtime and SDK against a separate test-owned AppKit `NSTextView` oracle. Plain `a`, Enter and Shift+A all preserved the public `KEY_POSTED` delivery-only boundary while the independent oracle observed exact key lifecycles and the expected fixture consequences. Shift+A additionally observed one Shift-on and one Shift-off transition, with no emergency modifier release. The previous frontmost application was restored, no user content was touched, and numeric keycodes/user text were not persisted in evidence markers.
+
+Historical public s01 evidence `707a97154f652e8e21f2e54f87c61144f996c80a` remains preserved with overall `FAIL` and documents the modifier-timing defect that s02 corrected forward-only.
+
+See `docs/evidence/phase10e-keyboard-delivery-discovery-physical.md` and `docs/evidence/phase10e-keyboard-public-physical.md`.
