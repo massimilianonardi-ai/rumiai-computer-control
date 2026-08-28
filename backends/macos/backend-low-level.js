@@ -8,7 +8,7 @@ const PHASE10B=[
   {name:"pointer.click",available:true,validationState:"PHYSICALLY_VALIDATED",strategies:["quartz-primary-display-pointer-click-post","verified-position-before-button-post"]},
 ];
 const PHASE10C=[
-  {name:"pointer.drag",available:true,validationState:"IMPLEMENTED",strategies:["quartz-primary-display-pointer-drag-post","verified-source-before-drag-post","atomic-button-lifecycle"]},
+  {name:"pointer.drag",available:true,validationState:"PHYSICALLY_VALIDATED",strategies:["quartz-primary-display-pointer-drag-post","verified-source-before-drag-post","atomic-button-lifecycle"]},
 ];
 
 function finiteCoordinate(value,field){const number=Number(value);if(!Number.isFinite(number)||number<0)throw new ComputerControlError("POINTER_INVALID_NATIVE_STATE",`Pointer helper returned invalid ${field}`,"NONE",{state:"FAILED"});return number;}
