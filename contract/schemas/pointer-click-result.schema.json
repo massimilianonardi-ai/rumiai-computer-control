@@ -1,0 +1,37 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PointerClickResult",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["state", "display", "position", "button", "positionVerified", "buttonDelivery", "semanticConsequenceVerified", "verification", "backend"],
+  "properties": {
+    "state": {"const": "CLICK_POSTED"},
+    "display": {"const": "primary"},
+    "position": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y"],
+      "properties": {"x": {"type": "number", "minimum": 0}, "y": {"type": "number", "minimum": 0}}
+    },
+    "button": {"enum": ["left", "right"]},
+    "positionVerified": {"const": true},
+    "buttonDelivery": {"const": "POSTED"},
+    "semanticConsequenceVerified": {"const": false},
+    "verification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["positionMethod", "buttonMethod"],
+      "properties": {
+        "positionMethod": {"const": "quartz-current-pointer-location"},
+        "buttonMethod": {"const": "quartz-event-post-only"}
+      }
+    },
+    "backend": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "strategy", "fallback"],
+      "properties": {"name": {"const": "macos-quartz"}, "strategy": {"const": "primary-display-pointer-click-post"}, "fallback": {"const": true}}
+    },
+    "diagnostics": {"type": "object"}
+  }
+}
