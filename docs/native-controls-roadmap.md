@@ -40,8 +40,8 @@ Phase 9C1A application menu bar observation     PHYSICALLY_VALIDATED on macOS Ap
 Phase 9C2A Dock observation                     PHYSICALLY_VALIDATED on macOS Dock AX surface
 Phase 9C3A menu extras observation              PHYSICALLY_VALIDATED on macOS menu-extras AX surface
 Phase 9D1A display observation                  PHYSICALLY_VALIDATED on current macOS reference topology
-Phase 9D2A clipboard metadata observation       IMPLEMENTED
-Phase 9D2B typed clipboard read                 PENDING
+Phase 9D2A clipboard metadata observation       PHYSICALLY_VALIDATED on current macOS pasteboard surface
+Phase 9D2B typed clipboard read                 IMPLEMENTED
 Phase 9D2C typed clipboard write                PENDING
 Phase 10   low-level fallbacks                  PENDING
 ```
@@ -188,9 +188,18 @@ Phase 9D checkpoints:
     test source: a7bd10dc6d522014e1c262a5691ad93c2f5245dd
     poc SHA tested: 5d67cd4f3f10c05c31e590698a94809a328a49f4
     result: 36 PASS / 0 FAIL / 0 BLOCKED
+
+9D2A clipboard metadata observation: cc-phase9d2a-clipboard-metadata-observation-s03
+    evidence: 521f41c2fcc499574b61b658440671faefe61708
+    validated product: bbf6579a2d291d16cde02c3371e5b31495a92287
+    test source: af5fcf98cfc770302cd1e34c011d46fdeca5adc3
+    poc SHA tested: 58b72853eb65b51e6fda28de52fec152a5a834c0
+    result: 37 PASS / 0 FAIL / 0 BLOCKED
 ```
 
 The 9D1A checkpoint used an independent AppKit/CoreGraphics oracle and matched the public semantic display vector exactly. Its physical scope is the current reference topology: one built-in Retina display. Multi-monitor, external-display, mirroring, rotation and hot-plug combinations remain additional conformance surfaces rather than claims made by that checkpoint.
+
+The 9D2A s03 checkpoint used an independent `NSPasteboard` metadata oracle under one stable revision and matched the public semantic metadata exactly without reading or logging payload content. Historical s02 evidence `fadb856d43418f383e273bd50794ba37fb568ba7` remains preserved with overall `FAIL`; the product and oracle data were already semantically identical, but the physical test compared JSON strings whose property insertion order differed. The forward-only s03 correction changed only the test comparison.
 
 ## Phase 3-7 residual backlog
 
@@ -523,7 +532,7 @@ Contract decisions:
 
 Status: `PHYSICALLY_VALIDATED` on the current one-display Retina reference topology. See `docs/evidence/phase9d1a-display-observation-physical.md`. Multi-monitor/external-display variants remain additional conformance coverage.
 
-#### Phase 9D2A — clipboard metadata observation
+#### Phase 9D2A — clipboard metadata observation — COMPLETE on current macOS pasteboard surface
 
 Public API:
 
@@ -543,11 +552,29 @@ Contract decisions:
 - metadata enumeration is guarded by before/after revision equality and fails if the clipboard changes mid-observation;
 - existing text `clipboard.read/write/copy/paste` semantics remain unchanged.
 
+Status: `PHYSICALLY_VALIDATED` on the tested macOS general-pasteboard metadata surface. See `docs/evidence/phase9d2a-clipboard-metadata-observation-physical.md` and `docs/api-clipboard.md`.
+
+#### Phase 9D2B — typed clipboard read — IMPLEMENTED
+
+Public API:
+
+```js
+client.readClipboardFormat({revision, itemIndex, format})
+```
+
+Contract decisions:
+
+- typed payload reads require the opaque `revision`, observation-scoped item index and a canonical format returned by `clipboard.observe`;
+- current revision is checked before payload access and again after it, so stale observations and mid-read clipboard changes fail explicitly;
+- only an actually advertised canonical format can be read;
+- native UTI/type identity remains backend-private;
+- payload bytes are transported losslessly as canonical base64 together with exact `byteCount`;
+- HTML, RTF and PNG are not parsed, normalized or rewritten by Computer Control;
+- raw payload size is limited to 16 MiB so the encoded response remains inside the runtime transport budget;
+- the backend independently validates revision, item index, canonical format, base64 round-trip and byte count after the native helper returns;
+- the operation is read-only with respect to the pasteboard and does not change legacy `clipboard.read` semantics.
+
 Status: `IMPLEMENTED`; dedicated physical runtime/SDK validation is pending. See `docs/api-clipboard.md`.
-
-#### Phase 9D2B — typed clipboard read — PENDING
-
-Typed payload access remains separate from metadata observation. The intended safety direction is revision + item index + canonical format with stale-revision rejection; payload representation, size limits and physical validation scope must be fixed before implementation.
 
 #### Phase 9D2C — typed clipboard write — PENDING
 
