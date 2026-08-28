@@ -55,6 +55,23 @@ export interface PointerWheelResult {
   backend:{name:"macos-quartz";strategy:"primary-display-pointer-wheel-post";fallback:true};
   diagnostics?:Record<string,unknown>;
 }
+export type KeyboardKey = "a"|"enter";
+export type KeyboardModifier = "shift";
+export type KeyboardPressParams =
+  | {key:"a";modifiers?:[]}
+  | {key:"a";modifiers:["shift"]}
+  | {key:"enter";modifiers?:[]};
+export interface KeyboardPressResult {
+  state:"KEY_POSTED";
+  key:KeyboardKey;
+  modifiers:KeyboardModifier[];
+  keyLifecycle:"POSTED";
+  modifierLifecycle:"POSTED"|"NOT_REQUIRED";
+  semanticConsequenceVerified:false;
+  verification:{keyMethod:"quartz-keyboard-event-post-only";modifierMethod:"quartz-modifier-event-post-only"|"not-required"};
+  backend:{name:"macos-quartz";strategy:"canonical-keyboard-press-post";fallback:true};
+  diagnostics?:Record<string,unknown>;
+}
 
 declare module "./index-stateful" {
   interface ComputerControlClient {
@@ -62,5 +79,6 @@ declare module "./index-stateful" {
     clickPointer(params:{display:"primary";x:number;y:number;button:PointerButton}):Promise<PointerClickResult>;
     dragPointer(params:{display:"primary";source:PointerPosition;destination:PointerPosition;button?:"left"}):Promise<PointerDragResult>;
     wheelPointer(params:{display:"primary";x:number;y:number;direction:PointerWheelDirection;amount?:number}):Promise<PointerWheelResult>;
+    pressKey(params:KeyboardPressParams):Promise<KeyboardPressResult>;
   }
 }
