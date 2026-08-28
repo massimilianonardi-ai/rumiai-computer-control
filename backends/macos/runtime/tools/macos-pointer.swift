@@ -7,6 +7,8 @@ private struct Request: Decodable {
     let display: String
     let x: Double
     let y: Double
+    let destinationX: Double?
+    let destinationY: Double?
     let button: String?
 }
 
@@ -33,6 +35,23 @@ private func localPoint(_ global: CGPoint, bounds: CGRect) -> CGPoint {
     CGPoint(x: global.x - bounds.origin.x, y: global.y - bounds.origin.y)
 }
 
+private func pointInside(_ point: CGPoint, bounds: CGRect) -> Bool {
+    point.x >= bounds.minX && point.y >= bounds.minY && point.x < bounds.maxX && point.y < bounds.maxY
+}
+
+private func globalPoint(x: Double, y: Double, bounds: CGRect) -> CGPoint {
+    CGPoint(x: bounds.origin.x + x, y: bounds.origin.y + y)
+}
+
+private func postEmergencyLeftUp(at point: CGPoint) -> Bool {
+    guard let up = CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: point, mouseButton: .left) else {
+        return false
+    }
+    up.post(tap: .cghidEventTap)
+    usleep(20_000)
+    return true
+}
+
 @main
 struct MacOSPointerHelper {
     static func main() {
@@ -50,16 +69,15 @@ struct MacOSPointerHelper {
             failed("POINTER_COORDINATE_INVALID", "Pointer coordinates must be finite numbers")
         }
 
-        let displayID = CGMainDisplayID()
-        let bounds = CGDisplayBounds(displayID)
+        let bounds = CGDisplayBounds(CGMainDisplayID())
         guard bounds.width > 0, bounds.height > 0 else {
             failed("POINTER_PRIMARY_DISPLAY_UNAVAILABLE", "Primary display bounds are unavailable")
         }
-        guard request.x >= 0, request.y >= 0, request.x < bounds.width, request.y < bounds.height else {
+        let target = globalPoint(x: request.x, y: request.y, bounds: bounds)
+        guard pointInside(target, bounds: bounds) else {
             failed("POINTER_COORDINATE_OUT_OF_BOUNDS", "Pointer coordinates must lie inside the current primary display")
         }
 
-        let target = CGPoint(x: bounds.origin.x + request.x, y: bounds.origin.y + request.y)
         guard let initialEvent = CGEvent(source: nil) else {
             failed("POINTER_LOCATION_UNAVAILABLE", "Current pointer location could not be observed")
         }
@@ -93,8 +111,83 @@ struct MacOSPointerHelper {
             ], exitCode: 0)
         }
 
+        if request.operation == "drag" {
+            guard request.button == "left" else {
+                failed("POINTER_BUTTON_UNSUPPORTED", "Pointer drag currently supports only button=left")
+            }
+            guard let destinationX = request.destinationX, let destinationY = request.destinationY, destinationX.isFinite, destinationY.isFinite else {
+                failed("POINTER_DRAG_DESTINATION_INVALID", "Pointer drag requires finite destination coordinates")
+            }
+            let destination = globalPoint(x: destinationX, y: destinationY, bounds: bounds)
+            guard pointInside(destination, bounds: bounds) else {
+                failed("POINTER_DRAG_DESTINATION_OUT_OF_BOUNDS", "Pointer drag destination must lie inside the current primary display")
+            }
+
+            // Construct the complete lifecycle before posting the button-down event. This
+            // prevents construction failures from leaving a held button behind.
+            guard let down = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDown, mouseCursorPosition: target, mouseButton: .left) else {
+                failed("POINTER_DRAG_DOWN_CONSTRUCTION_FAILED", "Could not construct native drag button-down event")
+            }
+            var draggedEvents: [CGEvent] = []
+            for step in 1...4 {
+                let fraction = CGFloat(step) / 4.0
+                let point = CGPoint(
+                    x: target.x + (destination.x - target.x) * fraction,
+                    y: target.y + (destination.y - target.y) * fraction
+                )
+                guard let dragged = CGEvent(mouseEventSource: nil, mouseType: .leftMouseDragged, mouseCursorPosition: point, mouseButton: .left) else {
+                    failed("POINTER_DRAG_EVENT_CONSTRUCTION_FAILED", "Could not construct native drag movement event")
+                }
+                draggedEvents.append(dragged)
+            }
+            guard let up = CGEvent(mouseEventSource: nil, mouseType: .leftMouseUp, mouseCursorPosition: destination, mouseButton: .left) else {
+                failed("POINTER_DRAG_UP_CONSTRUCTION_FAILED", "Could not construct native drag button-up event")
+            }
+
+            var buttonMayBeDown = false
+            down.post(tap: .cghidEventTap)
+            buttonMayBeDown = true
+            usleep(20_000)
+            for dragged in draggedEvents {
+                dragged.post(tap: .cghidEventTap)
+                usleep(20_000)
+            }
+            up.post(tap: .cghidEventTap)
+            buttonMayBeDown = false
+            usleep(30_000)
+
+            // Defensive cleanup path for future changes: current success path posts the
+            // complete lifecycle without fallible work after button-down.
+            if buttonMayBeDown {
+                let releasePoint = CGEvent(source: nil)?.location ?? destination
+                guard postEmergencyLeftUp(at: releasePoint) else {
+                    failed("POINTER_DRAG_RELEASE_UNVERIFIED", "Could not construct emergency drag release", state: "UNVERIFIED")
+                }
+                failed("POINTER_DRAG_EMERGENCY_RELEASE_REQUIRED", "Drag required emergency button release", state: "UNVERIFIED")
+            }
+
+            let destinationLocal = localPoint(destination, bounds: bounds)
+            emit([
+                "ok": true,
+                "state": "DRAG_POSTED",
+                "display": "primary",
+                "sourceX": positionedLocal.x,
+                "sourceY": positionedLocal.y,
+                "destinationX": destinationLocal.x,
+                "destinationY": destinationLocal.y,
+                "button": "left",
+                "sourcePositionVerified": true,
+                "buttonLifecycle": "POSTED",
+                "dragDelivery": "POSTED",
+                "releasePosted": true,
+                "emergencyReleasePosted": false,
+                "semanticConsequenceVerified": false,
+                "method": "quartz-primary-display-pointer-drag-post"
+            ], exitCode: 0)
+        }
+
         guard request.operation == "click" else {
-            failed("POINTER_OPERATION_UNSUPPORTED", "Pointer helper supports only move or click")
+            failed("POINTER_OPERATION_UNSUPPORTED", "Pointer helper supports only move, click or drag")
         }
         guard let button = request.button, button == "left" || button == "right" else {
             failed("POINTER_BUTTON_UNSUPPORTED", "Pointer click supports only left or right button")
