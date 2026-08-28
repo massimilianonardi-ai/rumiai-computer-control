@@ -10,6 +10,9 @@ const PHASE10B=[
 const PHASE10C=[
   {name:"pointer.drag",available:true,validationState:"PHYSICALLY_VALIDATED",strategies:["quartz-primary-display-pointer-drag-post","verified-source-before-drag-post","atomic-button-lifecycle"]},
 ];
+const PHASE10D=[
+  {name:"pointer.wheel",available:true,validationState:"IMPLEMENTED",strategies:["quartz-primary-display-pointer-wheel-post","verified-position-before-wheel-post","canonical-direction-private-native-sign"]},
+];
 
 function finiteCoordinate(value,field){const number=Number(value);if(!Number.isFinite(number)||number<0)throw new ComputerControlError("POINTER_INVALID_NATIVE_STATE",`Pointer helper returned invalid ${field}`,"NONE",{state:"FAILED"});return number;}
 function pointFromNative(x,y,prefix){return{x:finiteCoordinate(x,`${prefix}.x`),y:finiteCoordinate(y,`${prefix}.y`)}};
@@ -22,7 +25,7 @@ function createMacOSBackend(options={}){
     async info(){
       const info=await base.info();
       const names=new Set(info.capabilities.map(capability=>capability.name));
-      return{...info,capabilities:[...info.capabilities,...[...PHASE10B,...PHASE10C].filter(capability=>!names.has(capability.name))]};
+      return{...info,capabilities:[...info.capabilities,...[...PHASE10B,...PHASE10C,...PHASE10D].filter(capability=>!names.has(capability.name))]};
     },
     async movePointer({display,x,y}){
       const native=pointer.move({display,x,y});
@@ -63,6 +66,20 @@ function createMacOSBackend(options={}){
         semanticConsequenceVerified:false,
         verification:{sourcePositionMethod:"quartz-current-pointer-location",dragMethod:"quartz-event-post-only",releaseMethod:"quartz-left-mouse-up-post"},
         backend:{name:"macos-quartz",strategy:"primary-display-pointer-drag-post",fallback:true},
+        diagnostics:{actionSeconds:native.seconds||0,helperCompiled:native.compiled===true},
+      };
+    },
+    async wheelPointer({display,x,y,direction,amount}){
+      const native=pointer.wheel({display,x,y,direction,amount});
+      if(!native?.ok)throw backendFailure(native,"POINTER_WHEEL_FAILED");
+      if(native.state!=="WHEEL_POSTED"||native.display!=="primary"||native.positionVerified!==true||native.wheelDelivery!=="POSTED"||native.semanticConsequenceVerified!==false||native.method!=="quartz-primary-display-pointer-wheel-post"||native.direction!==direction||native.amount!==amount)throw new ComputerControlError("POINTER_INVALID_NATIVE_STATE","pointer.wheel returned inconsistent native state","NONE",{state:"UNVERIFIED"});
+      const position={x:finiteCoordinate(native.x,"x"),y:finiteCoordinate(native.y,"y")};
+      if(!pointNear(position,{x,y}))throw new ComputerControlError("POINTER_INVALID_NATIVE_STATE","pointer.wheel returned coordinates inconsistent with the canonical request","NONE",{state:"UNVERIFIED"});
+      return{
+        state:"WHEEL_POSTED",display:"primary",position,direction,amount,
+        positionVerified:true,wheelDelivery:"POSTED",semanticConsequenceVerified:false,
+        verification:{positionMethod:"quartz-current-pointer-location",wheelMethod:"quartz-event-post-only"},
+        backend:{name:"macos-quartz",strategy:"primary-display-pointer-wheel-post",fallback:true},
         diagnostics:{actionSeconds:native.seconds||0,helperCompiled:native.compiled===true},
       };
     },
