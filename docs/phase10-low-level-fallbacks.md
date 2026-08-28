@@ -12,7 +12,7 @@ Phase 10A capture    PHYSICALLY_VALIDATED
 Phase 10B pointer    PHYSICALLY_VALIDATED
 Phase 10C drag/drop  PHYSICALLY_VALIDATED
 Phase 10D wheel      PHYSICALLY_VALIDATED
-Phase 10E keyboard   PENDING
+Phase 10E keyboard   IMPLEMENTED
 OCR / vision         PENDING (separate interpretation layer)
 ```
 
@@ -49,12 +49,7 @@ result: 43 PASS / 0 FAIL / 0 BLOCKED
 Public API:
 
 ```js
-client.dragPointer({
-  display:"primary",
-  source:{x,y},
-  destination:{x,y},
-  button:"left"
-})
+client.dragPointer({display:"primary", source:{x,y}, destination:{x,y}, button:"left"})
 ```
 
 State: `PHYSICALLY_VALIDATED` on the current macOS reference surface.
@@ -72,42 +67,12 @@ result: PASS
 
 The public SDK call returned the expected low-level `DRAG_POSTED` boundary. A separate test-owned AppKit oracle independently observed exactly one mouse-down, four mouse-dragged events and one mouse-up; its hit-test-transparent marker reached the destination. The pointer was restored, no emergency release was needed, no user content was touched and no fixture coordinates or native display identifiers were persisted.
 
-The public contract remains deliberately narrow:
-
-- one atomic primary-display fallback operation;
-- source and destination are explicit primary-display-local logical coordinates and must differ;
-- left button only;
-- no public timing, step-count or easing controls;
-- source location is independently re-observed before button-down;
-- complete normal down/drag/up lifecycle is constructed before button-down and owned by one call;
-- normal success requires the terminating button-up to have been posted;
-- any emergency release path is not success;
-- result state is `DRAG_POSTED`, not semantic `DROPPED`;
-- `semanticConsequenceVerified` is always false;
-- public `pointer.down`/`pointer.up` remain absent.
-
-Prerequisite delivery discovery remains immutable:
-
-```text
-session: cc-phase10c-drag-delivery-discovery-s01
-evidence: 47ee8e31a08597cffc0c773dfaf72a093501e5c4
-result: PASS
-```
-
-See `docs/api-pointer.md`, `docs/evidence/phase10c-drag-delivery-discovery-physical.md` and `docs/evidence/phase10c-pointer-drag-public-physical.md`.
-
 ## 10D — raw wheel delivery
 
 Public API:
 
 ```js
-client.wheelPointer({
-  display:"primary",
-  x,
-  y,
-  direction:"up"|"down",
-  amount:1
-})
+client.wheelPointer({display:"primary", x, y, direction:"up"|"down", amount:1})
 ```
 
 State: `PHYSICALLY_VALIDATED` on the current macOS reference surface.
@@ -125,47 +90,52 @@ poc SHA tested: 37b03c1e7a59f712bfa674122fb636b5ca24447b
 result: PASS
 ```
 
-The real SDK/runtime path was exercised twice against a separate test-owned AppKit `NSScrollView` oracle. Canonical `direction:"down", amount:3` produced one independently observed wheel event and an `increasing-y` viewport consequence. After exact baseline reset, canonical `direction:"up", amount:3` produced one independently observed wheel event and a `decreasing-y` consequence. The directions were therefore observed as opposite end-to-end.
-
-The native sign mapping remains backend-private. The public result exposed only canonical direction/amount and `WHEEL_POSTED`, kept `semanticConsequenceVerified:false`, restored pointer/focus, touched no user content and persisted no fixture coordinates, offsets or native display identifiers.
-
-The public contract remains deliberately narrow:
-
-- vertical wheel only;
-- one explicit primary-display-local target point;
-- canonical `direction` only `up` or `down`;
-- `amount` integer `1..10` in line units;
-- target position is independently re-observed before posting;
-- native wheel sign, secondary axes, pixel units, phase/momentum and gestures remain private/unsupported;
-- success state is `WHEEL_POSTED`;
-- `wheelDelivery` is only `POSTED`;
-- `semanticConsequenceVerified` is always false;
-- event posting alone does not establish that an arbitrary application's intended semantic scroll occurred.
-
-Prerequisite delivery discovery remains immutable:
-
-```text
-session: cc-phase10d-wheel-delivery-discovery-s02
-evidence: 6e63c9e1450db6b32510bb17250722bb3efc2f3b
-result: PASS
-```
-
-See `docs/api-pointer.md`, `docs/evidence/phase10d-wheel-delivery-discovery-physical.md` and `docs/evidence/phase10d-pointer-wheel-public-physical.md`.
+The real SDK/runtime path was exercised twice against a separate test-owned AppKit `NSScrollView` oracle. Canonical `direction:"down", amount:3` produced one independently observed wheel event and an `increasing-y` viewport consequence. After exact baseline reset, canonical `direction:"up", amount:3` produced one independently observed wheel event and a `decreasing-y` consequence. The native sign mapping remains backend-private.
 
 ## 10E — keyboard fallback
 
-State: `PENDING`.
+Public candidate API:
 
-Discovery proved only keyboard-event constructibility. Existing semantic text mutation, invoke and other structured APIs remain preferred. Raw keyboard delivery requires an explicit key vocabulary, modifier semantics and a separate physical checkpoint.
+```js
+client.pressKey({key:"a", modifiers:[]})
+client.pressKey({key:"a", modifiers:["shift"]})
+client.pressKey({key:"enter", modifiers:[]})
+```
 
-The next 10E discovery must remain test-owned and precede any public keyboard contract. It should physically establish at minimum:
+State: `IMPLEMENTED`. A dedicated public runtime/SDK physical checkpoint is required before promotion.
 
-- printable text delivery to an AppKit text fixture;
-- one special-key delivery with an independently observable fixture consequence;
-- modifier delivery observed by the fixture;
-- key-down/key-up lifecycle completion and cleanup;
-- native virtual-key identifiers kept private and referenced only through symbolic platform constants internally;
-- no public API frozen by the discovery itself.
+Existing semantic text mutation, invoke and other structured APIs remain preferred. `keyboard.press` is a low-level fallback and does not claim that an arbitrary application accepted text, triggered a shortcut or reached an intended semantic state.
+
+Authoritative delivery discovery:
+
+```text
+session: cc-phase10e-keyboard-delivery-discovery-s01
+evidence: 1aa6efa523dab83d7dd5e2b14fb1b6deb83dc324
+observed product: 0f4d2c0378b12df50ed192721dded97edff9f72e
+test source: fd462455a0b989b459d63d5a3d5833420a191d2f
+poc SHA tested: ddd7f69cffe3b2eed67b9e3dfc2a7bd57179d589
+result: PASS
+```
+
+The test-owned AppKit text fixture independently established three physically grounded tuples:
+
+- `a` with no modifiers: one key-down, one key-up, lowercase text consequence;
+- `enter` with no modifiers: one key-down, one key-up, newline consequence;
+- `a` with `shift`: Shift on/off transitions, shifted key observation and uppercase text consequence.
+
+The public contract is deliberately narrower than a general keyboard API:
+
+- only canonical key `a` and `enter`;
+- only modifier `shift`;
+- only the three discovered key/modifier tuples are accepted;
+- complete key/modifier lifecycle belongs to one call;
+- no public key-down, key-up or held-modifier state;
+- numeric virtual-key codes and platform flags remain private;
+- success state is `KEY_POSTED`;
+- `semanticConsequenceVerified` is always false;
+- any future vocabulary expansion requires separate evidence rather than guessed native identifiers.
+
+See `docs/api-keyboard.md` and `docs/evidence/phase10e-keyboard-delivery-discovery-physical.md`.
 
 ## OCR and vision
 
