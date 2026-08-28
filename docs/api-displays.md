@@ -69,9 +69,26 @@ Observation performs no display configuration, mode switch, coordinate action, s
 
 ### Validation state
 
-Phase 9D1A validation state: `IMPLEMENTED`.
+Phase 9D1A validation state: `PHYSICALLY_VALIDATED` on the current macOS reference topology.
 
-The contract derives from the authoritative Phase 9D discovery:
+Authoritative public API checkpoint:
+
+```text
+session: cc-phase9d1a-display-observation-s01
+evidence: a7788371d7b6d446e783a714112643ba093f2814
+validated product: 25c9052c514926f783d6c315cad2e14a5fa55311
+test source: a7bd10dc6d522014e1c262a5691ad93c2f5245dd
+poc SHA tested: 5d67cd4f3f10c05c31e590698a94809a328a49f4
+result: 36 PASS / 0 FAIL / 0 BLOCKED
+```
+
+The physical test used an independent AppKit/CoreGraphics oracle and observed exact semantic equality with the public runtime/SDK result. A second public observation returned the same semantic vector. See `docs/evidence/phase9d1a-display-observation-physical.md`.
+
+The validation scope is the current reference topology: one built-in Retina display. The contract is designed to return an array for multi-display systems, but external/multi-monitor, mirroring, rotation and hot-plug combinations remain additional conformance surfaces rather than claims made by this checkpoint.
+
+### Discovery provenance
+
+The contract derives from the earlier authoritative read-only Phase 9D discovery:
 
 ```text
 session: cc-phase9d-display-clipboard-discovery-s01
@@ -82,4 +99,4 @@ poc SHA tested: cb01e84d7e4901448d584c4075a7d28e97bda65b
 result: PASS
 ```
 
-That checkpoint physically validated the discovery topology only. Promotion of the new public `display.list` implementation to `PHYSICALLY_VALIDATED` requires a dedicated end-to-end runtime/SDK checkpoint.
+The discovery remains historical provenance; the later `a7788371...` checkpoint is the authoritative physical validation of `display.list`.
