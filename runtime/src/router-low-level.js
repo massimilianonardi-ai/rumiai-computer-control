@@ -29,6 +29,7 @@ function createRouter(backend){
         if(params.display!=="primary")throw new ComputerControlError("POINTER_DISPLAY_UNSUPPORTED","pointer.drag currently supports only display=primary","NONE");
         if(params.button!=="left")throw new ComputerControlError("POINTER_BUTTON_UNSUPPORTED","pointer.drag currently supports only button=left","NONE");
         validatePoint(params.source,method,"source");validatePoint(params.destination,method,"destination");
+        if(params.source.x===params.destination.x&&params.source.y===params.destination.y)throw new ComputerControlError("POINTER_DRAG_ZERO_DISTANCE","pointer.drag requires distinct source and destination coordinates","NONE");
         return backend.dragPointer({display:params.display,source:{...params.source},destination:{...params.destination},button:"left"});
       default:return routePrior(method,params);
     }
