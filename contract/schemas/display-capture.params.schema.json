@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://rumiai.local/computer-control/v0.10/display-capture.params.schema.json",
+  "title": "Display capture parameters",
+  "type": "object",
+  "required": ["display"],
+  "properties": {
+    "display": {"const": "primary"}
+  },
+  "additionalProperties": false
+}
