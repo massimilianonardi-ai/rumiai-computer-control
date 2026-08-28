@@ -1,0 +1,9 @@
+{
+  "method": "pointer.click",
+  "params": {
+    "display": "primary",
+    "x": 640,
+    "y": 420,
+    "button": "left"
+  }
+}
