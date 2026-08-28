@@ -11,7 +11,7 @@ Phase 10 discovery   PHYSICALLY_OBSERVED
 Phase 10A capture    PHYSICALLY_VALIDATED
 Phase 10B pointer    PHYSICALLY_VALIDATED
 Phase 10C drag/drop  PHYSICALLY_VALIDATED
-Phase 10D wheel      PENDING
+Phase 10D wheel      IMPLEMENTED
 Phase 10E keyboard   PENDING
 OCR / vision         PENDING (separate interpretation layer)
 ```
@@ -94,30 +94,60 @@ evidence: 47ee8e31a08597cffc0c773dfaf72a093501e5c4
 result: PASS
 ```
 
-The blocked public s01 checkpoint also remains immutable; it stopped at fixture compilation before any public drag mutation and was corrected only in the PoC.
-
 See `docs/api-pointer.md`, `docs/evidence/phase10c-drag-delivery-discovery-physical.md` and `docs/evidence/phase10c-pointer-drag-public-physical.md`.
 
 ## 10D — raw wheel delivery
 
-State: `PENDING`.
+Public API:
 
-Existing semantic `ui.scroll` remains preferred whenever a semantic scroll target exists. Phase 10D must not weaken or bypass its postcondition semantics.
+```js
+client.wheelPointer({
+  display:"primary",
+  x,
+  y,
+  direction:"up"|"down",
+  amount:1
+})
+```
 
-The Phase 10 discovery proved only that a Quartz wheel event can be constructed. Before freezing any public raw-wheel contract, a dedicated physical discovery must establish actual delivery to a test-owned AppKit scroll fixture and an independently observable scroll consequence.
+State: `IMPLEMENTED`. A dedicated public runtime/SDK physical checkpoint is required before promotion.
 
-The first 10D discovery target is deliberately narrow:
+Existing semantic `ui.scroll` remains preferred whenever a semantic scroll target exists. `pointer.wheel` is an explicit coordinate fallback and must not weaken or bypass `ui.scroll` postcondition semantics.
+
+Authoritative delivery discovery:
+
+```text
+session: cc-phase10d-wheel-delivery-discovery-s02
+evidence: 6e63c9e1450db6b32510bb17250722bb3efc2f3b
+observed product: 9cb037f688a82f733de520062b0adb30c0994a8b
+test source: a438ce771cbd1278dbefea7c4c209e77bf2a9217
+poc SHA tested: 275587696909bfe1452a346d27583f684b5a43b7
+result: PASS
+```
+
+The test-owned AppKit `NSScrollView` independently established real wheel delivery and a real viewport consequence for both raw native signs after exact baseline reset:
+
+```text
+wheel1=-3 -> delivery observed=1 -> increasing-y
+wheel1=+3 -> delivery observed=1 -> decreasing-y
+```
+
+That mapping is backend-private evidence. The public API exposes only canonical `direction:"up"|"down"`; on the reference macOS backend, `down` maps to a negative native line delta and `up` maps to a positive native line delta.
+
+The public contract is deliberately narrow:
 
 - vertical wheel only;
-- target point belongs to a test-owned AppKit scroll fixture;
-- raw wheel mechanics remain separate from semantic `ui.scroll`;
-- no public API is introduced by discovery;
-- PASS requires the fixture to observe wheel delivery and a real scroll-position change;
-- pointer/focus state is restored when the fixture closes;
-- fixture coordinates and native identifiers are not persisted;
-- event posting alone is not success.
+- one explicit primary-display-local target point;
+- canonical `direction` only `up` or `down`;
+- `amount` integer `1..10` in line units;
+- target position is independently re-observed before posting;
+- native wheel sign, secondary axes, pixel units, phase/momentum and gestures remain private/unsupported;
+- success state is `WHEEL_POSTED`;
+- `wheelDelivery` is only `POSTED`;
+- `semanticConsequenceVerified` is always false;
+- event posting alone does not establish that an arbitrary application's intended semantic scroll occurred.
 
-Only after successful discovery should a public raw-wheel vocabulary and result boundary be frozen.
+See `docs/api-pointer.md` and `docs/evidence/phase10d-wheel-delivery-discovery-physical.md`.
 
 ## 10E — keyboard fallback
 
