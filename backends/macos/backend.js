@@ -65,7 +65,7 @@ const PHASE9C3A = [
 ];
 
 const PHASE9D1A = [
-  {name:"display.list", available:true, validationState:"IMPLEMENTED", strategies:["os-owned-native-display-observation"]},
+  {name:"display.list", available:true, validationState:"PHYSICALLY_VALIDATED", strategies:["os-owned-native-display-observation"]},
 ];
 
 function canonicalDialog(value={}) {
