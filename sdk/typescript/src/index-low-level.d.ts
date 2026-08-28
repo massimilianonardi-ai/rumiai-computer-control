@@ -2,6 +2,7 @@ export * from "./index";
 import "./index";
 
 export type PointerButton = "left"|"right";
+export type PointerWheelDirection = "up"|"down";
 export interface PointerPosition {x:number;y:number;}
 export interface PointerMoveResult {
   state:"MOVED";
@@ -41,11 +42,25 @@ export interface PointerDragResult {
   backend:{name:"macos-quartz";strategy:"primary-display-pointer-drag-post";fallback:true};
   diagnostics?:Record<string,unknown>;
 }
+export interface PointerWheelResult {
+  state:"WHEEL_POSTED";
+  display:"primary";
+  position:PointerPosition;
+  direction:PointerWheelDirection;
+  amount:number;
+  positionVerified:true;
+  wheelDelivery:"POSTED";
+  semanticConsequenceVerified:false;
+  verification:{positionMethod:"quartz-current-pointer-location";wheelMethod:"quartz-event-post-only"};
+  backend:{name:"macos-quartz";strategy:"primary-display-pointer-wheel-post";fallback:true};
+  diagnostics?:Record<string,unknown>;
+}
 
 declare module "./index-stateful" {
   interface ComputerControlClient {
     movePointer(params:{display:"primary";x:number;y:number}):Promise<PointerMoveResult>;
     clickPointer(params:{display:"primary";x:number;y:number;button:PointerButton}):Promise<PointerClickResult>;
     dragPointer(params:{display:"primary";source:PointerPosition;destination:PointerPosition;button?:"left"}):Promise<PointerDragResult>;
+    wheelPointer(params:{display:"primary";x:number;y:number;direction:PointerWheelDirection;amount?:number}):Promise<PointerWheelResult>;
   }
 }
