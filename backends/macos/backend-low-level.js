@@ -4,8 +4,8 @@ const pointer=require("./runtime/app/computer-control/backends/macos-pointer");
 const {ComputerControlError}=require("../../runtime/src/errors");
 
 const PHASE10B=[
-  {name:"pointer.move",available:true,validationState:"IMPLEMENTED",strategies:["quartz-primary-display-pointer-move","current-location-postcondition"]},
-  {name:"pointer.click",available:true,validationState:"IMPLEMENTED",strategies:["quartz-primary-display-pointer-click-post","verified-position-before-button-post"]},
+  {name:"pointer.move",available:true,validationState:"PHYSICALLY_VALIDATED",strategies:["quartz-primary-display-pointer-move","current-location-postcondition"]},
+  {name:"pointer.click",available:true,validationState:"PHYSICALLY_VALIDATED",strategies:["quartz-primary-display-pointer-click-post","verified-position-before-button-post"]},
 ];
 
 function finiteCoordinate(value,field){const number=Number(value);if(!Number.isFinite(number)||number<0)throw new ComputerControlError("POINTER_INVALID_NATIVE_STATE",`Pointer helper returned invalid ${field}`,"NONE",{state:"FAILED"});return number;}
