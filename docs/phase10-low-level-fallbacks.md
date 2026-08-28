@@ -9,7 +9,7 @@ A working semantic capability always takes precedence. Low-level delivery must n
 ```text
 Phase 10 discovery   PHYSICALLY_OBSERVED
 Phase 10A capture    PHYSICALLY_VALIDATED
-Phase 10B pointer    IMPLEMENTED
+Phase 10B pointer    PHYSICALLY_VALIDATED
 Phase 10C drag/drop  PENDING
 Phase 10D wheel      PENDING
 Phase 10E keyboard   PENDING
@@ -79,43 +79,51 @@ client.movePointer({display:"primary", x, y})
 client.clickPointer({display:"primary", x, y, button:"left"|"right"})
 ```
 
-State: `IMPLEMENTED`.
+State: `PHYSICALLY_VALIDATED` on the current macOS reference surface.
 
-The prerequisite physical delivery discovery is complete:
+Authoritative public checkpoint:
 
 ```text
-session: cc-phase10b-pointer-delivery-discovery-s02
-evidence: 4c973a4400660417cfb39fb8297cd363e8c13c63
-observed product: 085f0015291419b945540b59a1d56855507f6098
-test source: 48f750f7bb22718f713d47c149311178169110ac
-poc SHA tested: 45fefdd37f6d0449595ac1e289d09eb3b256f042
-result: PASS
+session: cc-phase10b-pointer-public-s03
+evidence: a7b878ff25e56ee7c16705dfdec1468f6a47b0a1
+validated product: 3f68502848f127d73f72cac023deed511f3ce75d
+test source: a3cd3f6b143d4c2e74d1d831218778ea19a3e48b
+poc SHA tested: 1271dd80d331d97005e8e99c00b98af116f66225
+result: 43 PASS / 0 FAIL / 0 BLOCKED
 ```
 
-That checkpoint physically observed pointer movement and exactly one left and one right down/up pair in a test-owned AppKit fixture, restored the original pointer position, and clicked no user content.
+The physical test exercised the real runtime and SDK against a temporary test-owned AppKit fixture. It independently observed exactly one left down/up and one right down/up, verified the public move postcondition, restored the original pointer position, clicked no user content and persisted no fixture coordinates or native display identifiers.
 
-The public contract is deliberately narrower than the native discovery:
+The public contract remains deliberately narrow:
 
 - primary display only;
 - coordinates are primary-display-local, top-left origin, in `display.list` logical units;
 - `pointer.move` succeeds only after the requested position is independently re-observed and therefore returns `verified:true`;
-- `pointer.click` first verifies position, then posts a complete down/up pair;
-- button posting is reported as `buttonDelivery:"POSTED"`, not as verified application delivery;
+- `pointer.click` independently verifies position immediately before posting a complete down/up pair;
+- button posting is reported as `buttonDelivery:"POSTED"`, not as verified semantic success;
 - `semanticConsequenceVerified` is always false for the raw click API;
-- separate `pointer.down`/`pointer.up` are not public in 10B;
+- separate `pointer.down`/`pointer.up` remain non-public;
 - native display identifiers and global desktop identity remain private.
 
-A dedicated public runtime/SDK physical checkpoint is still required before Phase 10B can be promoted to `PHYSICALLY_VALIDATED`.
+Prerequisite delivery discovery remains immutable:
 
-Coordinates must remain explicit low-level fallback coordinates. They must never replace a semantic element target when a semantic operation exists.
+```text
+session: cc-phase10b-pointer-delivery-discovery-s02
+evidence: 4c973a4400660417cfb39fb8297cd363e8c13c63
+result: 42 PASS / 0 FAIL / 0 BLOCKED
+```
 
-See `docs/api-pointer.md` and `docs/evidence/phase10b-pointer-delivery-discovery-physical.md`.
+Coordinates must remain explicit low-level fallback coordinates. They must never replace a semantic element target when a semantic operation exists. `CLICK_POSTED` does not mean the intended semantic action succeeded.
+
+See `docs/api-pointer.md`, `docs/evidence/phase10b-pointer-public-physical.md` and `docs/evidence/phase10b-pointer-delivery-discovery-physical.md`.
 
 ## 10C — drag/drop
 
 State: `PENDING`.
 
-Drag is a compound stateful input sequence, not an alias for click or pointer movement. It requires deterministic source/destination semantics, button-state handling, cancellation/failure behavior and an independent postcondition. Phase 10B intentionally does not expose a held-button state across RPC calls.
+Drag is a compound stateful input sequence, not an alias for click or pointer movement. It requires deterministic source/destination coordinates, a button-state lifecycle owned by one operation, release cleanup on failure, and an independent postcondition. Phase 10B intentionally does not expose a held-button state across RPC calls.
+
+The initial 10C design target is one atomic primary-display fallback operation that owns move-to-source → button-down → dragged movement → button-up. Discovery/physical validation must use a test-owned fixture with an independently observable drag consequence before any public contract is frozen.
 
 ## 10D — wheel/gesture delivery
 
