@@ -1,0 +1,27 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": ["state", "revision", "itemIndex", "format", "byteCount", "dataBase64", "observation", "backend"],
+  "properties": {
+    "state": {"const": "READ"},
+    "revision": {"type": "string", "minLength": 1},
+    "itemIndex": {"type": "integer", "minimum": 0},
+    "format": {"enum": ["text/plain", "text/html", "text/rtf", "image/png"]},
+    "byteCount": {"type": "integer", "minimum": 0, "maximum": 16777216},
+    "dataBase64": {"type": "string", "contentEncoding": "base64"},
+    "observation": {
+      "type": "object",
+      "required": ["method"],
+      "properties": {"method": {"type": "string"}},
+      "additionalProperties": false
+    },
+    "backend": {
+      "type": "object",
+      "required": ["name", "strategy"],
+      "properties": {"name": {"type": "string"}, "strategy": {"type": "string"}},
+      "additionalProperties": false
+    },
+    "diagnostics": {"type": "object"}
+  },
+  "additionalProperties": false
+}
