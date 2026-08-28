@@ -1,0 +1,24 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "KeyboardPressParams",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "modifiers"],
+      "properties": {"key": {"const": "a"}, "modifiers": {"const": []}}
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "modifiers"],
+      "properties": {"key": {"const": "a"}, "modifiers": {"const": ["shift"]}}
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["key", "modifiers"],
+      "properties": {"key": {"const": "enter"}, "modifiers": {"const": []}}
+    }
+  ]
+}
