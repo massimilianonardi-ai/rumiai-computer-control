@@ -97,9 +97,24 @@ Observation performs no `clearContents`, declaration, write, copy/paste key deli
 
 ### Validation state
 
-Phase 9D2A validation state: `IMPLEMENTED`.
+Phase 9D2A validation state: `PHYSICALLY_VALIDATED`.
 
-The design is grounded in the authoritative Phase 9D discovery:
+Authoritative public checkpoint:
+
+```text
+session: cc-phase9d2a-clipboard-metadata-observation-s03
+evidence: 521f41c2fcc499574b61b658440671faefe61708
+validated product: bbf6579a2d291d16cde02c3371e5b31495a92287
+test source: af5fcf98cfc770302cd1e34c011d46fdeca5adc3
+poc SHA tested: 58b72853eb65b51e6fda28de52fec152a5a834c0
+result: 37 PASS / 0 FAIL / 0 BLOCKED
+```
+
+The checkpoint compared the public runtime/SDK operation with an independent native `NSPasteboard` metadata oracle under one stable revision. It verified repeated observation, exact canonical metadata, native-type privacy and the absence of payload content in the public result. See `docs/evidence/phase9d2a-clipboard-metadata-observation-physical.md`.
+
+Historical `s02` evidence remains immutable with overall `FAIL`: the product and oracle metadata were already semantically equal, but that test compared JSON strings whose property insertion order differed. The forward-only s03 correction changed only the test comparison.
+
+The design was originally grounded in the authoritative Phase 9D discovery:
 
 ```text
 session: cc-phase9d-display-clipboard-discovery-s01
@@ -110,14 +125,14 @@ poc SHA tested: cb01e84d7e4901448d584c4075a7d28e97bda65b
 result: PASS
 ```
 
-That discovery proved that general-pasteboard metadata can be observed without modifying the user's clipboard, and separately proved exact isolated-pasteboard round-trips for plain text, HTML, RTF and PNG. It did not physically validate this new public `clipboard.observe` API.
+That discovery proved that general-pasteboard metadata can be observed without modifying the user's clipboard, and separately proved exact isolated-pasteboard round-trips for plain text, HTML, RTF and PNG.
 
-Promotion to `PHYSICALLY_VALIDATED` requires a dedicated runtime/SDK checkpoint against an independent metadata oracle. The checkpoint must not read or log the user's clipboard payload.
+## Phase 9D2B — typed payload read
 
-## Planned richer clipboard continuation
+Typed payload access is a separate capability from metadata observation. Its public request is intentionally revision-scoped: the caller must supply the opaque `revision` returned by `clipboard.observe`, an `itemIndex`, and one canonical `format` advertised for that item. A changed revision, missing item or non-advertised format must fail explicitly rather than reading a different clipboard state.
 
-Typed payload access remains separate from Phase 9D2A.
+The typed-read contract is implemented and physically validated separately; Phase 9D2A evidence does not promote payload access.
 
-A later read capability should require the observed `revision`, `item index` and canonical `format`, and must fail stale if the clipboard revision changed. Binary/text payload representation, size limits and physical validation scope will be fixed before that API is introduced.
+## Phase 9D2C — typed write
 
-Typed write is a further separate mutation phase and will require independently observed readback/postcondition semantics. It must not weaken the existing text-only `clipboard.write` contract.
+Typed write is a further separate mutation phase and requires independently observed readback/postcondition semantics. It must not weaken or reinterpret the existing text-only `clipboard.write` contract.
