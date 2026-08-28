@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "PointerWheelParams",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["display", "x", "y", "direction", "amount"],
+  "properties": {
+    "display": {"const": "primary"},
+    "x": {"type": "number", "minimum": 0},
+    "y": {"type": "number", "minimum": 0},
+    "direction": {"enum": ["up", "down"]},
+    "amount": {"type": "integer", "minimum": 1, "maximum": 10}
+  }
+}
