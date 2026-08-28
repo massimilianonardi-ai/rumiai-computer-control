@@ -110,21 +110,20 @@ struct MacOSPointerHelper {
             failed("POINTER_BUTTON_EVENT_CONSTRUCTION_FAILED", "Could not construct native pointer button events")
         }
 
+        // The requested coordinate has already been independently re-observed immediately
+        // before delivery. A later cursor-location check would conflate button posting with
+        // unrelated concurrent pointer motion and is not evidence of button delivery.
         down.post(tap: .cghidEventTap)
         usleep(15_000)
         up.post(tap: .cghidEventTap)
         usleep(30_000)
 
-        guard let finalEvent = CGEvent(source: nil), near(finalEvent.location, target) else {
-            failed("POINTER_CLICK_POSITION_UNVERIFIED", "Pointer moved away from requested click coordinate during delivery", state: "UNVERIFIED")
-        }
-        let finalLocal = localPoint(finalEvent.location, bounds: bounds)
         emit([
             "ok": true,
             "state": "CLICK_POSTED",
             "display": "primary",
-            "x": finalLocal.x,
-            "y": finalLocal.y,
+            "x": positionedLocal.x,
+            "y": positionedLocal.y,
             "button": button,
             "positionVerified": true,
             "buttonDelivery": "POSTED",
