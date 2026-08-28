@@ -1,0 +1,6 @@
+{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "method": "clipboard.readFormat",
+  "params": {"revision": "1509", "itemIndex": 0, "format": "text/plain"}
+}
