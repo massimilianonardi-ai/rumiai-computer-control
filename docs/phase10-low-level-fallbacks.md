@@ -10,7 +10,7 @@ A working semantic capability always takes precedence. Low-level delivery must n
 Phase 10 discovery   PHYSICALLY_OBSERVED
 Phase 10A capture    PHYSICALLY_VALIDATED
 Phase 10B pointer    PHYSICALLY_VALIDATED
-Phase 10C drag/drop  PENDING
+Phase 10C drag/drop  IMPLEMENTED
 Phase 10D wheel      PENDING
 Phase 10E keyboard   PENDING
 OCR / vision         PENDING (separate interpretation layer)
@@ -105,25 +105,56 @@ The public contract remains deliberately narrow:
 - separate `pointer.down`/`pointer.up` remain non-public;
 - native display identifiers and global desktop identity remain private.
 
-Prerequisite delivery discovery remains immutable:
-
-```text
-session: cc-phase10b-pointer-delivery-discovery-s02
-evidence: 4c973a4400660417cfb39fb8297cd363e8c13c63
-result: 42 PASS / 0 FAIL / 0 BLOCKED
-```
-
 Coordinates must remain explicit low-level fallback coordinates. They must never replace a semantic element target when a semantic operation exists. `CLICK_POSTED` does not mean the intended semantic action succeeded.
 
 See `docs/api-pointer.md`, `docs/evidence/phase10b-pointer-public-physical.md` and `docs/evidence/phase10b-pointer-delivery-discovery-physical.md`.
 
-## 10C — drag/drop
+## 10C — drag/drop fallback
 
-State: `PENDING`.
+Public API:
 
-Drag is a compound stateful input sequence, not an alias for click or pointer movement. It requires deterministic source/destination coordinates, a button-state lifecycle owned by one operation, release cleanup on failure, and an independent postcondition. Phase 10B intentionally does not expose a held-button state across RPC calls.
+```js
+client.dragPointer({
+  display:"primary",
+  source:{x,y},
+  destination:{x,y},
+  button:"left"
+})
+```
 
-The initial 10C design target is one atomic primary-display fallback operation that owns move-to-source → button-down → dragged movement → button-up. Discovery/physical validation must use a test-owned fixture with an independently observable drag consequence before any public contract is frozen.
+State: `IMPLEMENTED` after authoritative delivery discovery. A dedicated public runtime/SDK physical checkpoint is still required for promotion.
+
+Authoritative discovery checkpoint:
+
+```text
+session: cc-phase10c-drag-delivery-discovery-s01
+evidence: 47ee8e31a08597cffc0c773dfaf72a093501e5c4
+observed product: 37069dcf683c168c3b9727e5b4464ff457b1222c
+test source: 6c13b1e8868ec5667cc9a6e4611d4f69799dda67
+poc SHA tested: a6b9c4d4afd321b99276c442a72f61a73d8baae9
+result: PASS
+```
+
+The independent AppKit fixture observed exactly one down, four dragged events and one up. A hit-test-transparent test marker was moved only by delivered AppKit drag events and reached the destination zone. The pointer was restored and the successful path required no emergency release.
+
+The public contract is deliberately narrower than the fixture consequence:
+
+- one atomic primary-display fallback operation;
+- source and destination are explicit primary-display-local logical coordinates;
+- left button only;
+- no public timing, step count or easing controls;
+- source location is independently re-observed before button-down;
+- the helper constructs the complete normal lifecycle before button-down;
+- down/drag/up are owned by one call;
+- normal success requires the terminating button-up to have been posted;
+- any emergency release path is not success;
+- result state is `DRAG_POSTED`, not a semantic `DROPPED` state;
+- `semanticConsequenceVerified` is always false;
+- public `pointer.down`/`pointer.up` remain absent.
+
+The discovery fixture consequence proves native delivery viability on the reference surface. It does not justify claiming that a future application's intended drag/drop action succeeded.
+
+See `docs/api-pointer.md` and `docs/evidence/phase10c-drag-delivery-discovery-physical.md`.
 
 ## 10D — wheel/gesture delivery
 
