@@ -1,0 +1,6 @@
+{
+  "method": "display.capture",
+  "params": {
+    "display": "primary"
+  }
+}
